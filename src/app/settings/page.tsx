@@ -14,13 +14,12 @@ import { deleteUser } from "firebase/auth";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { Loader2 } from "lucide-react";
+import { getFriendlyErrorMessage } from "@/lib/error-utils";
 
 export default function SettingsPage() {
     const { user, userData } = useAuth();
     const router = useRouter();
     const [isDeleting, setIsDeleting] = useState(false);
-
-    import { getFriendlyErrorMessage } from "@/lib/error-utils";
 
     const handleDeleteAccount = async () => {
         if (!user) return;

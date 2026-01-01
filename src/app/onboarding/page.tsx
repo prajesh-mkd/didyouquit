@@ -25,6 +25,7 @@ import { db } from "@/lib/firebase";
 import { doc, setDoc, getDocs, collection, query, where, serverTimestamp } from "firebase/firestore";
 import { toast } from "sonner";
 import { Loader2, Check, X } from "lucide-react";
+import { getFriendlyErrorMessage } from "@/lib/error-utils";
 
 const COUNTRIES = [
     "United States", "United Kingdom", "Canada", "Australia", "India",
@@ -80,8 +81,6 @@ export default function Onboarding() {
 
         return () => clearTimeout(timeoutId);
     }, [username]);
-
-    import { getFriendlyErrorMessage } from "@/lib/error-utils";
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

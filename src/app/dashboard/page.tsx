@@ -29,6 +29,7 @@ import {
     orderBy
 } from "firebase/firestore";
 import { toast } from "sonner";
+import { getFriendlyErrorMessage } from "@/lib/error-utils";
 import { Header } from "@/components/layout/Header";
 import { getCurrentWeekKey } from "@/lib/date-utils";
 import { clsx } from "clsx";
@@ -80,8 +81,6 @@ export default function Dashboard() {
 
         return () => unsubscribe();
     }, [user]);
-
-    import { getFriendlyErrorMessage } from "@/lib/error-utils";
 
     const handleCreateResolution = async (e: React.FormEvent) => {
         e.preventDefault();
