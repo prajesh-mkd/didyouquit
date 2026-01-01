@@ -273,7 +273,7 @@ export default function Dashboard() {
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-emerald-50/50 text-emerald-900">
                                     <tr>
-                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[200px]">
+                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[350px]">
                                             <div className="flex items-center gap-2">
                                                 <Target className="h-4 w-4 text-emerald-600" />
                                                 Resolution
