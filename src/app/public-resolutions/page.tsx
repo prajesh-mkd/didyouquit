@@ -220,7 +220,13 @@ export default function PublicResolutionsPage() {
             <main className="flex-1 pb-20">
                 <div className="container mx-auto px-6 py-12">
                     <h1 className="text-4xl font-bold text-center text-emerald-900 mb-2">Public Resolutions 2026</h1>
-                    <p className="text-center text-slate-600 mb-12">See what the world is committing to this year.</p>
+                    <p className="text-center text-slate-600 mb-4">See what the world is committing to this year.</p>
+                    {user && (
+                        <p className="text-center text-sm text-emerald-600 font-medium mb-12 bg-emerald-50 inline-block px-4 py-1.5 rounded-full mx-auto table">
+                            ✨ Your resolutions are always visible at the top of the list
+                        </p>
+                    )}
+                    {!user && <div className="mb-12" />}
 
                     <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
                         {/* Mobile View (Cards) */}
