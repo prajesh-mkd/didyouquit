@@ -37,11 +37,11 @@ export function Header() {
                 {user ? (
                     <div className="flex items-center gap-4">
                         <div className="hidden md:flex items-center gap-4 mr-4">
-                            <Link href="/public-resolutions" className="text-sm font-medium hover:text-primary transition-colors">
+                            <Link href="/public-resolutions" className="text-sm font-medium hover:text-emerald-600 transition-colors">
                                 Public Resolutions 2026
                             </Link>
                             {user && (
-                                <Link href="/dashboard" className="text-sm font-medium hover:text-primary transition-colors">
+                                <Link href="/dashboard" className="text-sm font-medium hover:text-emerald-600 transition-colors">
                                     My Resolutions
                                 </Link>
                             )}
