@@ -276,8 +276,6 @@ function HomeContent() {
                     </div>
 
                     <div>
-                      <div className="flex items-center gap-2 font-medium text-slate-900 mb-2">
-                        <Target className="h-4 w-4 text-emerald-500 shrink-0" />
                         {res.title}
                       </div>
                     </div>
@@ -320,7 +318,7 @@ function HomeContent() {
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-emerald-50/50 text-emerald-900">
                     <tr>
-                      <th className="p-4 font-semibold border-b border-emerald-100 w-[250px]">User</th>
+                      <th className="p-4 pl-6 font-semibold border-b border-emerald-100 w-[250px]">User</th>
                       <th className="p-4 font-semibold border-b border-emerald-100">Resolution</th>
                       <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">Progress (52 Weeks)</th>
                     </tr>
@@ -328,7 +326,7 @@ function HomeContent() {
                   <tbody className="divide-y divide-slate-50">
                     {publicResolutions.map((res) => (
                       <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="p-4">
+                        <td className="p-4 pl-6">
                           <Link href={`/${res.user?.username || res.uid}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                             <Avatar className="h-10 w-10 border border-slate-200">
                               <AvatarImage src={res.user?.photoURL} />
@@ -349,7 +347,6 @@ function HomeContent() {
                         </td>
                         <td className="p-4">
                           <div className="flex items-center gap-2 font-medium text-slate-800">
-                            <Target className="h-4 w-4 text-emerald-500 shrink-0" />
                             {res.title}
                           </div>
                         </td>
@@ -390,15 +387,15 @@ function HomeContent() {
             </div>
           )}
 
-          <div className="mt-12 text-center">
-            <Button size="lg" className="bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 rounded-full" asChild>
-              <Link href="/public-resolutions">
-                View All Resolutions <ArrowRight className="ml-0.5 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
+        <div className="mt-12 text-center">
+          <Button size="lg" className="bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 rounded-full" asChild>
+            <Link href="/public-resolutions">
+              View All Resolutions <ArrowRight className="ml-0.5 h-4 w-4" />
+            </Link>
+          </Button>
         </div>
-      </section>
+    </div>
+      </section >
 
       <Footer />
 
@@ -523,7 +520,7 @@ function HomeContent() {
         onOpenChange={setForgotPasswordOpen}
         defaultEmail={email}
       />
-    </div>
+    </div >
   );
 }
 
