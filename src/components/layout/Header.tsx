@@ -31,7 +31,7 @@ export function Header() {
             <div className="container flex h-14 items-center justify-between px-4">
                 <Link href="/" className="flex items-center gap-2 font-bold text-xl">
                     <FolderCheck className="h-6 w-6 text-primary" />
-                    <span>DidYouQuit?</span>
+                    <span>DidYouQuit<span className="text-emerald-600">?</span></span>
                 </Link>
 
                 {user ? (

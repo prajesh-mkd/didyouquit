@@ -164,7 +164,7 @@ export default function Home() {
       <header className="container mx-auto px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Target className="h-6 w-6 text-emerald-600" />
-          <span className="font-bold text-xl tracking-tight">DidYouQuit.com</span>
+          <span className="font-bold text-xl tracking-tight">DidYouQuit<span className="text-emerald-600">?</span></span>
         </div>
         <div className="flex items-center gap-4">
           {user ? (
@@ -332,7 +332,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-white py-12 border-t border-slate-100 text-center text-slate-400 text-sm">
-        <p>© 2026 DidYouQuit.com. All rights reserved. (v2.4)</p>
+        <p>© 2026 DidYouQuit.com. All rights reserved. (v2.5)</p>
       </footer>
 
       {/* Auth Dialog */}
