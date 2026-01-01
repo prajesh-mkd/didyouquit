@@ -169,7 +169,7 @@ export default function PublicResolutionsPage() {
                                                         <Tooltip key={week}>
                                                             <TooltipTrigger asChild>
                                                                 <div
-                                                                    className={`w-3 h-3 rounded-full border ${colorClass} shrink-0 cursor-default`}
+                                                                    className={`w-4 h-4 rounded-full border ${colorClass} shrink-0 cursor-default`}
                                                                 />
                                                             </TooltipTrigger>
                                                             <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
@@ -239,7 +239,7 @@ export default function PublicResolutionsPage() {
                                                                 <Tooltip key={week}>
                                                                     <TooltipTrigger asChild>
                                                                         <div
-                                                                            className={`w-3 h-3 rounded-full border ${colorClass} cursor-default`}
+                                                                            className={`w-4 h-4 rounded-full border ${colorClass} cursor-default`}
                                                                         />
                                                                     </TooltipTrigger>
                                                                     <TooltipContent className="bg-slate-800 text-white border-0 text-xs">

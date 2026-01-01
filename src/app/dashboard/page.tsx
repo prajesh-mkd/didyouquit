@@ -325,7 +325,7 @@ export default function Dashboard() {
                                                                         <TooltipTrigger asChild>
                                                                             <PopoverTrigger asChild disabled={isFuture}>
                                                                                 <button
-                                                                                    className={`w-3.5 h-3.5 rounded-full border ${colorClass} shrink-0 transition-transform hover:scale-125 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1`}
+                                                                                    className={`w-[18px] h-[18px] rounded-full border ${colorClass} shrink-0 transition-transform hover:scale-125 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1`}
                                                                                     disabled={isFuture}
                                                                                 />
                                                                             </PopoverTrigger>
