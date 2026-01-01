@@ -269,23 +269,106 @@ export default function Dashboard() {
                     </div>
                 ) : (
                     <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                        <div className="overflow-x-auto">
+                        {/* Mobile View */}
+                        <div className="md:hidden divide-y divide-slate-100">
+                            {resolutions.map((res) => (
+                                <div key={res.id} className="p-4 space-y-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="font-medium text-slate-900 break-words flex-1">
+                                            {res.title}
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            <TooltipProvider delayDuration={0}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-600" onClick={() => setEditRes(res)}>
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>Edit</TooltipContent>
+                                                </Tooltip>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={() => setDeleteRes(res)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>Delete</TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-slate-50/50 rounded-lg p-3 border border-slate-100">
+                                        <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold">Progress (52 Weeks)</p>
+                                        <div className="flex flex-wrap gap-2.5">
+                                            <TooltipProvider delayDuration={0}>
+                                                {weeks.map((week) => {
+                                                    const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
+                                                    const status = res.weeklyLog?.[weekKey];
+                                                    const isFuture = weekKey > currentWeekInfo;
+
+                                                    let colorClass = "bg-slate-200 border-slate-300";
+                                                    if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
+                                                    if (status === false) colorClass = "bg-red-400 border-red-400";
+                                                    if (isFuture) colorClass += " opacity-50 cursor-not-allowed";
+
+                                                    return (
+                                                        <Popover key={week}>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <PopoverTrigger asChild disabled={isFuture}>
+                                                                        <button
+                                                                            type="button"
+                                                                            className={`w-[18px] h-[18px] rounded-full border ${colorClass} shrink-0 focus:outline-none focus:ring-1 focus:ring-emerald-500`}
+                                                                            disabled={isFuture}
+                                                                        />
+                                                                    </PopoverTrigger>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
+                                                                    <p className="font-bold mb-0.5">Week {week}</p>
+                                                                    <p className="text-slate-300 font-normal">{getWeekRange(week)}</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                            <PopoverContent className="w-40 p-2">
+                                                                <div className="grid gap-1">
+                                                                    <p className="text-xs font-medium text-center mb-1 text-slate-500">Set Week {week}</p>
+                                                                    <Button size="sm" variant="ghost" className="justify-start h-8 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50" onClick={() => toggleWeek(res, weekKey, true)}>
+                                                                        <CheckCircle2 className="mr-2 h-4 w-4" /> Kept it
+                                                                    </Button>
+                                                                    <Button size="sm" variant="ghost" className="justify-start h-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => toggleWeek(res, weekKey, false)}>
+                                                                        <XCircle className="mr-2 h-4 w-4" /> Missed it
+                                                                    </Button>
+                                                                </div>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    );
+                                                })}
+                                            </TooltipProvider>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop View */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-emerald-50/50 text-emerald-900">
                                     <tr>
-                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[350px]">
+                                        <th className="p-4 font-semibold border-b border-emerald-100 w-full min-w-[300px]">
                                             <div className="flex items-center gap-2">
                                                 <Target className="h-4 w-4 text-emerald-600" />
                                                 Resolution
                                             </div>
                                         </th>
-                                        <th className="p-4 font-semibold border-b border-emerald-100 w-[100px]">
+                                        <th className="p-4 font-semibold border-b border-emerald-100 w-[120px]">
                                             <div className="flex items-center gap-2">
                                                 <Settings className="h-4 w-4 text-emerald-600" />
                                                 Actions
                                             </div>
                                         </th>
-                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">
+                                        <th className="p-4 font-semibold border-b border-emerald-100 w-[600px] min-w-[600px]">
                                             <div className="flex items-center gap-2">
                                                 <Calendar className="h-4 w-4 text-emerald-600" />
                                                 Progress (52 Weeks - Click to Edit)
@@ -322,7 +405,7 @@ export default function Dashboard() {
                                                 </div>
                                             </td>
                                             <td className="p-4">
-                                                <div className="flex flex-wrap gap-2.5 max-w-[800px]">
+                                                <div className="flex flex-wrap gap-2.5">
                                                     <TooltipProvider delayDuration={0}>
                                                         {weeks.map((week) => {
                                                             const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
