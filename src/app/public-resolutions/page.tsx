@@ -146,12 +146,13 @@ export default function PublicResolutionsPage() {
                                     </div>
 
                                     <div>
-                                        {res.title}
+                                        <div className="flex items-center gap-2 font-medium text-slate-900 mb-2">
+                                            {res.title}
+                                        </div>
                                     </div>
-                                </div>
 
-                                    {/* Wrapped Dots Container */ }
-                                < div className = "bg-slate-50/50 rounded-lg p-3 border border-slate-100" >
+                                    {/* Wrapped Dots Container */}
+                                    <div className="bg-slate-50/50 rounded-lg p-3 border border-slate-100">
                                         <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold">Yearly Progress</p>
                                         <div className="flex flex-wrap gap-3">
                                             <TooltipProvider delayDuration={0}>
@@ -181,85 +182,85 @@ export default function PublicResolutionsPage() {
                                             </TooltipProvider>
                                         </div>
                                     </div>
-                    </div>
+                                </div>
                             ))}
-                </div>
+                        </div>
 
-                {/* Desktop View (Table) */}
-                <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-emerald-50/50 text-emerald-900">
-                            <tr>
-                                <th className="p-4 pl-6 font-semibold border-b border-emerald-100 w-[250px]">User</th>
-                                <th className="p-4 font-semibold border-b border-emerald-100">Resolution</th>
-                                <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">Progress (52 Weeks)</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {resolutions.map((res) => (
-                                <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
-                                    <td className="p-4 pl-6">
-                                        <Link href={`/${res.user?.username || res.uid}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                                            <Avatar className="h-10 w-10 border border-slate-200">
-                                                <AvatarImage src={res.user?.photoURL} />
-                                                <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xs">
-                                                    {res.user?.username?.slice(0, 2).toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <span className="font-medium text-slate-700 group-hover:text-emerald-700 transition-colors block">
-                                                    {res.user?.username || "Anonymous"}
-                                                </span>
-                                                <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
-                                                    <Globe className="h-3 w-3" />
-                                                    {res.user?.country || "Unknown"}
+                        {/* Desktop View (Table) */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-emerald-50/50 text-emerald-900">
+                                    <tr>
+                                        <th className="p-4 pl-6 font-semibold border-b border-emerald-100 w-[250px]">User</th>
+                                        <th className="p-4 font-semibold border-b border-emerald-100">Resolution</th>
+                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">Progress (52 Weeks)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {resolutions.map((res) => (
+                                        <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
+                                            <td className="p-4 pl-6">
+                                                <Link href={`/${res.user?.username || res.uid}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                                                    <Avatar className="h-10 w-10 border border-slate-200">
+                                                        <AvatarImage src={res.user?.photoURL} />
+                                                        <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xs">
+                                                            {res.user?.username?.slice(0, 2).toUpperCase()}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                        <span className="font-medium text-slate-700 group-hover:text-emerald-700 transition-colors block">
+                                                            {res.user?.username || "Anonymous"}
+                                                        </span>
+                                                        <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
+                                                            <Globe className="h-3 w-3" />
+                                                            {res.user?.country || "Unknown"}
+                                                        </div>
+                                                    </div>
+                                                </Link>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-2 font-medium text-slate-800">
+                                                    {res.title}
                                                 </div>
-                                            </div>
-                                        </Link>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-2 font-medium text-slate-800">
-                                            {res.title}
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex flex-wrap gap-3 max-w-[600px]">
-                                            <TooltipProvider delayDuration={0}>
-                                                {weeks.map((week) => {
-                                                    const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
-                                                    const status = res.weeklyLog?.[weekKey]; // true, false, or undefined
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex flex-wrap gap-3 max-w-[600px]">
+                                                    <TooltipProvider delayDuration={0}>
+                                                        {weeks.map((week) => {
+                                                            const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
+                                                            const status = res.weeklyLog?.[weekKey]; // true, false, or undefined
 
-                                                    let colorClass = "bg-slate-100 border-slate-200"; // Default/Null
-                                                    if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
-                                                    if (status === false) colorClass = "bg-red-400 border-red-400";
+                                                            let colorClass = "bg-slate-100 border-slate-200"; // Default/Null
+                                                            if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
+                                                            if (status === false) colorClass = "bg-red-400 border-red-400";
 
-                                                    return (
-                                                        <Tooltip key={week}>
-                                                            <TooltipTrigger asChild>
-                                                                <button
-                                                                    type="button"
-                                                                    className={`w-4 h-4 rounded-full border ${colorClass} cursor-default focus:outline-none focus:ring-1 focus:ring-emerald-500`}
-                                                                />
-                                                            </TooltipTrigger>
-                                                            <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
-                                                                <p className="font-bold mb-0.5">Week {week}</p>
-                                                                <p className="text-slate-300 font-normal">{getWeekRange(week)}</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    );
-                                                })}
-                                            </TooltipProvider>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-        </div>
+                                                            return (
+                                                                <Tooltip key={week}>
+                                                                    <TooltipTrigger asChild>
+                                                                        <button
+                                                                            type="button"
+                                                                            className={`w-4 h-4 rounded-full border ${colorClass} cursor-default focus:outline-none focus:ring-1 focus:ring-emerald-500`}
+                                                                        />
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
+                                                                        <p className="font-bold mb-0.5">Week {week}</p>
+                                                                        <p className="text-slate-300 font-normal">{getWeekRange(week)}</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            );
+                                                        })}
+                                                    </TooltipProvider>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div >
             </main >
-        <Footer />
+            <Footer />
         </div >
     );
 }

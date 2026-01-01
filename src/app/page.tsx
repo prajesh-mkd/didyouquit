@@ -276,6 +276,7 @@ function HomeContent() {
                     </div>
 
                     <div>
+                      <div className="flex items-center gap-2 font-medium text-slate-900 mb-2">
                         {res.title}
                       </div>
                     </div>
@@ -387,15 +388,15 @@ function HomeContent() {
             </div>
           )}
 
-        <div className="mt-12 text-center">
-          <Button size="lg" className="bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 rounded-full" asChild>
-            <Link href="/public-resolutions">
-              View All Resolutions <ArrowRight className="ml-0.5 h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="mt-12 text-center">
+            <Button size="lg" className="bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 rounded-full" asChild>
+              <Link href="/public-resolutions">
+                View All Resolutions <ArrowRight className="ml-0.5 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
-    </div>
-      </section >
+      </section>
 
       <Footer />
 
@@ -520,7 +521,7 @@ function HomeContent() {
         onOpenChange={setForgotPasswordOpen}
         defaultEmail={email}
       />
-    </div >
+    </div>
   );
 }
 
