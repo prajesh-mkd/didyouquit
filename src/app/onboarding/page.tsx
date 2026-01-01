@@ -100,7 +100,7 @@ export default function Onboarding() {
                 uid: user.uid,
                 username,
                 country,
-                photoURL: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+                photoURL: user.photoURL || `https://api.dicebear.com/9.x/shapes/svg?seed=${username}`,
                 createdAt: serverTimestamp(),
             });
             await refreshUserData();
