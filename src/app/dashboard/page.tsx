@@ -274,7 +274,7 @@ export default function Dashboard() {
                                     <tr>
                                         <th className="p-4 font-semibold border-b border-emerald-100 min-w-[200px]">Resolution</th>
                                         <th className="p-4 font-semibold border-b border-emerald-100 w-[100px]">Actions</th>
-                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">History (Click to Edit)</th>
+                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">Progress (52 Weeks - Click to Edit)</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
