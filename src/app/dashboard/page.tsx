@@ -14,7 +14,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, Trash2, Pencil, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Loader2, Trash2, Pencil, RefreshCw, CheckCircle2, XCircle, Target, Ellipsis, Calendar } from "lucide-react";
 import { db } from "@/lib/firebase";
 import {
     collection,
@@ -273,9 +273,24 @@ export default function Dashboard() {
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-emerald-50/50 text-emerald-900">
                                     <tr>
-                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[200px]">Resolution</th>
-                                        <th className="p-4 font-semibold border-b border-emerald-100 w-[100px]">Actions</th>
-                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">Progress (52 Weeks - Click to Edit)</th>
+                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[200px]">
+                                            <div className="flex items-center gap-2">
+                                                <Target className="h-4 w-4 text-emerald-600" />
+                                                Resolution
+                                            </div>
+                                        </th>
+                                        <th className="p-4 font-semibold border-b border-emerald-100 w-[100px]">
+                                            <div className="flex items-center gap-2">
+                                                <Ellipsis className="h-4 w-4 text-emerald-600" />
+                                                Actions
+                                            </div>
+                                        </th>
+                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">
+                                            <div className="flex items-center gap-2">
+                                                <Calendar className="h-4 w-4 text-emerald-600" />
+                                                Progress (52 Weeks - Click to Edit)
+                                            </div>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">

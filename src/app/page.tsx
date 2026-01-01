@@ -319,7 +319,7 @@ function HomeContent() {
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-emerald-50/50 text-emerald-900">
                     <tr>
-                      <th className="p-4 pl-6 font-semibold border-b border-emerald-100 w-[250px]">
+                      <th className="p-4 pl-10 font-semibold border-b border-emerald-100 w-[250px]">
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-emerald-600" />
                           User
