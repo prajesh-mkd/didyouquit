@@ -105,6 +105,10 @@ export default function Home() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
+      // Success handling:
+      setAuthLoading(false);
+      setAuthOpen(false);
+      toast.success(authMode === "signup" ? "Account created! Welcome." : "Welcome back!");
     } catch (error: any) {
       const msg = getFriendlyErrorMessage(error);
       if (msg) toast.error(msg);
@@ -121,6 +125,10 @@ export default function Home() {
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
+      // Success handling:
+      setAuthLoading(false);
+      setAuthOpen(false);
+      toast.success(authMode === "signup" ? "Account created! Welcome." : "Welcome back!");
     } catch (error: any) {
       const msg = getFriendlyErrorMessage(error);
       if (msg) toast.error(msg);
