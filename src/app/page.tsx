@@ -12,7 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import { auth, db } from "@/lib/firebase";
 import {
@@ -24,9 +29,10 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, collection, query, limit, getDocs } from "firebase/firestore";
 import { toast } from "sonner";
-import { Loader2, Target, CheckCircle2, Users, ArrowRight, CircleUserRound } from "lucide-react";
+import { toast } from "sonner";
+import { Loader2, Target, CheckCircle2, Users, ArrowRight, CircleUserRound, Globe } from "lucide-react";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, startOfWeek, endOfWeek, format, setWeek } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getFriendlyErrorMessage } from "@/lib/error-utils";
 import {
@@ -73,6 +79,18 @@ export default function Home() {
   // Removed auto-redirect to allow logged-in users to see landing page
 
 
+  // Helper for tooltips
+  const getWeekRange = (weekNum: number) => {
+    const now = new Date();
+    const targetDate = setWeek(now, weekNum, { weekStartsOn: 1 });
+    const start = startOfWeek(targetDate, { weekStartsOn: 1 });
+    const end = endOfWeek(targetDate, { weekStartsOn: 1 });
+    return `${format(start, "MMM d")} - ${format(end, "MMM d")}`;
+  };
+
+  const currentYear = new Date().getFullYear();
+  const weeks = Array.from({ length: 52 }, (_, i) => i + 1);
+
   // Fetch Public Feed
   useEffect(() => {
     const fetchFeed = async () => {
@@ -85,7 +103,7 @@ export default function Home() {
 
         snapshot.forEach((doc) => {
           const data = doc.data();
-          rawRes.push({ id: doc.id, ...data } as PublicResolution);
+          rawRes.push({ id: doc.id, ...doc.data() } as PublicResolution); // ensure doc.data() is spread
           if (data.uid) userIds.add(data.uid);
         });
 
@@ -102,9 +120,12 @@ export default function Home() {
         const enriched = rawRes.map(res => ({
           ...res,
           user: userMap.get(res.uid)
-        })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        }));
 
-        setPublicResolutions(enriched);
+        // Setup random 15
+        const shuffled = enriched.sort(() => 0.5 - Math.random()).slice(0, 15);
+
+        setPublicResolutions(shuffled);
       } catch (error) {
         console.error("Error fetching feed:", error);
       } finally {
@@ -291,7 +312,7 @@ export default function Home() {
       {/* Public Commitments / Feed */}
       <section className="bg-white py-20 border-t border-emerald-100">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl font-bold text-center mb-16">Public Commitments</h2>
+          <h2 className="text-3xl font-bold text-center mb-16 text-emerald-900">Public Resolutions 2026</h2>
 
           {feedLoading ? (
             <div className="flex justify-center">
@@ -302,32 +323,156 @@ export default function Home() {
               <p className="text-slate-500">No public resolutions yet. Be the first to share your goal!</p>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {publicResolutions.map((res) => (
-                <Link key={res.id} href={`/ ${res.user?.username || '#'} `} className="block group">
-                  <div className="bg-white border border-slate-100 p-6 rounded-xl hover:shadow-md hover:border-emerald-200 transition-all h-full flex flex-col">
-                    <div className="flex items-center gap-3 mb-4">
-                      <Avatar className="h-10 w-10 border border-slate-100">
-                        <AvatarImage src={res.user?.photoURL} />
-                        <AvatarFallback className="bg-emerald-50 text-emerald-600">{res.user?.username?.[0] || "?"}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-semibold text-sm">{res.user?.username || "Anonymous"}</p>
-                        <p className="text-xs text-slate-500">{res.user?.country || "Earth"}</p>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+              {/* Mobile View (Cards) */}
+              <div className="md:hidden divide-y divide-slate-100">
+                {publicResolutions.map((res) => (
+                  <div key={res.id} className="p-4 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <Link href={`/${res.user?.username || res.uid}`}>
+                          <Avatar className="h-10 w-10 border border-slate-200">
+                            <AvatarImage src={res.user?.photoURL} />
+                            <AvatarFallback className="bg-emerald-100 text-emerald-700 text-sm font-bold">
+                              {res.user?.username?.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Link>
+                        <div>
+                          <Link href={`/${res.user?.username || res.uid}`} className="font-semibold text-slate-800 hover:text-emerald-700 transition-colors block">
+                            {res.user?.username || "Anonymous"}
+                          </Link>
+                          <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
+                            <Globe className="h-3 w-3" />
+                            {res.user?.country || "Earth"}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <h3 className="font-medium text-lg text-slate-800 mb-2 group-hover:text-emerald-700 transition-colors">
-                      {res.title}
-                    </h3>
-                    <div className="mt-auto pt-4 flex items-center text-xs text-slate-400">
-                      <CircleUserRound className="h-3 w-3 mr-1" />
-                      <span>added {res.createdAt ? formatDistanceToNow(res.createdAt.toDate(), { addSuffix: true }) : 'recently'}</span>
+
+                    <div>
+                      <div className="flex items-center gap-2 font-medium text-slate-900 mb-2">
+                        <Target className="h-4 w-4 text-emerald-500 shrink-0" />
+                        {res.title}
+                      </div>
+                    </div>
+
+                    {/* Wrapped Dots Container */}
+                    <div className="bg-slate-50/50 rounded-lg p-3 border border-slate-100">
+                      <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold">Yearly Progress</p>
+                      <div className="flex flex-wrap gap-3">
+                        <TooltipProvider delayDuration={0}>
+                          {weeks.map((week) => {
+                            const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
+                            const status = (res as any).weeklyLog?.[weekKey]; // messy type cast for quick fix
+
+                            let colorClass = "bg-slate-200 border-slate-300";
+                            if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
+                            if (status === false) colorClass = "bg-red-400 border-red-400";
+
+                            return (
+                              <Tooltip key={week}>
+                                <TooltipTrigger asChild>
+                                  <div
+                                    className={`w-3 h-3 rounded-full border ${colorClass} shrink-0 cursor-default`}
+                                  />
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
+                                  <p className="font-bold mb-0.5">Week {week}</p>
+                                  <p className="text-slate-300 font-normal">{getWeekRange(week)}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })}
+                        </TooltipProvider>
+                      </div>
                     </div>
                   </div>
-                </Link>
-              ))}
+                ))}
+              </div>
+
+              {/* Desktop View (Table) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-emerald-50/50 text-emerald-900">
+                    <tr>
+                      <th className="p-4 font-semibold border-b border-emerald-100 w-[250px]">User</th>
+                      <th className="p-4 font-semibold border-b border-emerald-100 w-[150px]">Country</th>
+                      <th className="p-4 font-semibold border-b border-emerald-100 w-[300px]">Resolution</th>
+                      <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">Progress (52 Weeks)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {publicResolutions.map((res) => (
+                      <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="p-4">
+                          <Link href={`/${res.user?.username || res.uid}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                            <Avatar className="h-8 w-8 border border-slate-200">
+                              <AvatarImage src={res.user?.photoURL} />
+                              <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xs">
+                                {res.user?.username?.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium text-slate-700 group-hover:text-emerald-700 transition-colors">
+                              {res.user?.username || "Anonymous"}
+                            </span>
+                          </Link>
+                        </td>
+                        <td className="p-4 text-slate-600">
+                          <div className="flex items-center gap-2">
+                            <Globe className="h-4 w-4 text-slate-400" />
+                            {res.user?.country || "Unknown"}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2 font-medium text-slate-800">
+                            <Target className="h-4 w-4 text-emerald-500 shrink-0" />
+                            {res.title}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex flex-wrap gap-3 max-w-[600px]">
+                            <TooltipProvider delayDuration={0}>
+                              {weeks.map((week) => {
+                                const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
+                                const status = (res as any).weeklyLog?.[weekKey];
+
+                                let colorClass = "bg-slate-100 border-slate-200";
+                                if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
+                                if (status === false) colorClass = "bg-red-400 border-red-400";
+
+                                return (
+                                  <Tooltip key={week}>
+                                    <TooltipTrigger asChild>
+                                      <div
+                                        className={`w-3 h-3 rounded-full border ${colorClass} cursor-default`}
+                                      />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
+                                      <p className="font-bold mb-0.5">Week {week}</p>
+                                      <p className="text-slate-300 font-normal">{getWeekRange(week)}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                );
+                              })}
+                            </TooltipProvider>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
+
+          <div className="mt-12 text-center">
+            <Button size="lg" className="bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50" asChild>
+              <Link href="/public-resolutions">
+                View All Resolutions <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
