@@ -250,7 +250,7 @@ export default function Home() {
             className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-8 h-14 text-lg rounded-full w-full sm:w-auto"
             onClick={() => user ? router.push("/dashboard") : openAuth("signup")}
           >
-            {user ? "Go to Dashboard" : "Add Yours"} <ArrowRight className="ml-2 h-5 w-5" />
+            {user ? "Go to Dashboard" : "Add Yours Anonymously"} <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>
       </section>
