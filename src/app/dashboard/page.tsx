@@ -60,8 +60,7 @@ export default function Dashboard() {
 
         const q = query(
             collection(db, "resolutions"),
-            where("uid", "==", user.uid),
-            orderBy("createdAt", "desc")
+            where("uid", "==", user.uid)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -69,7 +68,13 @@ export default function Dashboard() {
             snapshot.forEach((doc) => {
                 resData.push({ id: doc.id, ...doc.data() } as Resolution);
             });
+            // Client-side sort to avoid Firestore Index requirement
+            resData.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
             setResolutions(resData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching resolutions:", error);
+            toast.error("Could not load resolutions. Check permissions.");
             setLoading(false);
         });
 
