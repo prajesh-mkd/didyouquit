@@ -40,6 +40,7 @@ import {
 import { LogOut } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { ForgotPasswordDialog } from "@/components/auth/ForgotPasswordDialog";
+import { Footer } from "@/components/layout/Footer";
 
 interface PublicResolution {
   id: string;
@@ -331,9 +332,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-white py-12 border-t border-slate-100 text-center text-slate-400 text-sm">
-        <p>© 2026 DidYouQuit.com. All rights reserved. (v2.11)</p>
-      </footer>
+      <Footer />
 
       {/* Auth Dialog */}
       <Dialog open={authOpen} onOpenChange={setAuthOpen}>
