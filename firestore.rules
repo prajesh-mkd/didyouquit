@@ -1,0 +1,28 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User Profiles
+    match /users/{userId} {
+      // Anyone can read a user's profile (for public page)
+      allow read: if true;
+      // Only the user can write their own profile
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Resolutions
+    match /resolutions/{resolutionId} {
+      // Anyone can read resolutions (for public page)
+      // In a stricter app, might want to check if the owner's profile is public, 
+      // but requirements imply public sharing.
+      allow read: if true;
+      
+      // Create: User must be authenticated and setting their own uid
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      
+      // Update/Delete: Only the owner
+      allow update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+  }
+}
