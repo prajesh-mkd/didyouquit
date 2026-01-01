@@ -320,7 +320,7 @@ function HomeContent() {
                   <thead className="bg-emerald-50/50 text-emerald-900">
                     <tr>
                       <th className="p-4 font-semibold border-b border-emerald-100 w-[250px]">User</th>
-                      <th className="p-4 font-semibold border-b border-emerald-100 w-[300px]">Resolution</th>
+                      <th className="p-4 font-semibold border-b border-emerald-100">Resolution</th>
                       <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">Progress (52 Weeks)</th>
                     </tr>
                   </thead>
