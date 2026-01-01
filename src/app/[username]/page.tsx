@@ -8,6 +8,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, FolderCheck } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 
 interface UserProfile {
@@ -135,14 +141,22 @@ export default function PublicProfile() {
                                 {Object.entries(res.weeklyLog)
                                     .sort((a, b) => a[0].localeCompare(b[0])) // Ascending time
                                     .map(([week, success]) => (
-                                        <div
-                                            key={week}
-                                            className={clsx(
-                                                "h-5 w-5 rounded-full transition-all hover:scale-110",
-                                                success ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-red-500 opacity-80"
-                                            )}
-                                            title={`${week}: ${success ? "Kept it!" : "Missed"}`}
-                                        />
+                                        <TooltipProvider key={week} delayDuration={0}>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <button
+                                                        type="button"
+                                                        className={clsx(
+                                                            "h-5 w-5 rounded-full transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-1",
+                                                            success ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)] focus:ring-green-500" : "bg-red-500 opacity-80 focus:ring-red-500"
+                                                        )}
+                                                    />
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>{week}: {success ? "Kept it!" : "Missed"}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                     ))
                                 }
                                 {Object.keys(res.weeklyLog).length === 0 && (
