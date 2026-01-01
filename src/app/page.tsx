@@ -444,7 +444,9 @@ function HomeContent() {
 
           <form onSubmit={handleAuthSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-600">Email</Label>
+              <Label htmlFor="email" className="text-slate-600">
+                {authMode === "signup" ? "Enter your email" : "Email"}
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -457,7 +459,9 @@ function HomeContent() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-slate-600">Password</Label>
+                <Label htmlFor="password" className="text-slate-600">
+                  {authMode === "signup" ? "Set password" : "Password"}
+                </Label>
                 {authMode === "login" && (
                   <button
                     type="button"
