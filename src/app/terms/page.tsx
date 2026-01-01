@@ -12,7 +12,7 @@ export default function TermsPage() {
                         <p className="text-emerald-700/80 font-medium">Last Updated: January 1, 2026</p>
                     </div>
 
-                    <div className="bg-white p-8 md:p-12 rounded-2xl shadow-sm border border-slate-100 prose prose-emerald prose-headings:font-bold prose-h2:text-2xl prose-h3:text-lg prose-p:text-slate-600 max-w-none">
+                    <div className="bg-white p-8 md:p-12 rounded-2xl shadow-sm border border-slate-100 prose prose-lg prose-emerald max-w-none prose-headings:font-extrabold prose-headings:tracking-tight prose-h2:text-3xl prose-h2:text-emerald-950 prose-h2:border-b prose-h2:border-slate-100 prose-h2:pb-4 prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-xl prose-h3:text-emerald-800 prose-p:text-slate-600 prose-li:text-slate-600">
                         <section>
                             <h2>1. Agreement to Terms</h2>
                             <p>
