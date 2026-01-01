@@ -402,12 +402,12 @@ function HomeContent() {
       <Footer />
 
       <Dialog open={authOpen} onOpenChange={setAuthOpen}>
-        <DialogContent className="sm:max-w-md p-8 bg-emerald-50/50 backdrop-blur-xl border-emerald-100">
+        <DialogContent className="sm:max-w-md p-8 bg-white shadow-2xl border-slate-100">
           <DialogHeader className="space-y-4 mb-4 text-center">
-            <DialogTitle className="text-2xl font-bold">
+            <DialogTitle className="text-3xl font-bold tracking-tight text-slate-900">
               {authMode === "signup" ? "Create an account" : "Welcome back"}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-base text-slate-600">
               {authMode === "signup"
                 ? "Choose your preferred sign-up method"
                 : "Sign in to continue tracking your goals"}
@@ -416,7 +416,7 @@ function HomeContent() {
 
           <Button
             variant="outline"
-            className="w-full bg-white border-slate-200 hover:bg-slate-50 h-12 text-base font-normal"
+            className="w-full bg-white border-slate-200 hover:bg-slate-50 h-12 text-base font-medium text-slate-700"
             onClick={handleGoogleLogin}
             disabled={authLoading}
           >
@@ -436,7 +436,7 @@ function HomeContent() {
               <span className="w-full border-t border-slate-200" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-[#effef6] px-2 text-slate-400">
+              <span className="bg-white px-2 text-slate-500 font-semibold">
                 Or continue with
               </span>
             </div>
