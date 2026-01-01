@@ -27,6 +27,7 @@ import { Loader2, Target, CheckCircle2, Users, ArrowRight, CircleUserRound } fro
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getFriendlyErrorMessage } from "@/lib/error-utils";
 
 interface PublicResolution {
   id: string;
