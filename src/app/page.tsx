@@ -1,8 +1,7 @@
-
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,19 +24,11 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, collection, query, limit, getDocs } from "firebase/firestore";
 import { toast } from "sonner";
-import { Loader2, Target, CheckCircle2, Users, ArrowRight, CircleUserRound, Globe } from "lucide-react";
+import { Loader2, Target, CheckCircle2, Users, ArrowRight, Globe } from "lucide-react";
 import Link from "next/link";
-import { formatDistanceToNow, startOfWeek, endOfWeek, format, setWeek } from "date-fns";
+import { startOfWeek, endOfWeek, format, setWeek } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getFriendlyErrorMessage } from "@/lib/error-utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { LogOut } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { ForgotPasswordDialog } from "@/components/auth/ForgotPasswordDialog";
@@ -56,9 +47,10 @@ interface PublicResolution {
   };
 }
 
-export default function Home() {
-  const { user, userData, loading } = useAuth();
+function HomeContent() {
+  const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Auth State
   const [authOpen, setAuthOpen] = useState(false);
@@ -72,9 +64,6 @@ export default function Home() {
   const [publicResolutions, setPublicResolutions] = useState<PublicResolution[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
 
-  // Removed auto-redirect to allow logged-in users to see landing page
-
-
   // Helper for tooltips
   const getWeekRange = (weekNum: number) => {
     const now = new Date();
@@ -86,6 +75,20 @@ export default function Home() {
 
   const currentYear = new Date().getFullYear();
   const weeks = Array.from({ length: 52 }, (_, i) => i + 1);
+
+  // Check URL query params for auth trigger
+  useEffect(() => {
+    const authParam = searchParams.get("auth");
+    if (authParam === "login") {
+      setAuthMode("login");
+      setAuthOpen(true);
+      window.history.replaceState(null, "", "/");
+    } else if (authParam === "signup") {
+      setAuthMode("signup");
+      setAuthOpen(true);
+      window.history.replaceState(null, "", "/");
+    }
+  }, [searchParams]);
 
   // Fetch Public Feed
   useEffect(() => {
@@ -99,7 +102,7 @@ export default function Home() {
 
         snapshot.forEach((doc) => {
           const data = doc.data();
-          rawRes.push({ id: doc.id, ...doc.data() } as PublicResolution); // ensure doc.data() is spread
+          rawRes.push({ id: doc.id, ...doc.data() } as PublicResolution);
           if (data.uid) userIds.add(data.uid);
         });
 
@@ -118,9 +121,7 @@ export default function Home() {
           user: userMap.get(res.uid)
         }));
 
-        // Setup random 15
         const shuffled = enriched.sort(() => 0.5 - Math.random()).slice(0, 15);
-
         setPublicResolutions(shuffled);
       } catch (error) {
         console.error("Error fetching feed:", error);
@@ -136,7 +137,6 @@ export default function Home() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      // Success handling:
       setAuthLoading(false);
       setAuthOpen(false);
       toast.success(authMode === "signup" ? "Account created! Welcome." : "Welcome back!");
@@ -159,7 +159,6 @@ export default function Home() {
         await signInWithEmailAndPassword(auth, email, password);
         toast.success("Welcome back!");
       }
-      // Success handling:
       setAuthLoading(false);
       setAuthOpen(false);
     } catch (error: any) {
@@ -174,14 +173,12 @@ export default function Home() {
     setAuthOpen(true);
   };
 
-  if (loading) return null; // Avoid flicker
+  if (loading) return null;
 
   return (
     <div className="min-h-screen bg-[#F0FDF4] font-sans text-slate-800">
-      {/* Navbar */}
       <Header />
 
-      {/* Hero Section */}
       <section className="container mx-auto px-6 pt-20 pb-16 text-center">
         <h1 className="text-5xl md:text-6xl font-extrabold text-emerald-800 tracking-tight mb-6">
           Keep Your Resolutions.
@@ -207,7 +204,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Grid */}
       <section className="container mx-auto px-6 py-16">
         <div className="grid md:grid-cols-3 gap-12 text-center">
           <div className="flex flex-col items-center">
@@ -240,7 +236,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Public Commitments / Feed */}
       <section className="bg-white py-20 border-t border-emerald-100">
         <div className="container mx-auto px-6">
           <h2 className="text-3xl font-bold text-center mb-16 text-emerald-900">Public Resolutions 2026</h2>
@@ -255,7 +250,6 @@ export default function Home() {
             </div>
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-              {/* Mobile View (Cards) */}
               <div className="md:hidden divide-y divide-slate-100">
                 {publicResolutions.map((res) => (
                   <div key={res.id} className="p-4 space-y-4">
@@ -288,14 +282,13 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Wrapped Dots Container */}
                     <div className="bg-slate-50/50 rounded-lg p-3 border border-slate-100">
                       <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold">Yearly Progress</p>
                       <div className="flex flex-wrap gap-3">
                         <TooltipProvider delayDuration={0}>
                           {weeks.map((week) => {
                             const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
-                            const status = (res as any).weeklyLog?.[weekKey]; // messy type cast for quick fix
+                            const status = (res as any).weeklyLog?.[weekKey];
 
                             let colorClass = "bg-slate-200 border-slate-300";
                             if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
@@ -322,7 +315,6 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* Desktop View (Table) */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-emerald-50/50 text-emerald-900">
@@ -407,10 +399,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
       <Footer />
 
-      {/* Auth Dialog */}
       <Dialog open={authOpen} onOpenChange={setAuthOpen}>
         <DialogContent className="sm:max-w-md p-8 bg-emerald-50/50 backdrop-blur-xl border-emerald-100">
           <DialogHeader className="space-y-4 mb-4 text-center">
@@ -532,3 +522,10 @@ export default function Home() {
   );
 }
 
+export default function Home() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
+  );
+}
