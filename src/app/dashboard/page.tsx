@@ -301,10 +301,10 @@ export default function Dashboard() {
                                                             const status = res.weeklyLog?.[weekKey]; // true, false, or undefined
                                                             const isFuture = weekKey > currentWeekInfo;
 
-                                                            let colorClass = "bg-slate-100 border-slate-200";
+                                                            let colorClass = "bg-slate-200 border-slate-300";
                                                             if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
                                                             if (status === false) colorClass = "bg-red-400 border-red-400";
-                                                            if (isFuture) colorClass = "opacity-30 cursor-not-allowed";
+                                                            if (isFuture) colorClass += " opacity-50 cursor-not-allowed";
 
                                                             return (
                                                                 <Popover key={week}>
