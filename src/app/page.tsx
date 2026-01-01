@@ -282,7 +282,7 @@ function HomeContent() {
                     </div>
 
                     <div className="bg-slate-50/50 rounded-lg p-3 border border-slate-100">
-                      <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold">Yearly Progress</p>
+                      <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold">Progress (52 Weeks)</p>
                       <div className="flex flex-wrap gap-3">
                         <TooltipProvider delayDuration={0}>
                           {weeks.map((week) => {
