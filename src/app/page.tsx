@@ -56,15 +56,8 @@ export default function Home() {
   const [publicResolutions, setPublicResolutions] = useState<PublicResolution[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
 
-  useEffect(() => {
-    if (!loading && user) {
-      if (userData) {
-        router.push("/dashboard");
-      } else {
-        router.push("/onboarding");
-      }
-    }
-  }, [user, userData, loading, router]);
+  // Removed auto-redirect to allow logged-in users to see landing page
+
 
   // Fetch Public Feed
   useEffect(() => {
@@ -175,10 +168,11 @@ export default function Home() {
           Public accountability for your New Year's goals. Share your resolutions, track your weekly progress, and join a community committed to self-improvement.
         </p>
         <Button
-          onClick={() => openAuth("signup")}
-          className="bg-emerald-500 hover:bg-emerald-600 text-white text-lg px-8 py-6 rounded-md shadow-lg shadow-emerald-200 transition-transform hover:-translate-y-1"
+          size="lg"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-14 text-lg rounded-full shadow-lg shadow-emerald-200"
+          onClick={() => user ? router.push("/dashboard") : openAuth("signup")}
         >
-          Start Your Journey <ArrowRight className="ml-2 h-5 w-5" />
+          {user ? "Go to Dashboard" : "Start Your Journey"} <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
       </section>
 
