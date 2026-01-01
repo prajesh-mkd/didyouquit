@@ -46,9 +46,7 @@ export function Header() {
                                 </Link>
                             )}
                         </div>
-                        <Button variant="ghost" asChild className="hidden md:flex">
-                            <Link href="/dashboard">My Resolutions</Link>
-                        </Button>
+                        {/* Duplicate link removed */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
