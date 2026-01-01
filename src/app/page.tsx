@@ -242,7 +242,7 @@ export default function Home() {
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-14 text-lg rounded-full shadow-lg shadow-emerald-200 w-full sm:w-auto"
             onClick={() => router.push("/public-resolutions")}
           >
-            View Public Resolutions
+            View Public Resolutions 2026
           </Button>
           <Button
             variant="outline"
@@ -332,7 +332,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-white py-12 border-t border-slate-100 text-center text-slate-400 text-sm">
-        <p>© 2026 DidYouQuit.com. All rights reserved. (v2.10)</p>
+        <p>© 2026 DidYouQuit.com. All rights reserved. (v2.11)</p>
       </footer>
 
       {/* Auth Dialog */}

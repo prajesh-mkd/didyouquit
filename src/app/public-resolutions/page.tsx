@@ -110,7 +110,7 @@ export default function PublicResolutionsPage() {
     return (
         <div className="min-h-screen bg-[#F0FDF4] pb-20">
             <div className="container mx-auto px-6 py-12">
-                <h1 className="text-4xl font-bold text-center text-emerald-900 mb-2">Public Resolutions</h1>
+                <h1 className="text-4xl font-bold text-center text-emerald-900 mb-2">Public Resolutions 2026</h1>
                 <p className="text-center text-slate-600 mb-12">See what the world is committing to this year.</p>
 
                 <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
