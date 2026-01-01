@@ -239,7 +239,7 @@ export default function Dashboard() {
                                                 onClick={() => toggleWeek(res, currentWeekInfo, true)}
                                                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                             >
-                                                <CheckCircle2 className="mr-1 h-4 w-4" /> Yes
+                                                <CheckCircle2 className="mr-1 h-4 w-4" /> Kept It
                                             </Button>
                                             <Button
                                                 size="sm"
@@ -247,7 +247,7 @@ export default function Dashboard() {
                                                 onClick={() => toggleWeek(res, currentWeekInfo, false)}
                                                 className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                                             >
-                                                <XCircle className="mr-1 h-4 w-4" /> No
+                                                <XCircle className="mr-1 h-4 w-4" /> Missed It
                                             </Button>
                                         </div>
                                     </div>
