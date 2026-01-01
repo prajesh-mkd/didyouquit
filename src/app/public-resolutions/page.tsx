@@ -44,6 +44,9 @@ export default function PublicResolutionsPage() {
     const [loadingMore, setLoadingMore] = useState(false);
     const initialLoadDone = useRef(false);
 
+    // Fallback for existing data that doesn't have randomSortKey
+    const isLegacyMode = useRef(false);
+
     // Legacy user cache to avoid refetching same users
     const userCache = useRef<Map<string, any>>(new Map());
 
@@ -56,6 +59,7 @@ export default function PublicResolutionsPage() {
             setHasMore(true);
             setLastDoc(null);
             userCache.current.clear();
+            isLegacyMode.current = false; // Reset mode
         } else {
             setLoadingMore(true);
         }
@@ -64,28 +68,32 @@ export default function PublicResolutionsPage() {
             const resolutionsRef = collection(db, "resolutions");
             let q;
 
-            if (isInitial) {
-                // Random start point
+            // Query Builder
+            const buildQuery = (legacy: boolean, last: DocumentSnapshot | null) => {
+                if (legacy) {
+                    if (last) {
+                        return query(resolutionsRef, orderBy("createdAt", "desc"), startAfter(last), limit(20));
+                    }
+                    return query(resolutionsRef, orderBy("createdAt", "desc"), limit(20));
+                }
+                // Random Mode
+                if (last) {
+                    return query(resolutionsRef, orderBy("randomSortKey"), startAfter(last), limit(20));
+                }
                 const randomStart = Math.random();
-                q = query(
-                    resolutionsRef,
-                    orderBy("randomSortKey"),
-                    startAt(randomStart),
-                    limit(20)
-                );
-            } else if (lastDoc) {
-                // Continue from last doc
-                q = query(
-                    resolutionsRef,
-                    orderBy("randomSortKey"),
-                    startAfter(lastDoc),
-                    limit(20)
-                );
-            } else {
-                return;
-            }
+                return query(resolutionsRef, orderBy("randomSortKey"), startAt(randomStart), limit(20));
+            };
 
-            const snapshot = await getDocs(q);
+            q = buildQuery(isLegacyMode.current, isInitial ? null : lastDoc);
+            let snapshot = await getDocs(q);
+
+            // FALLBACK LOGIC: If initial random fetch is empty, try legacy fetch
+            if (isInitial && snapshot.empty && !isLegacyMode.current) {
+                console.log("No random-key resolutions found, falling back to legacy (createdAt)...");
+                isLegacyMode.current = true;
+                q = buildQuery(true, null);
+                snapshot = await getDocs(q);
+            }
 
             // If we got fewer than requested, we might have hit the end of the random sequence (1.0)
             // Ideally we'd wrap around, but for V1 just stopping is fine or we can re-query from 0 if needed.
