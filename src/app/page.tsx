@@ -234,7 +234,7 @@ export default function Home() {
           Keep Your Resolutions.
         </h1>
         <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-          Public accountability for your New Year's goals. Share your resolutions, track your weekly progress, and join a community committed to self-improvement.
+          Public accountability for your New Year's goals. Share your resolutions ANONYMOUSLY, track your weekly progress, and join a community committed to self-improvement.
         </p>
         <Button
           size="lg"
@@ -332,7 +332,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-white py-12 border-t border-slate-100 text-center text-slate-400 text-sm">
-        <p>© 2026 DidYouQuit.com. All rights reserved. (v2.3)</p>
+        <p>© 2026 DidYouQuit.com. All rights reserved. (v2.4)</p>
       </footer>
 
       {/* Auth Dialog */}
