@@ -333,6 +333,15 @@ export default function Home() {
             >
               {authLoading ? <Loader2 className="animate-spin" /> : (authMode === "signup" ? "Create Account" : "Log In")}
             </Button>
+
+            {authMode === "signup" && (
+              <p className="text-xs text-center text-slate-400 mt-4 px-4 leading-relaxed">
+                By clicking continue, you agree to our{" "}
+                <Link href="#" className="underline hover:text-emerald-600">Terms of Service</Link>
+                {" "}and{" "}
+                <Link href="#" className="underline hover:text-emerald-600">Privacy Policy</Link>.
+              </p>
+            )}
           </form>
 
           <div className="mt-4 text-center">
