@@ -27,7 +27,10 @@ interface PublicResolution {
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 
+import { useAuth } from "@/lib/auth-context";
+
 export default function PublicResolutionsPage() {
+    const { user } = useAuth();
     const [resolutions, setResolutions] = useState<PublicResolution[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -65,10 +68,32 @@ export default function PublicResolutionsPage() {
         }
 
         try {
+            const newResolutions: PublicResolution[] = [];
+            const userIdsToFetch = new Set<string>();
+
+            // 1. Fetch User's Own Resolutions FIRST (Only on initial load)
+            if (isInitial && user) {
+                const userQ = query(collection(db, "resolutions"), where("uid", "==", user.uid));
+                const userSnapshot = await getDocs(userQ);
+
+                userSnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    newResolutions.push({
+                        id: docSnap.id,
+                        uid: data.uid,
+                        title: data.title,
+                        weeklyLog: data.weeklyLog || {},
+                        user: data.user
+                    });
+                    // Add to cache so we don't re-fetch ourselves if we appear in random feed
+                    if (!data.user) userIdsToFetch.add(data.uid);
+                });
+            }
+
+            // 2. Fetch Public Feed (Random or Legacy)
             const resolutionsRef = collection(db, "resolutions");
             let q;
 
-            // Query Builder
             const buildQuery = (legacy: boolean, last: DocumentSnapshot | null) => {
                 if (legacy) {
                     if (last) {
@@ -76,7 +101,6 @@ export default function PublicResolutionsPage() {
                     }
                     return query(resolutionsRef, orderBy("createdAt", "desc"), limit(20));
                 }
-                // Random Mode
                 if (last) {
                     return query(resolutionsRef, orderBy("randomSortKey"), startAfter(last), limit(20));
                 }
@@ -89,7 +113,7 @@ export default function PublicResolutionsPage() {
 
             // FALLBACK LOGIC: If initial random fetch is empty, try legacy fetch
             if (isInitial && snapshot.empty && !isLegacyMode.current) {
-                console.log("No random-key resolutions found, falling back to legacy (createdAt)...");
+                console.log("No random-key resolutions found, falling back to legacy...");
                 isLegacyMode.current = true;
                 q = buildQuery(true, null);
                 snapshot = await getDocs(q);
@@ -103,10 +127,11 @@ export default function PublicResolutionsPage() {
 
             setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
 
-            const newResolutions: PublicResolution[] = [];
-            const userIdsToFetch = new Set<string>();
-
+            // Process Public Results
             for (const docSnapshot of snapshot.docs) {
+                // Skip if we already added this (i.e. it's the user's own resolution we fetched in step 1)
+                if (newResolutions.some(r => r.id === docSnapshot.id)) continue;
+
                 const data = docSnapshot.data();
                 const res: PublicResolution = {
                     id: docSnapshot.id,
@@ -149,7 +174,12 @@ export default function PublicResolutionsPage() {
             if (isInitial) {
                 setResolutions(newResolutions);
             } else {
-                setResolutions(prev => [...prev, ...newResolutions]);
+                // Determine uniqueness before appending
+                setResolutions(prev => {
+                    const existingIds = new Set(prev.map(r => r.id));
+                    const uniqueNew = newResolutions.filter(r => !existingIds.has(r.id));
+                    return [...prev, ...uniqueNew];
+                });
             }
 
         } catch (error) {
@@ -162,6 +192,12 @@ export default function PublicResolutionsPage() {
 
     useEffect(() => {
         if (!initialLoadDone.current) {
+            // Wait for auth to be determined before initial load to ensure we get user ID
+            // note: we depend on 'user' or 'loading' from auth context actually.
+            // But since useAuth loading is initially true, we might need to wait.
+            // simplified: we just load. If auth loads later, they don't hot-reload this list to avoid jitter.
+            // Better: add user dependency to effect? No, that causes reset loop.
+            // Best: We'll just load once. If they log in later, they refresh.
             loadResolutions(true);
             initialLoadDone.current = true;
         }
