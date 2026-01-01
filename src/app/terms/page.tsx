@@ -60,7 +60,7 @@ export default function TermsPage() {
                         <section>
                             <h2>4. Prohibited Activities</h2>
                             <p>You may not access or use the Service for any purpose other than that for which we make the Service available. As a user of the Service, you agree not to:</p>
-                            <ul>
+                            <ul className="list-disc pl-6 space-y-2">
                                 <li>Use the Service to harass, abuse, or harm another person or group.</li>
                                 <li>Make any unauthorized use of the Service, including collecting usernames or email addresses of users by electronic or other means for the purpose of sending unsolicited email.</li>
                                 <li>Upload or transmit any content that infringes on any intellectual property rights or violates the privacy rights of any third party.</li>
@@ -103,7 +103,7 @@ export default function TermsPage() {
                         <div className="border-t border-slate-100 pt-8 mt-12">
                             <h3 className="mb-2">Contact Us</h3>
                             <p>If you have any questions about these Terms, please contact us at:</p>
-                            <p className="font-medium text-emerald-700">support@didyouquit.com</p>
+                            <p className="font-medium text-emerald-700">contact@didyouquit.com</p>
                         </div>
                     </div>
                 </div>

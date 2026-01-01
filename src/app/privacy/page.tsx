@@ -29,14 +29,14 @@ export default function PrivacyPage() {
                             <p>We collect only the information necessary to provide our resolution tracking service.</p>
 
                             <h3>2.1 Personal Data provided by you</h3>
-                            <ul>
+                            <ul className="list-disc pl-6 space-y-2">
                                 <li><strong>Authentication Data:</strong> When you sign up via Google or Email, we collect your email address and, where available, your profile name and avatar URL.</li>
                                 <li><strong>User Generated Content:</strong> We collect the Resolutions, Titles, and Weekly Progress Logs you create.</li>
                                 <li><strong>Public Profile Data:</strong> If you choose to make your resolutions "Public," your username, country (if provided), and resolution progress become visible to other users.</li>
                             </ul>
 
                             <h3>2.2 Automatically Collected Data</h3>
-                            <ul>
+                            <ul className="list-disc pl-6 space-y-2">
                                 <li><strong>Log Data:</strong> Like most websites, our hosting provider (Google Firebase) collects standard log files including IP addresses, browser type, and timestamps to ensure security and prevent abuse.</li>
                             </ul>
                         </section>
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
                         <section>
                             <h2>3. How We Use Your Information</h2>
                             <p>We process your data for the following specific purposes:</p>
-                            <ul>
+                            <ul className="list-disc pl-6 space-y-2">
                                 <li><strong>To Provide the Service:</strong> Enabling you to create, edit, and track your New Year's resolutions.</li>
                                 <li><strong>Authentication:</strong> verifying your identity and securing your account.</li>
                                 <li><strong>Social Features:</strong> Displaying your "Public Resolutions" on the community feed (only with your explicit action).</li>
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
                         <section>
                             <h2>4. Data Processors & Third Parties</h2>
                             <p>We generally do not share your data with third parties. However, we use trusted infrastructure providers to run our Service:</p>
-                            <ul>
+                            <ul className="list-disc pl-6 space-y-2">
                                 <li>
                                     <strong>Google Firebase (United States):</strong> Used for Database (Firestore), Authentication, and Hosting. Google acts as a Data Processor.
                                     Auth data is processed in the U.S. under standard contractual clauses.
@@ -82,7 +82,7 @@ export default function PrivacyPage() {
                         <section>
                             <h2>6. Your Data Protection Rights (GDPR & CCPA)</h2>
                             <p>Depending on your location, you have certain rights regarding your personal information:</p>
-                            <ul>
+                            <ul className="list-disc pl-6 space-y-2">
                                 <li><strong>The Right to Access:</strong> You can request copies of your personal data.</li>
                                 <li><strong>The Right to Rectification:</strong> You can request that we correct any information you believe is inaccurate.</li>
                                 <li><strong>The Right to Erasure:</strong> You can request that we erase your personal data (available via "Delete Account" in Dashboard).</li>
@@ -113,7 +113,7 @@ export default function PrivacyPage() {
                         <div className="border-t border-slate-100 pt-8 mt-12">
                             <h3 className="mb-2">Contact Us</h3>
                             <p>If you have any questions about this Privacy Policy, please contact us at:</p>
-                            <p className="font-medium text-emerald-700">support@didyouquit.com</p>
+                            <p className="font-medium text-emerald-700">contact@didyouquit.com</p>
                         </div>
                     </div>
                 </div>
