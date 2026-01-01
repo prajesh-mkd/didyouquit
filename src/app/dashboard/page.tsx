@@ -14,7 +14,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, Trash2 } from "lucide-react";
+import { Plus, Loader2, Trash2, Pencil, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
 import { db } from "@/lib/firebase";
 import {
     collection,
@@ -26,14 +26,18 @@ import {
     doc,
     updateDoc,
     serverTimestamp,
-    orderBy
 } from "firebase/firestore";
 import { toast } from "sonner";
 import { getFriendlyErrorMessage } from "@/lib/error-utils";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { getCurrentWeekKey } from "@/lib/date-utils";
+import { getCurrentWeekKey, getWeekLabel } from "@/lib/date-utils";
 import { clsx } from "clsx";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DeleteConfirmDialog } from "@/components/dashboard/DeleteConfirmDialog";
+import { EditResolutionDialog } from "@/components/dashboard/EditResolutionDialog";
+import { format, setWeek, startOfWeek, endOfWeek } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Resolution {
     id: string;
@@ -51,6 +55,11 @@ export default function Dashboard() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Edit/Delete State
+    const [editRes, setEditRes] = useState<Resolution | null>(null);
+    const [deleteRes, setDeleteRes] = useState<Resolution | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     useEffect(() => {
         if (!authLoading && !user) {
             router.push("/");
@@ -59,34 +68,29 @@ export default function Dashboard() {
 
     useEffect(() => {
         if (!user) return;
-
         const q = query(
             collection(db, "resolutions"),
             where("uid", "==", user.uid)
         );
-
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const resData: Resolution[] = [];
             snapshot.forEach((doc) => {
                 resData.push({ id: doc.id, ...doc.data() } as Resolution);
             });
-            // Client-side sort to avoid Firestore Index requirement
-            resData.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
+            resData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
             setResolutions(resData);
             setLoading(false);
         }, (error) => {
-            console.error("Error fetching resolutions:", error);
-            toast.error("Could not load resolutions. Check permissions.");
+            console.error(error);
+            toast.error("Could not load resolutions.");
             setLoading(false);
         });
-
         return () => unsubscribe();
     }, [user]);
 
     const handleCreateResolution = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newResTitle.trim() || !user) return;
-
         setIsSubmitting(true);
         try {
             await addDoc(collection(db, "resolutions"), {
@@ -106,14 +110,26 @@ export default function Dashboard() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this resolution?")) return;
+    const handleDelete = async () => {
+        if (!deleteRes) return;
+        setIsDeleting(true);
         try {
-            await deleteDoc(doc(db, "resolutions", id));
+            await deleteDoc(doc(db, "resolutions", deleteRes.id));
             toast.success("Resolution deleted");
+            setDeleteRes(null);
         } catch (error: any) {
             toast.error(error.message);
+        } finally {
+            setIsDeleting(false);
         }
+    };
+
+    const handleSaveEdit = async (newTitle: string) => {
+        if (!editRes) return;
+        const resRef = doc(db, "resolutions", editRes.id);
+        await updateDoc(resRef, { title: newTitle });
+        toast.success("Resolution updated");
+        setEditRes(null);
     };
 
     const toggleWeek = async (res: Resolution, weekKey: string, value: boolean) => {
@@ -122,39 +138,56 @@ export default function Dashboard() {
             await updateDoc(resRef, {
                 [`weeklyLog.${weekKey}`]: value,
             });
+            // No toast needed for quick toggles, feels snappier
         } catch (error: any) {
             toast.error("Failed to update status");
         }
     };
 
+    const currentYear = new Date().getFullYear();
+    const currentWeekInfo = getCurrentWeekKey(); // e.g., "2026-W01"
+    const weeks = Array.from({ length: 52 }, (_, i) => i + 1);
+
+    const getWeekRange = (weekNum: number) => {
+        const now = new Date();
+        const targetDate = setWeek(now, weekNum, { weekStartsOn: 1 });
+        const start = startOfWeek(targetDate, { weekStartsOn: 1 });
+        const end = endOfWeek(targetDate, { weekStartsOn: 1 });
+        return `${format(start, "MMM d")} - ${format(end, "MMM d")}`;
+    };
+
     if (authLoading || loading) {
         return (
-            <div className="flex h-screen items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
+            <div className="flex h-screen items-center justify-center bg-[#F0FDF4]">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
             </div>
         );
     }
 
-    const currentWeek = getCurrentWeekKey();
+    // Filter for "This Week Check-in"
+    const pendingResolutions = resolutions.filter(res => res.weeklyLog[currentWeekInfo] === undefined);
 
     return (
         <div className="min-h-screen flex flex-col bg-[#F0FDF4]">
             <Header />
             <main className="container py-8 px-4 flex-1">
-                <div className="flex items-center justify-between mb-8">
-                    <h1 className="text-3xl font-bold">My Resolutions</h1>
+
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-emerald-950">My Resolutions</h1>
+                        <p className="text-emerald-800/60 mt-1">Track your progress and stay consistent.</p>
+                    </div>
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button>
-                                <Plus className="mr-2 h-4 w-4" /> Add New
+                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 shadow-md">
+                                <Plus className="mr-2 h-4 w-4" /> Add New Resolution
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>Add New Resolution</DialogTitle>
-                                <DialogDescription>
-                                    What do you want to achieve or quit this year?
-                                </DialogDescription>
+                                <DialogDescription>What do you want to achieve or quit this year?</DialogDescription>
                             </DialogHeader>
                             <form onSubmit={handleCreateResolution}>
                                 <div className="grid gap-4 py-4">
@@ -175,85 +208,162 @@ export default function Dashboard() {
                     </Dialog>
                 </div>
 
+                {/* Weekly Check-in Card - Only show if there are resolutions */}
+                {resolutions.length > 0 && (
+                    <div className="bg-white rounded-xl p-6 border border-emerald-100 shadow-sm mb-10">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="bg-emerald-100 p-2 rounded-full">
+                                <RefreshCw className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                                <h2 className="font-bold text-lg text-emerald-950">Weekly Check-in</h2>
+                                <p className="text-sm text-slate-500">
+                                    Week {currentWeekInfo.split('-W')[1]} ({getWeekRange(parseInt(currentWeekInfo.split('-W')[1]))})
+                                </p>
+                            </div>
+                        </div>
+
+                        {pendingResolutions.length === 0 ? (
+                            <div className="text-center py-6 bg-emerald-50/50 rounded-lg border border-emerald-100/50">
+                                <p className="text-emerald-700 font-medium">✨ All caught up for this week! Great job.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {pendingResolutions.map(res => (
+                                    <div key={res.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <span className="font-medium text-slate-700">{res.title}</span>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                onClick={() => toggleWeek(res, currentWeekInfo, true)}
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                            >
+                                                <CheckCircle2 className="mr-1 h-4 w-4" /> Yes
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => toggleWeek(res, currentWeekInfo, false)}
+                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                            >
+                                                <XCircle className="mr-1 h-4 w-4" /> No
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {resolutions.length === 0 ? (
-                    <div className="text-center py-20 bg-muted/20 rounded-lg border border-dashed">
-                        <h3 className="text-xl font-medium mb-2">No resolutions yet</h3>
-                        <p className="text-muted-foreground mb-6">
+                    <div className="text-center py-20 bg-white/50 rounded-xl border border-dashed border-emerald-200/50">
+                        <h3 className="text-xl font-medium mb-2 text-emerald-900">No resolutions yet</h3>
+                        <p className="text-emerald-800/60 mb-6">
                             Start by adding your first resolution for the year.
                         </p>
-                        <Button onClick={() => setIsDialogOpen(true)}>Add Resolution</Button>
+                        <Button onClick={() => setIsDialogOpen(true)} variant="outline" className="border-emerald-200 text-emerald-700">
+                            Add Resolution
+                        </Button>
                     </div>
                 ) : (
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {resolutions.map((res) => (
-                            <div key={res.id} className="border rounded-lg p-6 bg-card shadow-sm">
-                                <div className="flex justify-between items-start mb-4">
-                                    <h3 className="font-semibold text-lg leading-tight pr-4">
-                                        {res.title}
-                                    </h3>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                        onClick={() => handleDelete(res.id)}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-emerald-50/50 text-emerald-900">
+                                    <tr>
+                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[200px]">Resolution</th>
+                                        <th className="p-4 font-semibold border-b border-emerald-100 w-[100px]">Actions</th>
+                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">History (Click to Edit)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {resolutions.map((res) => (
+                                        <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
+                                            <td className="p-4 font-medium text-slate-900">
+                                                {res.title}
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-1">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-600" onClick={() => setEditRes(res)}>
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={() => setDeleteRes(res)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex flex-wrap gap-2.5 max-w-[800px]">
+                                                    <TooltipProvider delayDuration={0}>
+                                                        {weeks.map((week) => {
+                                                            const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
+                                                            const status = res.weeklyLog?.[weekKey]; // true, false, or undefined
+                                                            const isFuture = weekKey > currentWeekInfo;
 
-                                <div className="flex items-center justify-between bg-muted/50 p-3 rounded-md mb-4">
-                                    <span className="text-sm font-medium">This Week ({currentWeek.split('-W')[1]})</span>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            size="sm"
-                                            variant={res.weeklyLog?.[currentWeek] === true ? "default" : "outline"}
-                                            className={clsx(
-                                                res.weeklyLog?.[currentWeek] === true && "bg-green-600 hover:bg-green-700"
-                                            )}
-                                            onClick={() => toggleWeek(res, currentWeek, true)}
-                                        >
-                                            Yes
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant={res.weeklyLog?.[currentWeek] === false ? "default" : "outline"}
-                                            className={clsx(
-                                                res.weeklyLog?.[currentWeek] === false && "bg-red-600 hover:bg-red-700"
-                                            )}
-                                            onClick={() => toggleWeek(res, currentWeek, false)}
-                                        >
-                                            No
-                                        </Button>
-                                    </div>
-                                </div>
+                                                            let colorClass = "bg-slate-100 border-slate-200";
+                                                            if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
+                                                            if (status === false) colorClass = "bg-red-400 border-red-400";
+                                                            if (isFuture) colorClass = "opacity-30 cursor-not-allowed";
 
-                                {/* Visual Grid for History - Just a simple placeholder for now */}
-                                <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">History</p>
-                                    <div className="flex flex-wrap gap-1">
-                                        {/* We could render past weeks here later */}
-                                        {Object.entries(res.weeklyLog || {})
-                                            .sort((a, b) => b[0].localeCompare(a[0]))
-                                            .slice(0, 20) // show last 20 entries
-                                            .map(([week, status]) => (
-                                                <div
-                                                    key={week}
-                                                    className={clsx(
-                                                        "h-3 w-3 rounded-full",
-                                                        status ? "bg-green-500" : "bg-red-500"
-                                                    )}
-                                                    title={week}
-                                                />
-                                            ))
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                                                            return (
+                                                                <Popover key={week}>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <PopoverTrigger asChild disabled={isFuture}>
+                                                                                <button
+                                                                                    className={`w-3.5 h-3.5 rounded-full border ${colorClass} shrink-0 transition-transform hover:scale-125 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1`}
+                                                                                    disabled={isFuture}
+                                                                                />
+                                                                            </PopoverTrigger>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
+                                                                            <p className="font-bold mb-0.5">Week {week}</p>
+                                                                            <p className="text-slate-300 font-normal">{getWeekRange(week)}</p>
+                                                                            {!isFuture && <p className="text-xs text-slate-400 mt-1 italic">Click to edit</p>}
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                    <PopoverContent className="w-40 p-2">
+                                                                        <div className="grid gap-1">
+                                                                            <p className="text-xs font-medium text-center mb-1 text-slate-500">Set Week {week}</p>
+                                                                            <Button size="sm" variant="ghost" className="justify-start h-8 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50" onClick={() => toggleWeek(res, weekKey, true)}>
+                                                                                <CheckCircle2 className="mr-2 h-4 w-4" /> Kept it
+                                                                            </Button>
+                                                                            <Button size="sm" variant="ghost" className="justify-start h-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => toggleWeek(res, weekKey, false)}>
+                                                                                <XCircle className="mr-2 h-4 w-4" /> Missed it
+                                                                            </Button>
+                                                                        </div>
+                                                                    </PopoverContent>
+                                                                </Popover>
+                                                            );
+                                                        })}
+                                                    </TooltipProvider>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
             </main>
+
             <Footer />
+
+            <EditResolutionDialog
+                open={!!editRes}
+                onOpenChange={(open) => !open && setEditRes(null)}
+                initialTitle={editRes?.title || ""}
+                onSave={handleSaveEdit}
+            />
+
+            <DeleteConfirmDialog
+                open={!!deleteRes}
+                onOpenChange={(open) => !open && setDeleteRes(null)}
+                onConfirm={handleDelete}
+                isDeleting={isDeleting}
+            />
         </div>
     );
 }
