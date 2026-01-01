@@ -20,6 +20,7 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendEmailVerification,
 } from "firebase/auth";
 import { doc, getDoc, collection, query, limit, getDocs } from "firebase/firestore";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut } from "lucide-react";
 import { signOut } from "firebase/auth";
+import { ForgotPasswordDialog } from "@/components/auth/ForgotPasswordDialog";
 
 interface PublicResolution {
   id: string;
@@ -58,6 +60,7 @@ export default function Home() {
   // Auth State
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -131,14 +134,16 @@ export default function Home() {
     setAuthLoading(true);
     try {
       if (authMode === "signup") {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await sendEmailVerification(userCredential.user);
+        toast.success("Account created! Verification email sent.");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
+        toast.success("Welcome back!");
       }
       // Success handling:
       setAuthLoading(false);
       setAuthOpen(false);
-      toast.success(authMode === "signup" ? "Account created! Welcome." : "Welcome back!");
     } catch (error: any) {
       const msg = getFriendlyErrorMessage(error);
       if (msg) toast.error(msg);
@@ -377,7 +382,21 @@ export default function Home() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-600">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-slate-600">Password</Label>
+                {authMode === "login" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthOpen(false);
+                      setForgotPasswordOpen(true);
+                    }}
+                    className="text-xs text-emerald-600 hover:underline"
+                  >
+                    Forgot Password?
+                  </button>
+                )}
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -419,6 +438,12 @@ export default function Home() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ForgotPasswordDialog
+        open={forgotPasswordOpen}
+        onOpenChange={setForgotPasswordOpen}
+        defaultEmail={email}
+      />
     </div>
   );
 }
