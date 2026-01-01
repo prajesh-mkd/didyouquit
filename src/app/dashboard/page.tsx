@@ -293,7 +293,7 @@ export default function Dashboard() {
                                                                     <Pencil className="h-4 w-4" />
                                                                 </Button>
                                                             </TooltipTrigger>
-                                                            <TooltipContent>Rename Resolution</TooltipContent>
+                                                            <TooltipContent>Edit Resolution</TooltipContent>
                                                         </Tooltip>
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
