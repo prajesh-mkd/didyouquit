@@ -199,7 +199,7 @@ function HomeContent() {
             className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-8 h-14 text-lg rounded-full w-full sm:w-auto"
             onClick={() => user ? router.push("/dashboard") : openAuth("signup")}
           >
-            {user ? "View My Resolutions" : "Add Yours Anonymously"}<ArrowRight className="ml-2 h-5 w-5" />
+            {user ? "View My Resolutions" : "Add Yours Anonymously"}<ArrowRight className="ml-1 h-5 w-5" />
           </Button>
         </div>
       </section>
@@ -390,9 +390,9 @@ function HomeContent() {
           )}
 
           <div className="mt-12 text-center">
-            <Button size="lg" className="bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50" asChild>
+            <Button size="lg" className="bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 rounded-full" asChild>
               <Link href="/public-resolutions">
-                View All Resolutions <ArrowRight className="ml-2 h-4 w-4" />
+                View All Resolutions <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
           </div>
