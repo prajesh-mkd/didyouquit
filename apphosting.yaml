@@ -1,0 +1,13 @@
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyAO3PV6RcRhfp8cCaiOn6u8Wd-uRBrTRSo
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: didyouquit-17e0a.firebaseapp.com
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: didyouquit-17e0a
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: didyouquit-17e0a.firebasestorage.app
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "353743455576"
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:353743455576:web:11c537c2363e8e3ed4912d
