@@ -1,17 +1,18 @@
+```
+"use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { auth, db } from "@/lib/firebase";
 import {
@@ -20,13 +21,12 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from "firebase/auth";
-import { doc, getDoc, collection, query, limit, getDocs, orderBy } from "firebase/firestore";
+import { doc, getDoc, collection, query, limit, getDocs } from "firebase/firestore";
 import { toast } from "sonner";
-import { FolderCheck, Loader2, Globe } from "lucide-react";
-import { Header } from "@/components/layout/Header";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Loader2, Target, CheckCircle2, Users, ArrowRight, CircleUserRound } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface PublicResolution {
   id: string;
@@ -43,13 +43,17 @@ interface PublicResolution {
 export default function Home() {
   const { user, userData, loading } = useAuth();
   const router = useRouter();
+  
+  // Auth State
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
   const [authLoading, setAuthLoading] = useState(false);
-  const [publicResolutions, setPublicResolutions] = useState<PublicResolution[]>([]);
-  const [feedLoading, setFeedLoading] = useState(true);
-
-  // Email/Pass State
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  
+  // Feed State
+  const [publicResolutions, setPublicResolutions] = useState<PublicResolution[]>([]);
+  const [feedLoading, setFeedLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && user) {
@@ -65,11 +69,9 @@ export default function Home() {
   useEffect(() => {
     const fetchFeed = async () => {
       try {
-        // Fetch last 50 resolutions
-        // Note: Client-side sorting used to avoid needing a composite index immediately
         const q = query(collection(db, "resolutions"), limit(50));
         const snapshot = await getDocs(q);
-
+        
         const rawRes: PublicResolution[] = [];
         const userIds = new Set<string>();
 
@@ -79,23 +81,16 @@ export default function Home() {
           if (data.uid) userIds.add(data.uid);
         });
 
-        // Fetch users for these resolutions
         const userMap = new Map();
-        // Fire all user fetches in parallel (ok for < 50 items)
         await Promise.all(
           Array.from(userIds).map(async (uid) => {
             try {
               const userSnap = await getDoc(doc(db, "users", uid));
-              if (userSnap.exists()) {
-                userMap.set(uid, userSnap.data());
-              }
-            } catch (e) {
-              console.error("Failed to fetch user", uid);
-            }
+              if (userSnap.exists()) userMap.set(uid, userSnap.data());
+            } catch (e) { console.error(e); }
           })
         );
 
-        // Join data and sort
         const enriched = rawRes.map(res => ({
           ...res,
           user: userMap.get(res.uid)
@@ -108,7 +103,6 @@ export default function Home() {
         setFeedLoading(false);
       }
     };
-
     fetchFeed();
   }, []);
 
@@ -117,240 +111,245 @@ export default function Home() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      // Auth state listener in context will handle redirect
     } catch (error: any) {
       toast.error(error.message);
       setAuthLoading(false);
     }
   };
 
-  const handleEmailSignUp = async (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      // Auth state listener handles redirect
+      if (authMode === "signup") {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
     } catch (error: any) {
       toast.error(error.message);
       setAuthLoading(false);
     }
   };
 
-  const handleEmailSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error: any) {
-      toast.error(error.message);
-      setAuthLoading(false);
-    }
+  const openAuth = (mode: "login" | "signup") => {
+    setAuthMode(mode);
+    setAuthOpen(true);
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (loading) return null; // Avoid flicker
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Header />
-      <div className="flex-1 flex flex-col items-center p-4">
-
-        <div className="max-w-md w-full space-y-8 text-center mb-12 mt-8">
-          <div className="flex justify-center mb-4">
-            <div className="p-4 bg-primary/10 rounded-full">
-              <FolderCheck className="h-12 w-12 text-primary" />
-            </div>
-          </div>
-          <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-            Did You Quit?
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            A simple, public way to track your New Year resolutions. Week by week.
-          </p>
+    <div className="min-h-screen bg-[#F0FDF4] font-sans text-slate-800">
+      {/* Navbar */}
+      <header className="container mx-auto px-6 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+           <Target className="h-6 w-6 text-emerald-600" />
+           <span className="font-bold text-xl tracking-tight">DidYouQuit.com</span>
         </div>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => openAuth("login")}
+            className="text-sm font-medium hover:text-emerald-600 transition-colors"
+          >
+            Log In
+          </button>
+          <Button 
+            onClick={() => openAuth("signup")}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-md px-6"
+          >
+            Sign Up
+          </Button>
+        </div>
+      </header>
 
-        <Tabs defaultValue="login" className="w-[400px] max-w-full mb-16">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
-          </TabsList>
+      {/* Hero Section */}
+      <section className="container mx-auto px-6 pt-20 pb-16 text-center">
+        <h1 className="text-5xl md:text-6xl font-extrabold text-emerald-800 tracking-tight mb-6">
+          Keep Your Resolutions.
+        </h1>
+        <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+          Public accountability for your New Year's goals. Share your resolutions, track your weekly progress, and join a community committed to self-improvement.
+        </p>
+        <Button 
+          onClick={() => openAuth("signup")}
+          className="bg-emerald-500 hover:bg-emerald-600 text-white text-lg px-8 py-6 rounded-md shadow-lg shadow-emerald-200 transition-transform hover:-translate-y-1"
+        >
+          Start Your Journey <ArrowRight className="ml-2 h-5 w-5" />
+        </Button>
+      </section>
 
-          <TabsContent value="login">
-            <Card>
-              <CardHeader>
-                <CardTitle>Login</CardTitle>
-                <CardDescription>
-                  Welcome back. Sign in to update your progress.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleGoogleLogin}
-                  disabled={authLoading}
-                >
-                  {authLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Continue with Google
-                </Button>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or continue with email
-                    </span>
-                  </div>
-                </div>
-                <form onSubmit={handleEmailSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="m@example.com"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={authLoading}>
-                    {authLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Login"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="signup">
-            <Card>
-              <CardHeader>
-                <CardTitle>Sign Up</CardTitle>
-                <CardDescription>
-                  Create an account to start tracking your resolutions.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleGoogleLogin}
-                  disabled={authLoading}
-                >
-                  {authLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Sign up with Google
-                </Button>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or continue with email
-                    </span>
-                  </div>
-                </div>
-                <form onSubmit={handleEmailSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="m@example.com"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={authLoading}>
-                    {authLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Create Account"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Global Feed Section */}
-        <div className="w-full max-w-5xl space-y-6">
-          <div className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-2xl font-bold tracking-tight">Recently Added</h2>
-          </div>
-
-          {feedLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      {/* Features Grid */}
+      <section className="container mx-auto px-6 py-16">
+        <div className="grid md:grid-cols-3 gap-12 text-center">
+          <div className="flex flex-col items-center">
+            <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
+              <Target className="h-8 w-8 text-emerald-600" />
             </div>
+            <h3 className="text-xl font-bold mb-3">Share Your Goal</h3>
+            <p className="text-slate-500 leading-relaxed">
+              Make your resolution public. Declaring your intention is the first step towards achieving it.
+            </p>
+          </div>
+          <div className="flex flex-col items-center">
+            <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
+              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+            </div>
+            <h3 className="text-xl font-bold mb-3">Track Your Progress</h3>
+            <p className="text-slate-500 leading-relaxed">
+              Every week, mark whether you've stuck to your resolution. Simple yes or no is all it takes.
+            </p>
+          </div>
+          <div className="flex flex-col items-center">
+            <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
+              <Users className="h-8 w-8 text-emerald-600" />
+            </div>
+            <h3 className="text-xl font-bold mb-3">Stay Motivated</h3>
+            <p className="text-slate-500 leading-relaxed">
+              See how others are doing. The power of a community can provide the encouragement you need.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Public Commitments / Feed */}
+      <section className="bg-white py-20 border-t border-emerald-100">
+        <div className="container mx-auto px-6">
+          <h2 className="text-3xl font-bold text-center mb-16">Public Commitments</h2>
+          
+          {feedLoading ? (
+             <div className="flex justify-center">
+               <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+             </div>
           ) : publicResolutions.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No resolutions found. Be the first!
+            <div className="text-center bg-slate-50 py-12 rounded-lg border border-dashed border-slate-200">
+              <p className="text-slate-500">No public resolutions yet. Be the first to share your goal!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {publicResolutions.map((res) => (
-                <Link key={res.id} href={`/${res.user?.username || '#'}`} className="block transition-transform hover:-translate-y-1">
-                  <Card className="h-full hover:border-primary/50 transition-colors">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={res.user?.photoURL} />
-                          <AvatarFallback>{res.user?.username?.[0] || "?"}</AvatarFallback>
-                        </Avatar>
-                        <div className="text-sm font-medium">
-                          {res.user?.username || "Unknown"}
-                        </div>
-                        {res.user?.country && (
-                          <span className="text-xs text-muted-foreground ml-auto bg-muted px-2 py-1 rounded-full">
-                            {res.user.country}
-                          </span>
-                        )}
+                <Link key={res.id} href={`/ ${ res.user?.username || '#' } `} className="block group">
+                  <div className="bg-white border border-slate-100 p-6 rounded-xl hover:shadow-md hover:border-emerald-200 transition-all h-full flex flex-col">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Avatar className="h-10 w-10 border border-slate-100">
+                        <AvatarImage src={res.user?.photoURL} />
+                        <AvatarFallback className="bg-emerald-50 text-emerald-600">{res.user?.username?.[0] || "?"}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                         <p className="font-semibold text-sm">{res.user?.username || "Anonymous"}</p>
+                         <p className="text-xs text-slate-500">{res.user?.country || "Earth"}</p>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <h3 className="font-semibold text-lg leading-snug line-clamp-2">
-                        {res.title}
-                      </h3>
-                      {res.createdAt && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          added {formatDistanceToNow(res.createdAt.toDate(), { addSuffix: true })}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                    <h3 className="font-medium text-lg text-slate-800 mb-2 group-hover:text-emerald-700 transition-colors">
+                      {res.title}
+                    </h3>
+                     <div className="mt-auto pt-4 flex items-center text-xs text-slate-400">
+                       <CircleUserRound className="h-3 w-3 mr-1" />
+                       <span>added {res.createdAt ? formatDistanceToNow(res.createdAt.toDate(), { addSuffix: true }) : 'recently'}</span>
+                     </div>
+                  </div>
                 </Link>
               ))}
             </div>
           )}
         </div>
+      </section>
 
-      </div>
+      {/* Footer */}
+      <footer className="bg-white py-12 border-t border-slate-100 text-center text-slate-400 text-sm">
+         <p>© 2026 DidYouQuit.com. All rights reserved.</p>
+      </footer>
+
+      {/* Auth Dialog */}
+      <Dialog open={authOpen} onOpenChange={setAuthOpen}>
+        <DialogContent className="sm:max-w-md p-8 bg-emerald-50/50 backdrop-blur-xl border-emerald-100">
+          <DialogHeader className="space-y-4 mb-4 text-center">
+            <DialogTitle className="text-2xl font-bold">
+              {authMode === "signup" ? "Create an account" : "Welcome back"}
+            </DialogTitle>
+            <DialogDescription>
+              {authMode === "signup" 
+                ? "Choose your preferred sign-up method" 
+                : "Sign in to continue tracking your goals"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <Button 
+            variant="outline" 
+            className="w-full bg-white border-slate-200 hover:bg-slate-50 h-12 text-base font-normal"
+            onClick={handleGoogleLogin}
+            disabled={authLoading}
+          >
+            {authLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
+              <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+              </svg>
+            )}
+            Google
+          </Button>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-[#effef6] px-2 text-slate-400">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <form onSubmit={handleAuthSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-slate-600">Email</Label>
+              <Input
+                id="email" 
+                type="email" 
+                placeholder="name@example.com" 
+                className="h-12 bg-white border-slate-200 focus:border-emerald-500 focus:ring-emerald-500"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-slate-600">Password</Label>
+              <Input 
+                id="password" 
+                type="password" 
+                className="h-12 bg-white border-slate-200 focus:border-emerald-500 focus:ring-emerald-500"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button 
+               type="submit" 
+               className="w-full h-12 text-base bg-emerald-500 hover:bg-emerald-600 text-white mt-2"
+               disabled={authLoading}
+            >
+              {authLoading ? <Loader2 className="animate-spin" /> : (authMode === "signup" ? "Create Account" : "Log In")}
+            </Button>
+          </form>
+
+          <div className="mt-4 text-center">
+            <button 
+              onClick={() => {
+                setAuthMode(authMode === "signup" ? "login" : "signup");
+                setEmail("");
+                setPassword("");
+              }}
+              className="text-sm text-slate-500 hover:text-emerald-600 underline underline-offset-4"
+            >
+              {authMode === "signup" ? "Already have an account? Log In" : "Need an account? Sign Up"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+```
