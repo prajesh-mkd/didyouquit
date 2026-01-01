@@ -44,7 +44,7 @@ export default function PrivacyPage() {
                         <section className="bg-emerald-50 p-6 rounded-lg border border-emerald-100 not-prose my-8">
                             <h3 className="text-emerald-900 font-bold text-lg mb-2">No Tracking or Analytics</h3>
                             <p className="text-emerald-800 text-sm leading-relaxed">
-                                We pride ourselves on privacy. We do <strong>not</strong> use Google Analytics, Facebook Pixels, Mixpanel, or any third-party marketing trackers.
+                                DidYouQuit.com does not utilize Google Analytics, Facebook Pixels, Mixpanel, or any third-party marketing trackers.
                                 We do not sell your personal data to advertisers or data brokers.
                             </p>
                         </section>
