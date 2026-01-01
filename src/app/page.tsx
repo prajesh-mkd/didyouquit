@@ -1,4 +1,4 @@
-```
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -43,14 +43,14 @@ interface PublicResolution {
 export default function Home() {
   const { user, userData, loading } = useAuth();
   const router = useRouter();
-  
+
   // Auth State
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
   const [authLoading, setAuthLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  
+
   // Feed State
   const [publicResolutions, setPublicResolutions] = useState<PublicResolution[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
@@ -71,7 +71,7 @@ export default function Home() {
       try {
         const q = query(collection(db, "resolutions"), limit(50));
         const snapshot = await getDocs(q);
-        
+
         const rawRes: PublicResolution[] = [];
         const userIds = new Set<string>();
 
@@ -144,17 +144,17 @@ export default function Home() {
       {/* Navbar */}
       <header className="container mx-auto px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
-           <Target className="h-6 w-6 text-emerald-600" />
-           <span className="font-bold text-xl tracking-tight">DidYouQuit.com</span>
+          <Target className="h-6 w-6 text-emerald-600" />
+          <span className="font-bold text-xl tracking-tight">DidYouQuit.com</span>
         </div>
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={() => openAuth("login")}
             className="text-sm font-medium hover:text-emerald-600 transition-colors"
           >
             Log In
           </button>
-          <Button 
+          <Button
             onClick={() => openAuth("signup")}
             className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-md px-6"
           >
@@ -171,7 +171,7 @@ export default function Home() {
         <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
           Public accountability for your New Year's goals. Share your resolutions, track your weekly progress, and join a community committed to self-improvement.
         </p>
-        <Button 
+        <Button
           onClick={() => openAuth("signup")}
           className="bg-emerald-500 hover:bg-emerald-600 text-white text-lg px-8 py-6 rounded-md shadow-lg shadow-emerald-200 transition-transform hover:-translate-y-1"
         >
@@ -216,11 +216,11 @@ export default function Home() {
       <section className="bg-white py-20 border-t border-emerald-100">
         <div className="container mx-auto px-6">
           <h2 className="text-3xl font-bold text-center mb-16">Public Commitments</h2>
-          
+
           {feedLoading ? (
-             <div className="flex justify-center">
-               <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-             </div>
+            <div className="flex justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+            </div>
           ) : publicResolutions.length === 0 ? (
             <div className="text-center bg-slate-50 py-12 rounded-lg border border-dashed border-slate-200">
               <p className="text-slate-500">No public resolutions yet. Be the first to share your goal!</p>
@@ -228,7 +228,7 @@ export default function Home() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {publicResolutions.map((res) => (
-                <Link key={res.id} href={`/ ${ res.user?.username || '#' } `} className="block group">
+                <Link key={res.id} href={`/ ${res.user?.username || '#'} `} className="block group">
                   <div className="bg-white border border-slate-100 p-6 rounded-xl hover:shadow-md hover:border-emerald-200 transition-all h-full flex flex-col">
                     <div className="flex items-center gap-3 mb-4">
                       <Avatar className="h-10 w-10 border border-slate-100">
@@ -236,17 +236,17 @@ export default function Home() {
                         <AvatarFallback className="bg-emerald-50 text-emerald-600">{res.user?.username?.[0] || "?"}</AvatarFallback>
                       </Avatar>
                       <div>
-                         <p className="font-semibold text-sm">{res.user?.username || "Anonymous"}</p>
-                         <p className="text-xs text-slate-500">{res.user?.country || "Earth"}</p>
+                        <p className="font-semibold text-sm">{res.user?.username || "Anonymous"}</p>
+                        <p className="text-xs text-slate-500">{res.user?.country || "Earth"}</p>
                       </div>
                     </div>
                     <h3 className="font-medium text-lg text-slate-800 mb-2 group-hover:text-emerald-700 transition-colors">
                       {res.title}
                     </h3>
-                     <div className="mt-auto pt-4 flex items-center text-xs text-slate-400">
-                       <CircleUserRound className="h-3 w-3 mr-1" />
-                       <span>added {res.createdAt ? formatDistanceToNow(res.createdAt.toDate(), { addSuffix: true }) : 'recently'}</span>
-                     </div>
+                    <div className="mt-auto pt-4 flex items-center text-xs text-slate-400">
+                      <CircleUserRound className="h-3 w-3 mr-1" />
+                      <span>added {res.createdAt ? formatDistanceToNow(res.createdAt.toDate(), { addSuffix: true }) : 'recently'}</span>
+                    </div>
                   </div>
                 </Link>
               ))}
@@ -257,7 +257,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-white py-12 border-t border-slate-100 text-center text-slate-400 text-sm">
-         <p>© 2026 DidYouQuit.com. All rights reserved.</p>
+        <p>© 2026 DidYouQuit.com. All rights reserved.</p>
       </footer>
 
       {/* Auth Dialog */}
@@ -268,14 +268,14 @@ export default function Home() {
               {authMode === "signup" ? "Create an account" : "Welcome back"}
             </DialogTitle>
             <DialogDescription>
-              {authMode === "signup" 
-                ? "Choose your preferred sign-up method" 
+              {authMode === "signup"
+                ? "Choose your preferred sign-up method"
                 : "Sign in to continue tracking your goals"}
             </DialogDescription>
           </DialogHeader>
 
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="w-full bg-white border-slate-200 hover:bg-slate-50 h-12 text-base font-normal"
             onClick={handleGoogleLogin}
             disabled={authLoading}
@@ -306,9 +306,9 @@ export default function Home() {
             <div className="space-y-2">
               <Label htmlFor="email" className="text-slate-600">Email</Label>
               <Input
-                id="email" 
-                type="email" 
-                placeholder="name@example.com" 
+                id="email"
+                type="email"
+                placeholder="name@example.com"
                 className="h-12 bg-white border-slate-200 focus:border-emerald-500 focus:ring-emerald-500"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -317,26 +317,26 @@ export default function Home() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password" className="text-slate-600">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
+              <Input
+                id="password"
+                type="password"
                 className="h-12 bg-white border-slate-200 focus:border-emerald-500 focus:ring-emerald-500"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
-            <Button 
-               type="submit" 
-               className="w-full h-12 text-base bg-emerald-500 hover:bg-emerald-600 text-white mt-2"
-               disabled={authLoading}
+            <Button
+              type="submit"
+              className="w-full h-12 text-base bg-emerald-500 hover:bg-emerald-600 text-white mt-2"
+              disabled={authLoading}
             >
               {authLoading ? <Loader2 className="animate-spin" /> : (authMode === "signup" ? "Create Account" : "Log In")}
             </Button>
           </form>
 
           <div className="mt-4 text-center">
-            <button 
+            <button
               onClick={() => {
                 setAuthMode(authMode === "signup" ? "login" : "signup");
                 setEmail("");
@@ -352,4 +352,4 @@ export default function Home() {
     </div>
   );
 }
-```
+
