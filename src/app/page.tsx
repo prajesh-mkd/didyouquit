@@ -106,13 +106,41 @@ export default function Home() {
     fetchFeed();
   }, []);
 
+  const getFriendlyErrorMessage = (error: any) => {
+    // Log the full error for debugging
+    console.error("Auth Error:", error);
+
+    const code = error.code;
+    const msg = error.message;
+
+    switch (code) {
+      case "auth/popup-closed-by-user":
+        return null; // Ignore this error
+      case "auth/email-already-in-use":
+        return "That email is already registered. Try logging in.";
+      case "auth/wrong-password":
+      case "auth/invalid-credential":
+        return "Invalid email or password.";
+      case "auth/user-not-found":
+        return "No account found with this email.";
+      case "auth/weak-password":
+        return "Password should be at least 6 characters.";
+      case "auth/invalid-email":
+        return "Please enter a valid email address.";
+      default:
+        // Fallback to a cleaner message if available, else raw
+        return "Something went wrong. Please try again.";
+    }
+  };
+
   const handleGoogleLogin = async () => {
     setAuthLoading(true);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      toast.error(error.message);
+      const friendlyMsg = getFriendlyErrorMessage(error);
+      if (friendlyMsg) toast.error(friendlyMsg);
       setAuthLoading(false);
     }
   };
@@ -127,7 +155,8 @@ export default function Home() {
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (error: any) {
-      toast.error(error.message);
+      const friendlyMsg = getFriendlyErrorMessage(error);
+      if (friendlyMsg) toast.error(friendlyMsg);
       setAuthLoading(false);
     }
   };
