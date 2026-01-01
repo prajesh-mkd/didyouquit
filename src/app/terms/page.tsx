@@ -94,7 +94,15 @@ export default function TermsPage() {
                         </section>
 
                         <section>
-                            <h2>8. Changes to Terms</h2>
+                            <h2>8. Governing Law</h2>
+                            <p>
+                                These Terms shall be governed and construed in accordance with the laws of the State of New Jersey, United States, without regard to its conflict of law provisions.
+                                Our failure to enforce any right or provision of these Terms will not be considered a waiver of those rights.
+                            </p>
+                        </section>
+
+                        <section>
+                            <h2>9. Changes to Terms</h2>
                             <p>
                                 We reserve the right, at our sole discretion, to modify or replace these Terms at any time. By continuing to access or use our Service after those revisions become effective, you agree to be bound by the revised terms.
                             </p>
