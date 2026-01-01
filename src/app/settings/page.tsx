@@ -20,6 +20,8 @@ export default function SettingsPage() {
     const router = useRouter();
     const [isDeleting, setIsDeleting] = useState(false);
 
+    import { getFriendlyErrorMessage } from "@/lib/error-utils";
+
     const handleDeleteAccount = async () => {
         if (!user) return;
         const confirmText = prompt("Type 'DELETE' to confirm account deletion. This cannot be undone.");
@@ -35,11 +37,8 @@ export default function SettingsPage() {
             toast.success("Account deleted.");
             router.push("/");
         } catch (error: any) {
-            toast.error("Error deleting account: " + error.message);
-            // Re-auth might be required
-            if (error.code === 'auth/requires-recent-login') {
-                toast.error("Please log out and log in again to perform this action.");
-            }
+            const msg = getFriendlyErrorMessage(error);
+            if (msg) toast.error(msg);
         } finally {
             setIsDeleting(false);
         }

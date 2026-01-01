@@ -81,6 +81,8 @@ export default function Dashboard() {
         return () => unsubscribe();
     }, [user]);
 
+    import { getFriendlyErrorMessage } from "@/lib/error-utils";
+
     const handleCreateResolution = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newResTitle.trim() || !user) return;
@@ -97,7 +99,8 @@ export default function Dashboard() {
             setIsDialogOpen(false);
             toast.success("Resolution created!");
         } catch (error: any) {
-            toast.error(error.message);
+            const msg = getFriendlyErrorMessage(error);
+            if (msg) toast.error(msg);
         } finally {
             setIsSubmitting(false);
         }

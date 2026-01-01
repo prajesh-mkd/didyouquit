@@ -81,6 +81,8 @@ export default function Onboarding() {
         return () => clearTimeout(timeoutId);
     }, [username]);
 
+    import { getFriendlyErrorMessage } from "@/lib/error-utils";
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
@@ -106,7 +108,8 @@ export default function Onboarding() {
             router.push("/dashboard");
             toast.success("Welcome aboard!");
         } catch (error: any) {
-            toast.error(error.message);
+            const msg = getFriendlyErrorMessage(error);
+            if (msg) toast.error(msg);
             setIsSubmitting(false);
         }
     };
