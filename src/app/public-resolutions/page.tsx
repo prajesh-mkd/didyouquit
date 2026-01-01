@@ -168,8 +168,9 @@ export default function PublicResolutionsPage() {
                                                     return (
                                                         <Tooltip key={week}>
                                                             <TooltipTrigger asChild>
-                                                                <div
-                                                                    className={`w-4 h-4 rounded-full border ${colorClass} shrink-0 cursor-default`}
+                                                                <button
+                                                                    type="button"
+                                                                    className={`w-4 h-4 rounded-full border ${colorClass} shrink-0 cursor-default focus:outline-none focus:ring-1 focus:ring-emerald-500`}
                                                                 />
                                                             </TooltipTrigger>
                                                             <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
@@ -238,8 +239,9 @@ export default function PublicResolutionsPage() {
                                                             return (
                                                                 <Tooltip key={week}>
                                                                     <TooltipTrigger asChild>
-                                                                        <div
-                                                                            className={`w-4 h-4 rounded-full border ${colorClass} cursor-default`}
+                                                                        <button
+                                                                            type="button"
+                                                                            className={`w-4 h-4 rounded-full border ${colorClass} cursor-default focus:outline-none focus:ring-1 focus:ring-emerald-500`}
                                                                         />
                                                                     </TooltipTrigger>
                                                                     <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
