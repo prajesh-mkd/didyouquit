@@ -12,10 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
@@ -28,7 +24,6 @@ import {
   sendEmailVerification,
 } from "firebase/auth";
 import { doc, getDoc, collection, query, limit, getDocs } from "firebase/firestore";
-import { toast } from "sonner";
 import { toast } from "sonner";
 import { Loader2, Target, CheckCircle2, Users, ArrowRight, CircleUserRound, Globe } from "lucide-react";
 import Link from "next/link";
