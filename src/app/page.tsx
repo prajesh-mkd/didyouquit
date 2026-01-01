@@ -28,6 +28,16 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getFriendlyErrorMessage } from "@/lib/error-utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LogOut } from "lucide-react";
+import { signOut } from "firebase/auth";
 
 interface PublicResolution {
   id: string;
@@ -152,18 +162,64 @@ export default function Home() {
           <span className="font-bold text-xl tracking-tight">DidYouQuit.com</span>
         </div>
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => openAuth("login")}
-            className="text-sm font-medium hover:text-emerald-600 transition-colors"
-          >
-            Log In
-          </button>
-          <Button
-            onClick={() => openAuth("signup")}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-md px-6"
-          >
-            Sign Up
-          </Button>
+          {user ? (
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" asChild className="hidden md:flex text-emerald-800 hover:text-emerald-900 hover:bg-emerald-100/50">
+                <Link href="/dashboard">Dashboard</Link>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full border-2 border-white ring-2 ring-emerald-100">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={userData?.photoURL} alt={userData?.username || "User"} />
+                      <AvatarFallback className="bg-emerald-100 text-emerald-600 font-bold">{userData?.username?.slice(0, 2).toUpperCase() || "U"}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{userData?.username || "User"}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard">Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/${userData?.username || user.uid}`}>Public Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={async () => {
+                    await signOut(auth);
+                    router.push("/");
+                    toast.success("Logged out successfully");
+                  }}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => openAuth("login")}
+                className="text-sm font-medium hover:text-emerald-600 transition-colors"
+              >
+                Log In
+              </button>
+              <Button
+                onClick={() => openAuth("signup")}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-md px-6 shadow-md shadow-emerald-200"
+              >
+                Sign Up
+              </Button>
+            </>
+          )}
         </div>
       </header>
 
