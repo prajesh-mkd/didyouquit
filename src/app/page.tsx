@@ -320,7 +320,6 @@ function HomeContent() {
                   <thead className="bg-emerald-50/50 text-emerald-900">
                     <tr>
                       <th className="p-4 font-semibold border-b border-emerald-100 w-[250px]">User</th>
-                      <th className="p-4 font-semibold border-b border-emerald-100 w-[150px]">Country</th>
                       <th className="p-4 font-semibold border-b border-emerald-100 w-[300px]">Resolution</th>
                       <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">Progress (52 Weeks)</th>
                     </tr>
@@ -330,22 +329,22 @@ function HomeContent() {
                       <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="p-4">
                           <Link href={`/${res.user?.username || res.uid}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                            <Avatar className="h-8 w-8 border border-slate-200">
+                            <Avatar className="h-10 w-10 border border-slate-200">
                               <AvatarImage src={res.user?.photoURL} />
                               <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xs">
                                 {res.user?.username?.slice(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="font-medium text-slate-700 group-hover:text-emerald-700 transition-colors">
-                              {res.user?.username || "Anonymous"}
-                            </span>
+                            <div>
+                              <span className="font-medium text-slate-700 group-hover:text-emerald-700 transition-colors block">
+                                {res.user?.username || "Anonymous"}
+                              </span>
+                              <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
+                                <Globe className="h-3 w-3" />
+                                {res.user?.country || "Unknown"}
+                              </div>
+                            </div>
                           </Link>
-                        </td>
-                        <td className="p-4 text-slate-600">
-                          <div className="flex items-center gap-2">
-                            <Globe className="h-4 w-4 text-slate-400" />
-                            {res.user?.country || "Unknown"}
-                          </div>
                         </td>
                         <td className="p-4">
                           <div className="flex items-center gap-2 font-medium text-slate-800">
