@@ -233,20 +233,20 @@ export default function Home() {
         <h1 className="text-5xl md:text-6xl font-extrabold text-emerald-800 tracking-tight mb-6">
           Keep Your Resolutions.
         </h1>
-        <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+        <p className="text-lg text-slate-600 max-w-4xl mx-auto mb-10 leading-relaxed">
           Public accountability for your New Year's goals. Share your resolutions ANONYMOUSLY, track your weekly progress, and join a community committed to self-improvement.
         </p>
-        <Button
-          size="lg"
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-14 text-lg rounded-full shadow-lg shadow-emerald-200"
-          onClick={() => user ? router.push("/dashboard") : openAuth("signup")}
-        >
-          {user ? "Go to Dashboard" : "Add Your Resolutions"} <ArrowRight className="ml-2 h-5 w-5" />
-        </Button>
-        <div className="mt-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Button
+            size="lg"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-14 text-lg rounded-full shadow-lg shadow-emerald-200 w-full sm:w-auto"
+            onClick={() => user ? router.push("/dashboard") : openAuth("signup")}
+          >
+            {user ? "Go to Dashboard" : "Add Yours"} <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
           <Button
             variant="outline"
-            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-6 h-12 text-base rounded-full"
+            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-6 h-14 text-lg rounded-full w-full sm:w-auto"
             onClick={() => router.push("/public-resolutions")}
           >
             View Public Resolutions
@@ -332,7 +332,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-white py-12 border-t border-slate-100 text-center text-slate-400 text-sm">
-        <p>© 2026 DidYouQuit.com. All rights reserved. (v2.5)</p>
+        <p>© 2026 DidYouQuit.com. All rights reserved. (v2.8)</p>
       </footer>
 
       {/* Auth Dialog */}

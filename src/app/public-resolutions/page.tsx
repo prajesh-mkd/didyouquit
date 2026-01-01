@@ -114,7 +114,75 @@ export default function PublicResolutionsPage() {
                 <p className="text-center text-slate-600 mb-12">See what the world is committing to this year.</p>
 
                 <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div className="overflow-x-auto">
+                    {/* Mobile View (Cards) */}
+                    <div className="md:hidden divide-y divide-slate-100">
+                        {resolutions.map((res) => (
+                            <div key={res.id} className="p-4 space-y-4">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Link href={`/${res.user?.username || res.uid}`}>
+                                            <Avatar className="h-10 w-10 border border-slate-200">
+                                                <AvatarImage src={res.user?.photoURL} />
+                                                <AvatarFallback className="bg-emerald-100 text-emerald-700 text-sm font-bold">
+                                                    {res.user?.username?.slice(0, 2).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        </Link>
+                                        <div>
+                                            <Link href={`/${res.user?.username || res.uid}`} className="font-semibold text-slate-800 hover:text-emerald-700 transition-colors block">
+                                                {res.user?.username || "Anonymous"}
+                                            </Link>
+                                            <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
+                                                <Globe className="h-3 w-3" />
+                                                {res.user?.country || "Unknown"}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="flex items-center gap-2 font-medium text-slate-900 mb-2">
+                                        <Target className="h-4 w-4 text-emerald-500 shrink-0" />
+                                        {res.title}
+                                    </div>
+                                </div>
+
+                                {/* Scrollable Dots Container */}
+                                <div className="bg-slate-50/50 rounded-lg p-3 border border-slate-100">
+                                    <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold">Yearly Progress</p>
+                                    <div className="flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
+                                        <TooltipProvider delayDuration={0}>
+                                            {weeks.map((week) => {
+                                                const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
+                                                const status = res.weeklyLog?.[weekKey]; // true, false, or undefined
+
+                                                let colorClass = "bg-slate-200 border-slate-300"; // Default/Null for mobile visibility
+                                                if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
+                                                if (status === false) colorClass = "bg-red-400 border-red-400";
+
+                                                return (
+                                                    <Tooltip key={week}>
+                                                        <TooltipTrigger asChild>
+                                                            <div
+                                                                className={`w-3 h-3 rounded-full border ${colorClass} shrink-0 cursor-default`}
+                                                            />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
+                                                            <p className="font-bold mb-0.5">Week {week}</p>
+                                                            <p className="text-slate-300 font-normal">{getWeekRange(week)}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                );
+                                            })}
+                                        </TooltipProvider>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Desktop View (Table) */}
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-emerald-50/50 text-emerald-900">
                                 <tr>
