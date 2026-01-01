@@ -171,7 +171,7 @@ export default function Home() {
           {user ? (
             <div className="flex items-center gap-4">
               <Button variant="ghost" asChild className="hidden md:flex text-emerald-800 hover:text-emerald-900 hover:bg-emerald-100/50">
-                <Link href="/dashboard">Dashboard</Link>
+                <Link href="/dashboard">My Resolutions</Link>
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -193,7 +193,7 @@ export default function Home() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard">Dashboard</Link>
+                    <Link href="/dashboard">My Resolutions</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href={`/${userData?.username || user.uid}`}>Public Profile</Link>
@@ -250,7 +250,7 @@ export default function Home() {
             className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-8 h-14 text-lg rounded-full w-full sm:w-auto"
             onClick={() => user ? router.push("/dashboard") : openAuth("signup")}
           >
-            {user ? "Go to Dashboard" : "Add Yours Anonymously"} <ArrowRight className="ml-2 h-5 w-5" />
+            {user ? "Go to My Resolutions" : "Add Yours Anonymously"} <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>
       </section>

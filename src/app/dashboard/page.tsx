@@ -31,6 +31,7 @@ import {
 import { toast } from "sonner";
 import { getFriendlyErrorMessage } from "@/lib/error-utils";
 import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
 import { getCurrentWeekKey } from "@/lib/date-utils";
 import { clsx } from "clsx";
 
@@ -137,7 +138,7 @@ export default function Dashboard() {
     const currentWeek = getCurrentWeekKey();
 
     return (
-        <div className="min-h-screen flex flex-col bg-background">
+        <div className="min-h-screen flex flex-col bg-[#F0FDF4]">
             <Header />
             <main className="container py-8 px-4 flex-1">
                 <div className="flex items-center justify-between mb-8">
@@ -252,6 +253,7 @@ export default function Dashboard() {
                     </div>
                 )}
             </main>
+            <Footer />
         </div>
     );
 }

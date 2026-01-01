@@ -47,7 +47,7 @@ export function Header() {
                             )}
                         </div>
                         <Button variant="ghost" asChild className="hidden md:flex">
-                            <Link href="/dashboard">Dashboard</Link>
+                            <Link href="/dashboard">My Resolutions</Link>
                         </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -69,7 +69,7 @@ export function Header() {
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem asChild>
-                                    <Link href="/dashboard">Dashboard</Link>
+                                    <Link href="/dashboard">My Resolutions</Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
                                     <Link href={`/${userData?.username || user.uid}`}>Public Profile</Link>
