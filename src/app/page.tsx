@@ -176,7 +176,7 @@ function HomeContent() {
   if (loading) return null;
 
   return (
-    <div className="min-h-screen bg-[#F0FDF4] font-sans text-slate-800">
+    <div className="min-h-screen bg-[#F0FDF4] text-slate-800">
       <Header />
 
       <section className="container mx-auto px-6 pt-20 pb-16 text-center">
