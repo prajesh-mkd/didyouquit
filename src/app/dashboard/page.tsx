@@ -229,6 +229,7 @@ export default function Dashboard() {
                             </div>
                         ) : (
                             <div className="space-y-4">
+                                <p className="text-xs text-muted-foreground/60 italic text-center mb-2">"Honesty is the best policy."</p>
                                 {pendingResolutions.map(res => (
                                     <div key={res.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
                                         <span className="font-medium text-slate-700">{res.title}</span>
