@@ -241,8 +241,17 @@ export default function Home() {
           className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-14 text-lg rounded-full shadow-lg shadow-emerald-200"
           onClick={() => user ? router.push("/dashboard") : openAuth("signup")}
         >
-          {user ? "Go to Dashboard" : "Start Your Journey"} <ArrowRight className="ml-2 h-5 w-5" />
+          {user ? "Go to Dashboard" : "Add Your Resolutions"} <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
+        <div className="mt-4">
+          <Button
+            variant="outline"
+            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-6 h-12 text-base rounded-full"
+            onClick={() => router.push("/public-resolutions")}
+          >
+            View Public Resolutions
+          </Button>
+        </div>
       </section>
 
       {/* Features Grid */}
@@ -323,7 +332,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-white py-12 border-t border-slate-100 text-center text-slate-400 text-sm">
-        <p>© 2026 DidYouQuit.com. All rights reserved. (v2.2)</p>
+        <p>© 2026 DidYouQuit.com. All rights reserved. (v2.3)</p>
       </footer>
 
       {/* Auth Dialog */}

@@ -36,6 +36,16 @@ export function Header() {
 
                 {user ? (
                     <div className="flex items-center gap-4">
+                        <div className="hidden md:flex items-center gap-4 mr-4">
+                            <Link href="/public-resolutions" className="text-sm font-medium hover:text-primary transition-colors">
+                                Public Resolutions
+                            </Link>
+                            {user && (
+                                <Link href="/dashboard" className="text-sm font-medium hover:text-primary transition-colors">
+                                    My Resolutions
+                                </Link>
+                            )}
+                        </div>
                         <Button variant="ghost" asChild className="hidden md:flex">
                             <Link href="/dashboard">Dashboard</Link>
                         </Button>
