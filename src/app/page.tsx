@@ -24,7 +24,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, collection, query, limit, getDocs } from "firebase/firestore";
 import { toast } from "sonner";
-import { Loader2, Target, CheckCircle2, Users, ArrowRight, Globe } from "lucide-react";
+import { Loader2, Target, CheckCircle2, Users, ArrowRight, Globe, Calendar } from "lucide-react";
 import Link from "next/link";
 import { startOfWeek, endOfWeek, format, setWeek } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -319,9 +319,24 @@ function HomeContent() {
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-emerald-50/50 text-emerald-900">
                     <tr>
-                      <th className="p-4 pl-6 font-semibold border-b border-emerald-100 w-[250px]">User</th>
-                      <th className="p-4 font-semibold border-b border-emerald-100">Resolution</th>
-                      <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">Progress (52 Weeks)</th>
+                      <th className="p-4 pl-6 font-semibold border-b border-emerald-100 w-[250px]">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-emerald-600" />
+                          User
+                        </div>
+                      </th>
+                      <th className="p-4 font-semibold border-b border-emerald-100">
+                        <div className="flex items-center gap-2">
+                          <Target className="h-4 w-4 text-emerald-600" />
+                          Resolution
+                        </div>
+                      </th>
+                      <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-emerald-600" />
+                          Progress (52 Weeks)
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
