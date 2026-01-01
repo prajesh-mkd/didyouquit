@@ -495,9 +495,9 @@ function HomeContent() {
             {authMode === "signup" && (
               <p className="text-xs text-center text-slate-400 mt-4 px-4 leading-relaxed">
                 By clicking continue, you agree to our{" "}
-                <Link href="#" className="underline hover:text-emerald-600">Terms of Service</Link>
+                <Link href="/terms" className="underline hover:text-emerald-600" target="_blank">Terms of Service</Link>
                 {" "}and{" "}
-                <Link href="#" className="underline hover:text-emerald-600">Privacy Policy</Link>.
+                <Link href="/privacy" className="underline hover:text-emerald-600" target="_blank">Privacy Policy</Link>.
               </p>
             )}
           </form>
