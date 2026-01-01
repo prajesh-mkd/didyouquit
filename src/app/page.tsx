@@ -235,7 +235,7 @@ export default function Home() {
           Keep Your Resolutions.
         </h1>
         <p className="text-lg text-slate-600 max-w-4xl mx-auto mb-10 leading-relaxed">
-          Public accountability for your New Year's goals. Share your resolutions ANONYMOUSLY, track your weekly progress, and join a community committed to self-improvement.
+          Public accountability for your New Year's goals. Share your resolutions anonymously, track your weekly progress, and join a community committed to self-improvement.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Button
