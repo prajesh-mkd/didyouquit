@@ -47,7 +47,7 @@ interface Resolution {
 }
 
 export default function Dashboard() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, userData, loading: authLoading } = useAuth();
     const router = useRouter();
     const [resolutions, setResolutions] = useState<Resolution[]>([]);
     const [loading, setLoading] = useState(true);
@@ -98,6 +98,12 @@ export default function Dashboard() {
                 title: newResTitle,
                 weeklyLog: {},
                 createdAt: serverTimestamp(),
+                randomSortKey: Math.random(),
+                user: {
+                    username: userData?.username || "Anonymous",
+                    country: userData?.country || "Unknown",
+                    photoURL: userData?.photoURL || null
+                }
             });
             setNewResTitle("");
             setIsDialogOpen(false);

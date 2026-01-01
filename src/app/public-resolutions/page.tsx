@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy, limit, doc, getDoc } from "firebase/firestore";
+import { useRef } from "react";
+import { collection, getDocs, query, orderBy, limit, doc, getDoc, startAt, startAfter, where, DocumentSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,72 +32,131 @@ export default function PublicResolutionsPage() {
     const [loading, setLoading] = useState(true);
 
     const getWeekRange = (weekNum: number) => {
-        const year = new Date().getFullYear();
-        // Simple approximation for visualization, date-fns is better but requires careful ISO handling
-        // We will use date-fns if available or write a simple helper.
-        // Assuming ISO weeks.
         const now = new Date();
-        // Create a date in the target week
         const targetDate = setWeek(now, weekNum, { weekStartsOn: 1 });
         const start = startOfWeek(targetDate, { weekStartsOn: 1 });
         const end = endOfWeek(targetDate, { weekStartsOn: 1 });
         return `${format(start, "MMM d")} - ${format(end, "MMM d")}`;
     };
 
-    useEffect(() => {
-        const fetchResolutions = async () => {
-            try {
-                // Fetch last 100 resolutions
-                const q = query(
-                    collection(db, "resolutions"),
-                    orderBy("createdAt", "desc"),
-                    limit(100)
+    const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const initialLoadDone = useRef(false);
+
+    // Legacy user cache to avoid refetching same users
+    const userCache = useRef<Map<string, any>>(new Map());
+
+    const loadResolutions = async (isInitial = false) => {
+        if (loadingMore || (!isInitial && !hasMore)) return;
+
+        if (isInitial) {
+            setLoading(true);
+            setResolutions([]);
+            setHasMore(true);
+            setLastDoc(null);
+            userCache.current.clear();
+        } else {
+            setLoadingMore(true);
+        }
+
+        try {
+            const resolutionsRef = collection(db, "resolutions");
+            let q;
+
+            if (isInitial) {
+                // Random start point
+                const randomStart = Math.random();
+                q = query(
+                    resolutionsRef,
+                    orderBy("randomSortKey"),
+                    startAt(randomStart),
+                    limit(20)
                 );
-                const querySnapshot = await getDocs(q);
+            } else if (lastDoc) {
+                // Continue from last doc
+                q = query(
+                    resolutionsRef,
+                    orderBy("randomSortKey"),
+                    startAfter(lastDoc),
+                    limit(20)
+                );
+            } else {
+                return;
+            }
 
-                const resList: PublicResolution[] = [];
+            const snapshot = await getDocs(q);
 
-                // Parallel fetch user data (optimized would be denormalization, but this works for <100)
-                await Promise.all(querySnapshot.docs.map(async (resDoc) => {
-                    const data = resDoc.data();
-                    const uid = data.uid;
+            // If we got fewer than requested, we might have hit the end of the random sequence (1.0)
+            // Ideally we'd wrap around, but for V1 just stopping is fine or we can re-query from 0 if needed.
+            if (snapshot.docs.length < 20) {
+                setHasMore(false);
+            }
 
-                    let userData = { username: "Anonymous", country: "Unknown", photoURL: "" };
+            setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
 
+            const newResolutions: PublicResolution[] = [];
+            const userIdsToFetch = new Set<string>();
+
+            for (const docSnapshot of snapshot.docs) {
+                const data = docSnapshot.data();
+                const res: PublicResolution = {
+                    id: docSnapshot.id,
+                    uid: data.uid,
+                    title: data.title,
+                    weeklyLog: data.weeklyLog || {},
+                    user: data.user // Use denormalized data if available
+                };
+
+                if (!res.user && res.uid) {
+                    // Check cache
+                    if (userCache.current.has(res.uid)) {
+                        res.user = userCache.current.get(res.uid);
+                    } else {
+                        userIdsToFetch.add(res.uid);
+                    }
+                }
+                newResolutions.push(res);
+            }
+
+            // Fetch missing users (legacy data support)
+            if (userIdsToFetch.size > 0) {
+                await Promise.all(Array.from(userIdsToFetch).map(async (uid) => {
                     try {
-                        // Try to get user cache or doc
-                        // Ideally this data should be on the resolution doc itself for performance (denormalization)
-                        // If not, we fetch.
-                        if (uid) {
-                            const userDoc = await getDoc(doc(db, "users", uid));
-                            if (userDoc.exists()) {
-                                userData = userDoc.data() as any;
-                            }
+                        const userSnap = await getDoc(doc(db, "users", uid));
+                        if (userSnap.exists()) {
+                            const userData = userSnap.data();
+                            userCache.current.set(uid, userData);
+                            // Update refs in newResolutions
+                            newResolutions.forEach(r => {
+                                if (r.uid === uid) r.user = userData as any;
+                            });
                         }
                     } catch (e) {
-                        console.error("Error fetching user for resolution", e);
+                        console.error("Error fetching legacy user", e);
                     }
-
-                    resList.push({
-                        id: resDoc.id,
-                        uid: uid,
-                        title: data.title,
-                        weeklyLog: data.weeklyLog || {},
-                        user: userData as any
-                    });
                 }));
-
-                // Shuffle for randomness
-                const shuffled = resList.sort(() => 0.5 - Math.random());
-                setResolutions(shuffled);
-            } catch (error) {
-                console.error("Error fetching public resolutions:", error);
-            } finally {
-                setLoading(false);
             }
-        };
 
-        fetchResolutions();
+            if (isInitial) {
+                setResolutions(newResolutions);
+            } else {
+                setResolutions(prev => [...prev, ...newResolutions]);
+            }
+
+        } catch (error) {
+            console.error("Error loading resolutions:", error);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!initialLoadDone.current) {
+            loadResolutions(true);
+            initialLoadDone.current = true;
+        }
     }, []);
 
     const currentYear = new Date().getFullYear();
@@ -273,6 +333,25 @@ export default function PublicResolutionsPage() {
                             </table>
                         </div>
                     </div>
+
+                    {/* Load More Button */}
+                    {hasMore && (
+                        <div className="mt-8 text-center pb-8">
+                            <button
+                                onClick={() => loadResolutions(false)}
+                                disabled={loadingMore}
+                                className="px-6 py-2.5 bg-white border border-emerald-200 text-emerald-700 font-medium rounded-full hover:bg-emerald-50 disabled:opacity-50 transition-colors shadow-sm"
+                            >
+                                {loadingMore ? (
+                                    <span className="flex items-center gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+                                    </span>
+                                ) : (
+                                    "Load More Resolutions"
+                                )}
+                            </button>
+                        </div>
+                    )}
                 </div >
             </main >
             <Footer />
