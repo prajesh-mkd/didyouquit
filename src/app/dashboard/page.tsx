@@ -14,7 +14,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, Trash2, Pencil, RefreshCw, CheckCircle2, XCircle, Target, Ellipsis, Calendar } from "lucide-react";
+import { Plus, Loader2, Trash2, Pencil, RefreshCw, CheckCircle2, XCircle, Target, Settings, Calendar } from "lucide-react";
 import { db } from "@/lib/firebase";
 import {
     collection,
@@ -281,7 +281,7 @@ export default function Dashboard() {
                                         </th>
                                         <th className="p-4 font-semibold border-b border-emerald-100 w-[100px]">
                                             <div className="flex items-center gap-2">
-                                                <Ellipsis className="h-4 w-4 text-emerald-600" />
+                                                <Settings className="h-4 w-4 text-emerald-600" />
                                                 Actions
                                             </div>
                                         </th>
