@@ -197,7 +197,7 @@ function HomeContent() {
           <Button
             variant="outline"
             className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-14 h-14 text-lg rounded-full w-full sm:w-auto"
-            onClick={() => user ? router.push("/dashboard") : openAuth("signup")}
+            onClick={() => user ? router.push("/my-resolutions") : openAuth("signup")}
           >
             {user ? "View My Resolutions" : "Add Yours Anonymously"}<ArrowRight className="ml-0.5 h-5 w-5" />
           </Button>

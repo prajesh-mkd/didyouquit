@@ -66,7 +66,7 @@ export function Header() {
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem asChild>
-                                    <Link href="/dashboard">My Resolutions</Link>
+                                    <Link href="/my-resolutions">My Resolutions</Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
                                     <Link href={`/${userData?.username || user.uid}`}>Public Profile</Link>

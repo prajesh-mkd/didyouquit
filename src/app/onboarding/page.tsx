@@ -47,7 +47,7 @@ export default function Onboarding() {
             if (!user) {
                 router.push("/");
             } else if (userData) {
-                router.push("/dashboard");
+                router.push("/my-resolutions");
             } else {
                 // Generate random username
                 const randomSuffix = Math.floor(1000 + Math.random() * 9000);
