@@ -154,7 +154,7 @@ export default function PublicProfile() {
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    <span>Member since {profile.createdAt ? format(profile.createdAt.toDate(), "MMMM yyyy") : "January 2026"}</span>
+                                    <span>Member since {profile.createdAt ? format(profile.createdAt.toDate(), "MMM yyyy") : "Jan 2026"}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 text-emerald-600 font-medium">
                                     <Award className="h-3.5 w-3.5" />
