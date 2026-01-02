@@ -7,7 +7,7 @@ export function Footer() {
                 <Link href="/terms" className="hover:text-emerald-600 transition-colors">Terms of Service</Link>
                 <Link href="/privacy" className="hover:text-emerald-600 transition-colors">Privacy Policy</Link>
             </div>
-            <p>© 2026 DidYouQuit.com. All rights reserved. (v2.18)</p>
+            <p>© 2026 DidYouQuit.com. All rights reserved. (v3.3.0)</p>
         </footer>
     );
 }
