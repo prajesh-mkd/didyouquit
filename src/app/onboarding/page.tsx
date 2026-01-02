@@ -26,6 +26,7 @@ import { doc, setDoc, getDocs, collection, query, where, serverTimestamp } from 
 import { toast } from "sonner";
 import { Loader2, Check, X } from "lucide-react";
 import { getFriendlyErrorMessage } from "@/lib/error-utils";
+import { generateAvatar } from "@/lib/generateAvatar";
 
 const COUNTRIES = [
     "United States", "United Kingdom", "Canada", "Australia", "India",
@@ -100,7 +101,7 @@ export default function Onboarding() {
                 uid: user.uid,
                 username,
                 country,
-                photoURL: user.photoURL || `https://api.dicebear.com/9.x/shapes/svg?seed=${username}`,
+                photoURL: user.photoURL || generateAvatar(username),
                 createdAt: serverTimestamp(),
             });
             await refreshUserData();

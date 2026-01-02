@@ -9,6 +9,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { generateAvatar } from "@/lib/generateAvatar";
 
 interface EditAvatarDialogProps {
     open: boolean;
@@ -37,7 +38,7 @@ export function EditAvatarDialog({
 
     const handleShuffleAvatar = () => {
         const randomSeed = Math.random().toString(36).substring(7);
-        setPhotoURL(`https://api.dicebear.com/9.x/shapes/svg?seed=${randomSeed}`);
+        setPhotoURL(generateAvatar(randomSeed));
     };
 
     const handleSave = async () => {
