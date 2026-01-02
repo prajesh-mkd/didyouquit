@@ -322,7 +322,7 @@ function HomeContent() {
                       <th className="p-4 pl-10 font-semibold border-b border-emerald-100 w-[250px]">
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-emerald-600" />
-                          User
+                          Member
                         </div>
                       </th>
                       <th className="p-4 font-semibold border-b border-emerald-100">
