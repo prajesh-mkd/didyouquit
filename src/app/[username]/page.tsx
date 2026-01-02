@@ -137,7 +137,7 @@ export default function PublicProfile() {
                 <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-br from-emerald-50 to-teal-50/50" />
 
                 <div className="container mx-auto px-4 pt-20 pb-12 relative">
-                    <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8">
+                    <div className="flex flex-col items-center gap-6">
                         <Avatar className="h-32 w-32 border-4 border-white shadow-xl bg-white">
                             <AvatarImage src={profile.photoURL} />
                             <AvatarFallback className="text-3xl bg-emerald-100 text-emerald-700 font-bold">
@@ -145,9 +145,9 @@ export default function PublicProfile() {
                             </AvatarFallback>
                         </Avatar>
 
-                        <div className="flex-1 text-center md:text-left mb-2">
+                        <div className="flex-1 text-center mb-2">
                             <h1 className="text-3xl font-bold text-slate-900 mb-2">{profile.username}</h1>
-                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-slate-500">
+                            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
                                 <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-full">
                                     <Globe className="h-3.5 w-3.5" />
                                     <span>{profile.country}</span>
