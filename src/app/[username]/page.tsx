@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, FolderCheck } from "lucide-react";
+import { Loader2, Globe, Calendar, Target, Award, MapPin } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import {
@@ -15,18 +15,23 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+import { format, setWeek, startOfWeek, endOfWeek } from "date-fns";
 
 interface UserProfile {
     uid: string;
     username: string;
     country: string;
     photoURL: string;
+    createdAt?: any;
 }
 
 interface Resolution {
     id: string;
     title: string;
     weeklyLog: Record<string, boolean>;
+    createdAt?: any;
 }
 
 export default function PublicProfile() {
@@ -37,6 +42,18 @@ export default function PublicProfile() {
     const [resolutions, setResolutions] = useState<Resolution[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+
+    // Date Helpers
+    const currentYear = new Date().getFullYear();
+    const weeks = Array.from({ length: 52 }, (_, i) => i + 1);
+
+    const getWeekRange = (weekNum: number) => {
+        const now = new Date();
+        const targetDate = setWeek(now, weekNum, { weekStartsOn: 1 });
+        const start = startOfWeek(targetDate, { weekStartsOn: 1 });
+        const end = endOfWeek(targetDate, { weekStartsOn: 1 });
+        return `${format(start, "MMM d")} - ${format(end, "MMM d")}`;
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -60,7 +77,6 @@ export default function PublicProfile() {
                 const resQuery = query(
                     collection(db, "resolutions"),
                     where("uid", "==", userData.uid)
-                    // we could order by createdAt if we had an index, for now client sort
                 );
                 const resSnapshot = await getDocs(resQuery);
                 const resData: Resolution[] = [];
@@ -68,7 +84,9 @@ export default function PublicProfile() {
                     resData.push({ id: doc.id, ...doc.data() } as Resolution);
                 });
 
-                // Manual sort (optional)
+                // Client-side sort by newest
+                resData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
                 setResolutions(resData);
             } catch (err) {
                 console.error(err);
@@ -83,98 +101,154 @@ export default function PublicProfile() {
 
     if (loading) {
         return (
-            <div className="flex h-screen items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
+            <div className="flex h-screen items-center justify-center bg-[#F0FDF4]">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
             </div>
         );
     }
 
     if (error || !profile) {
         return (
-            <div className="flex flex-col h-screen items-center justify-center gap-4">
-                <h1 className="text-2xl font-bold">{error || "User not found"}</h1>
-                <Button asChild>
-                    <Link href="/">Back to Home</Link>
-                </Button>
+            <div className="min-h-screen flex flex-col bg-[#F0FDF4]">
+                <Header />
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
+                    <div className="bg-white p-8 rounded-2xl shadow-lg border border-emerald-100 max-w-md w-full">
+                        <div className="h-16 w-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Loader2 className="h-8 w-8 text-red-400" />
+                        </div>
+                        <h1 className="text-2xl font-bold text-slate-800 mb-2">{error || "User not found"}</h1>
+                        <p className="text-slate-500 mb-6">We couldn't find a profile for @{username}.</p>
+                        <Button asChild className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                            <Link href="/">Back to Home</Link>
+                        </Button>
+                    </div>
+                </div>
+                <Footer />
             </div>
         );
     }
 
-    // Generate last 52 weeks or so strictly for display? 
-    // For now, let's just show what we have + pads? 
-    // The requirement is "tick mark each week". Green/Red dot.
-    // Getting list of weeks for the current year up to now would be ideal.
-    // But for simple display, let's just show the logged weeks.
-
     return (
-        <div className="min-h-screen flex flex-col bg-background">
-            <header className="border-b bg-background/95 backdrop-blur">
-                <div className="container flex h-14 items-center gap-2 px-4">
-                    <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-                        <FolderCheck className="h-6 w-6 text-primary" />
-                        <span>DidYouQuit?</span>
-                    </Link>
-                </div>
-            </header>
+        <div className="min-h-screen flex flex-col bg-slate-50">
+            <Header />
 
-            <main className="container py-12 px-4 max-w-4xl mx-auto">
-                <div className="flex flex-col items-center mb-12 space-y-4">
-                    <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                        <AvatarImage src={profile.photoURL} />
-                        <AvatarFallback>{profile.username[0].toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="text-center">
-                        <h1 className="text-3xl font-bold">@{profile.username}</h1>
-                        <p className="text-muted-foreground mt-1 flex items-center justify-center gap-2">
-                            <span>{profile.country}</span>
-                        </p>
-                    </div>
-                </div>
+            {/* Profile Header */}
+            <section className="bg-white border-b border-emerald-100 relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-br from-emerald-50 to-teal-50/50" />
 
-                <div className="grid gap-6">
-                    {resolutions.map((res) => (
-                        <div key={res.id} className="border rounded-lg p-6 bg-card shadow-sm">
-                            <h3 className="font-semibold text-xl mb-4">{res.title}</h3>
+                <div className="container mx-auto px-4 pt-20 pb-12 relative">
+                    <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8">
+                        <Avatar className="h-32 w-32 border-4 border-white shadow-xl bg-white">
+                            <AvatarImage src={profile.photoURL} />
+                            <AvatarFallback className="text-3xl bg-emerald-100 text-emerald-700 font-bold">
+                                {profile.username[0].toUpperCase()}
+                            </AvatarFallback>
+                        </Avatar>
 
-                            <div className="grid grid-cols-[repeat(auto-fill,minmax(20px,1fr))] gap-2 sm:gap-3">
-                                {/* Display sorted keys */}
-                                {Object.entries(res.weeklyLog)
-                                    .sort((a, b) => a[0].localeCompare(b[0])) // Ascending time
-                                    .map(([week, success]) => (
-                                        <TooltipProvider key={week} delayDuration={0}>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <button
-                                                        type="button"
-                                                        className={clsx(
-                                                            "h-5 w-5 rounded-full transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-1",
-                                                            success ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)] focus:ring-green-500" : "bg-red-500 opacity-80 focus:ring-red-500"
-                                                        )}
-                                                    />
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>{week}: {success ? "Kept it!" : "Missed"}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    ))
-                                }
-                                {Object.keys(res.weeklyLog).length === 0 && (
-                                    <span className="text-sm text-muted-foreground italic col-span-full">
-                                        No updates yet.
-                                    </span>
-                                )}
+                        <div className="flex-1 text-center md:text-left mb-2">
+                            <h1 className="text-3xl font-bold text-slate-900 mb-2">{profile.username}</h1>
+                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-slate-500">
+                                <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-full">
+                                    <Globe className="h-3.5 w-3.5" />
+                                    <span>{profile.country}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    <span>Member since {profile.createdAt ? format(profile.createdAt.toDate(), "MMMM yyyy") : "January 2026"}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-emerald-600 font-medium">
+                                    <Award className="h-3.5 w-3.5" />
+                                    <span>{resolutions.length} Active {resolutions.length === 1 ? "Resolution" : "Resolutions"}</span>
+                                </div>
                             </div>
                         </div>
-                    ))}
 
-                    {resolutions.length === 0 && (
-                        <div className="text-center text-muted-foreground">
-                            {profile.username} hasn't shared any resolutions yet.
-                        </div>
-                    )}
+
+                    </div>
                 </div>
+            </section>
+
+            <main className="container mx-auto px-4 py-12 max-w-5xl">
+                {resolutions.length === 0 ? (
+                    <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
+                        <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Target className="h-8 w-8 text-slate-300" />
+                        </div>
+                        <h3 className="text-lg font-medium text-slate-900 mb-1">No Public Resolutions</h3>
+                        <p className="text-slate-500">{profile.username} hasn't shared any goals yet.</p>
+                    </div>
+                ) : (
+                    <div className="grid gap-6">
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2">My Resolutions 2026</h2>
+                        {resolutions.map((res) => (
+                            <div key={res.id} className="bg-white rounded-xl p-6 md:p-8 border border-slate-100 shadow-sm transition-shadow hover:shadow-md">
+                                <div className="flex items-start justify-between mb-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+                                            <Target className="h-5 w-5 text-emerald-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-xl text-slate-900">{res.title}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-50/50 rounded-xl p-6 border border-slate-100">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h4 className="text-sm font-semibold text-slate-700">Progress (52 Weeks)</h4>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-3">
+                                        <TooltipProvider delayDuration={0}>
+                                            {weeks.map((week) => {
+                                                const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
+                                                const status = res.weeklyLog?.[weekKey];
+
+                                                let colorClass = "bg-slate-200 border-slate-300";
+                                                let statusText = "Upcoming";
+
+                                                if (status === true) {
+                                                    colorClass = "bg-emerald-500 border-emerald-500 shadow-sm shadow-emerald-200";
+                                                    statusText = "Kept it 🔥";
+                                                } else if (status === false) {
+                                                    colorClass = "bg-red-400 border-red-400";
+                                                    statusText = "Missed";
+                                                }
+
+                                                return (
+                                                    <Tooltip key={week}>
+                                                        <TooltipTrigger asChild>
+                                                            <div
+                                                                className={clsx(
+                                                                    "w-4 h-4 rounded-full border shrink-0 transition-transform hover:scale-125 cursor-default",
+                                                                    colorClass
+                                                                )}
+                                                            />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent className="bg-slate-900 text-white border-none shadow-xl">
+                                                            <div className="text-xs">
+                                                                <p className="font-bold mb-0.5">Week {week}</p>
+                                                                <p className="text-slate-300 mb-1.5">{getWeekRange(week)}</p>
+                                                                <p className={clsx(
+                                                                    "font-medium",
+                                                                    status === true ? "text-emerald-400" :
+                                                                        status === false ? "text-red-400" : "text-slate-400"
+                                                                )}>{statusText}</p>
+                                                            </div>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                );
+                                            })}
+                                        </TooltipProvider>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </main>
+
+            <Footer />
         </div>
     );
 }
