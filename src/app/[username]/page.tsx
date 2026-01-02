@@ -179,7 +179,7 @@ export default function PublicProfile() {
                     </div>
                 ) : (
                     <div className="grid gap-6">
-                        <h2 className="text-2xl font-bold text-slate-900 mb-2">My Resolutions 2026</h2>
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">My Resolutions 2026</h2>
                         {resolutions.map((res) => (
                             <div key={res.id} className="bg-white rounded-xl p-6 md:p-8 border border-slate-100 shadow-sm transition-shadow hover:shadow-md">
                                 <div className="flex items-start justify-between mb-6">
