@@ -155,6 +155,7 @@ function HomeContent() {
       if (authMode === "signup") {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await sendEmailVerification(userCredential.user);
+        router.push("/my-resolutions");
         toast.success("Account created! Verification email sent.");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
