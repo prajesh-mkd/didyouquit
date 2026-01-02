@@ -224,7 +224,7 @@ export default function PublicResolutionsPage() {
                     {user && (
                         <div className="flex justify-center mb-12">
                             <p className="text-sm text-emerald-600 font-medium bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-200">
-                                Your resolutions are always kept at the top for you.
+                                ✨ Your resolutions are always pinned to the top for you.
                             </p>
                         </div>
                     )}
