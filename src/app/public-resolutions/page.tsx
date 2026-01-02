@@ -10,6 +10,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Loader2, Globe, Target, Users, Calendar } from "lucide-react";
 import Link from "next/link";
 import { startOfWeek, endOfWeek, format, setWeek, getISOWeek, getYear } from "date-fns";
+import { PublicResolutionCard } from "@/components/resolutions/PublicResolutionCard";
+import { TimelinePills } from "@/components/resolutions/TimelinePills";
 
 interface PublicResolution {
     id: string;
@@ -230,77 +232,19 @@ export default function PublicResolutionsPage() {
                     )}
                     {!user && <div className="mb-12" />}
 
+
+
                     <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
                         {/* Mobile View (Cards) */}
                         <div className="md:hidden divide-y divide-slate-100">
                             {resolutions.map((res) => (
-                                <div key={res.id} className="p-4 space-y-4">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <Link href={`/${res.user?.username || res.uid}`}>
-                                                <Avatar className="h-10 w-10 border border-slate-200">
-                                                    <AvatarImage src={res.user?.photoURL} />
-                                                    <AvatarFallback className="bg-emerald-100 text-emerald-700 text-sm font-bold">
-                                                        {res.user?.username?.slice(0, 2).toUpperCase()}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                            </Link>
-                                            <div>
-                                                <Link href={`/${res.user?.username || res.uid}`} className="font-semibold text-slate-800 hover:text-emerald-700 transition-colors block">
-                                                    {res.user?.username || "Anonymous"}
-                                                </Link>
-                                                <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
-                                                    <Globe className="h-3 w-3" />
-                                                    {res.user?.country || "Unknown"}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div className="flex items-center gap-2 font-medium text-slate-900 mb-2">
-                                            {res.title}
-                                        </div>
-                                    </div>
-
-                                    {/* Wrapped Dots Container */}
-                                    <div className="bg-slate-50/50 rounded-lg p-3 border border-slate-100">
-                                        <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold">Progress (52 Weeks)</p>
-                                        <div className="flex flex-wrap gap-3">
-                                            <TooltipProvider delayDuration={0}>
-                                                {weeks.map((week) => {
-                                                    const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
-                                                    const status = res.weeklyLog?.[weekKey]; // true, false, or undefined
-
-                                                    let colorClass = "bg-slate-200 border-slate-300"; // Default/Null for mobile visibility
-                                                    if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
-                                                    if (status === false) colorClass = "bg-red-400 border-red-400";
-
-                                                    return (
-                                                        <Tooltip key={week}>
-                                                            <TooltipTrigger asChild>
-                                                                <button
-                                                                    type="button"
-                                                                    className={`w-4 h-4 rounded-full border ${colorClass} shrink-0 cursor-default focus:outline-none focus:ring-1 focus:ring-emerald-500`}
-                                                                />
-                                                            </TooltipTrigger>
-                                                            <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
-                                                                <p className="font-bold mb-0.5">Week {week}</p>
-                                                                <p className="text-slate-300 font-normal">{getWeekRange(week)}</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    );
-                                                })}
-                                            </TooltipProvider>
-                                        </div>
-                                    </div>
-                                </div>
+                                <PublicResolutionCard key={res.id} res={res} currentYear={currentYear} />
                             ))}
                         </div>
 
                         {/* Desktop View (Table) */}
                         <div className="hidden md:block overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
+                            <table className="w-full text-left border-collapse table-fixed">
                                 <thead className="bg-emerald-50/50 text-emerald-900">
                                     <tr>
                                         <th className="p-4 pl-10 font-semibold border-b border-emerald-100 w-[250px]">
@@ -309,13 +253,13 @@ export default function PublicResolutionsPage() {
                                                 Member
                                             </div>
                                         </th>
-                                        <th className="p-4 font-semibold border-b border-emerald-100">
+                                        <th className="p-4 font-semibold border-b border-emerald-100 w-[200px]">
                                             <div className="flex items-center gap-2">
                                                 <Target className="h-4 w-4 text-emerald-600" />
                                                 Resolution
                                             </div>
                                         </th>
-                                        <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">
+                                        <th className="p-4 pr-10 font-semibold border-b border-emerald-100">
                                             <div className="flex items-center gap-2">
                                                 <Calendar className="h-4 w-4 text-emerald-600" />
                                                 Progress (52 Weeks)
@@ -350,34 +294,8 @@ export default function PublicResolutionsPage() {
                                                     {res.title}
                                                 </div>
                                             </td>
-                                            <td className="p-4">
-                                                <div className="flex flex-wrap gap-3 max-w-[600px]">
-                                                    <TooltipProvider delayDuration={0}>
-                                                        {weeks.map((week) => {
-                                                            const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
-                                                            const status = res.weeklyLog?.[weekKey]; // true, false, or undefined
-
-                                                            let colorClass = "bg-slate-100 border-slate-200"; // Default/Null
-                                                            if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
-                                                            if (status === false) colorClass = "bg-red-400 border-red-400";
-
-                                                            return (
-                                                                <Tooltip key={week}>
-                                                                    <TooltipTrigger asChild>
-                                                                        <button
-                                                                            type="button"
-                                                                            className={`w-4 h-4 rounded-full border ${colorClass} cursor-default focus:outline-none focus:ring-1 focus:ring-emerald-500`}
-                                                                        />
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
-                                                                        <p className="font-bold mb-0.5">Week {week}</p>
-                                                                        <p className="text-slate-300 font-normal">{getWeekRange(week)}</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            );
-                                                        })}
-                                                    </TooltipProvider>
-                                                </div>
+                                            <td className="p-4 pr-10">
+                                                <TimelinePills resId={res.id} weeklyLog={res.weeklyLog} currentYear={currentYear} />
                                             </td>
                                         </tr>
                                     ))}
