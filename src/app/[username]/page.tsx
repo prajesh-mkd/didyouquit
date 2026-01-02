@@ -20,7 +20,8 @@ import { Footer } from "@/components/layout/Footer";
 import { format, setWeek, startOfWeek, endOfWeek } from "date-fns";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
-import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
+import { EditAvatarDialog } from "@/components/profile/EditAvatarDialog";
+import { EditUsernameDialog } from "@/components/profile/EditUsernameDialog";
 
 interface UserProfile {
     uid: string;
@@ -47,7 +48,8 @@ export default function PublicProfile() {
     const [resolutions, setResolutions] = useState<Resolution[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [isAvatarEditOpen, setIsAvatarEditOpen] = useState(false);
+    const [isUsernameEditOpen, setIsUsernameEditOpen] = useState(false);
 
     const isOwner = currentUser?.uid === profile?.uid;
 
@@ -155,7 +157,7 @@ export default function PublicProfile() {
                             </Avatar>
                             {isOwner && (
                                 <button
-                                    onClick={() => setIsEditOpen(true)}
+                                    onClick={() => setIsAvatarEditOpen(true)}
                                     className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
                                     <Pencil className="h-8 w-8 text-white" />
@@ -171,10 +173,10 @@ export default function PublicProfile() {
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-900"
-                                        onClick={() => setIsEditOpen(true)}
+                                        onClick={() => setIsUsernameEditOpen(true)}
                                     >
                                         <Pencil className="h-4 w-4" />
-                                        <span className="sr-only">Edit Profile</span>
+                                        <span className="sr-only">Edit Username</span>
                                     </Button>
                                 )}
                             </div>
@@ -284,21 +286,25 @@ export default function PublicProfile() {
             <Footer />
 
             {profile && (
-                <EditProfileDialog
-                    open={isEditOpen}
-                    onOpenChange={setIsEditOpen}
-                    currentUsername={profile.username}
-                    currentPhotoURL={profile.photoURL}
-                    onSuccess={(newUsername) => {
-                        // Optimistic update or redirect if username changed
-                        if (newUsername !== profile.username) {
-                            router.push(`/${newUsername}`);
-                        } else {
-                            // If just photo changed, we could refresh, but reloading page or updating state is clearer
+                <>
+                    <EditAvatarDialog
+                        open={isAvatarEditOpen}
+                        onOpenChange={setIsAvatarEditOpen}
+                        currentUsername={profile.username}
+                        currentPhotoURL={profile.photoURL}
+                        onSuccess={() => {
                             window.location.reload();
-                        }
-                    }}
-                />
+                        }}
+                    />
+                    <EditUsernameDialog
+                        open={isUsernameEditOpen}
+                        onOpenChange={setIsUsernameEditOpen}
+                        currentUsername={profile.username}
+                        onSuccess={(newUsername) => {
+                            router.push(`/${newUsername}`);
+                        }}
+                    />
+                </>
             )}
         </div>
     );
