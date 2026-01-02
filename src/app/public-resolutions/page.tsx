@@ -223,8 +223,8 @@ export default function PublicResolutionsPage() {
                     <p className="text-center text-slate-600 mb-4">See what the world is committing to this year.</p>
                     {user && (
                         <div className="flex justify-center mb-12">
-                            <p className="text-sm text-emerald-600 font-medium bg-emerald-50 px-4 py-1.5 rounded-full">
-                                ✨ Your resolutions are always kept at the top for you.
+                            <p className="text-sm text-emerald-600 font-medium bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-200">
+                                Your resolutions are always kept at the top for you.
                             </p>
                         </div>
                     )}
