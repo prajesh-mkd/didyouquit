@@ -218,9 +218,10 @@ export default function PublicProfile() {
                                                 return (
                                                     <Tooltip key={week}>
                                                         <TooltipTrigger asChild>
-                                                            <div
+                                                            <button
+                                                                type="button"
                                                                 className={clsx(
-                                                                    "w-4 h-4 rounded-full border shrink-0 transition-transform hover:scale-125 cursor-default",
+                                                                    "w-4 h-4 rounded-full border shrink-0 transition-transform hover:scale-125 focus:scale-125 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-slate-400",
                                                                     colorClass
                                                                 )}
                                                             />
