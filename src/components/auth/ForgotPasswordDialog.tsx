@@ -48,10 +48,10 @@ export function ForgotPasswordDialog({ open, onOpenChange, defaultEmail = "" }: 
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-md bg-emerald-50/50 backdrop-blur-xl border-emerald-100">
+            <DialogContent className="sm:max-w-md p-8 bg-white shadow-2xl border-slate-100">
                 <DialogHeader className="space-y-4 mb-4 text-center">
-                    <DialogTitle className="text-2xl font-bold">Reset Password</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className="text-3xl font-bold tracking-tight text-slate-900">Reset Password</DialogTitle>
+                    <DialogDescription className="text-base text-slate-600">
                         {sent
                             ? "Check your email for a link to reset your password."
                             : "Enter your email address and we'll send you a link to reset your password."}
@@ -64,7 +64,7 @@ export function ForgotPasswordDialog({ open, onOpenChange, defaultEmail = "" }: 
                             onClick={handleClose}
                             className="w-full h-12 text-base bg-emerald-500 hover:bg-emerald-600 text-white"
                         >
-                            Back to Log In
+                            Close
                         </Button>
                     </div>
                 ) : (

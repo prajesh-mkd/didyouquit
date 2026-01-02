@@ -48,7 +48,7 @@ export function Header() {
                         </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                                <Button variant="ghost" className="relative h-8 w-8">
                                     <Avatar className="h-8 w-8">
                                         <AvatarImage src={userData?.photoURL} alt={userData?.username || "User"} />
                                         <AvatarFallback>{userData?.username?.slice(0, 2).toUpperCase() || "U"}</AvatarFallback>
@@ -70,6 +70,9 @@ export function Header() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
                                     <Link href={`/${userData?.username || user.uid}`}>Public Profile</Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/settings">Edit Profile</Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={handleSignOut}>

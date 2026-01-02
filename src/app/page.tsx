@@ -21,6 +21,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendEmailVerification,
+  getAdditionalUserInfo
 } from "firebase/auth";
 import { doc, getDoc, collection, query, limit, getDocs } from "firebase/firestore";
 import { toast } from "sonner";
@@ -136,11 +137,18 @@ function HomeContent() {
     setAuthLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
       setAuthLoading(false);
       setAuthOpen(false);
-      router.push("/my-resolutions");
-      toast.success(authMode === "signup" ? "Account created! Welcome." : "Welcome back!");
+
+      const details = getAdditionalUserInfo(result);
+      if (details?.isNewUser) {
+        router.push("/onboarding");
+        toast.success("Account created! Let's set up your profile.");
+      } else {
+        router.push("/my-resolutions");
+        toast.success(authMode === "signup" ? "Welcome! Account already exists." : "Welcome back!");
+      }
     } catch (error: any) {
       const msg = getFriendlyErrorMessage(error);
       if (msg) toast.error(msg);
@@ -155,7 +163,7 @@ function HomeContent() {
       if (authMode === "signup") {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await sendEmailVerification(userCredential.user);
-        router.push("/my-resolutions");
+        router.push("/onboarding");
         toast.success("Account created! Verification email sent.");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
@@ -192,14 +200,14 @@ function HomeContent() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Button
             size="lg"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-14 text-lg rounded-full shadow-lg shadow-emerald-200 w-full sm:w-auto"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-14 text-lg shadow-lg shadow-emerald-200 w-full sm:w-auto"
             onClick={() => router.push("/public-resolutions")}
           >
             View Public Resolutions 2026
           </Button>
           <Button
             variant="outline"
-            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-14 h-14 text-lg rounded-full w-full sm:w-auto"
+            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-14 h-14 text-lg w-full sm:w-auto"
             onClick={() => user ? router.push("/my-resolutions") : openAuth("signup")}
           >
             {user ? "View My Resolutions" : "Add Yours Anonymously"}<ArrowRight className="ml-0.5 h-5 w-5" />
@@ -407,7 +415,7 @@ function HomeContent() {
           )}
 
           <div className="mt-12 text-center">
-            <Button size="lg" className="bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 rounded-full" asChild>
+            <Button size="lg" className="bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50" asChild>
               <Link href="/public-resolutions">
                 View All Resolutions <ArrowRight className="ml-0.5 h-4 w-4" />
               </Link>
@@ -511,7 +519,7 @@ function HomeContent() {
 
             {authMode === "signup" && (
               <p className="text-xs text-center text-slate-400 mt-4 px-4 leading-relaxed">
-                By clicking continue, you agree to our{" "}
+                By signing up, you agree to our{" "}
                 <Link href="/terms" className="underline hover:text-emerald-600" target="_blank">Terms of Service</Link>
                 {" "}and{" "}
                 <Link href="/privacy" className="underline hover:text-emerald-600" target="_blank">Privacy Policy</Link>.

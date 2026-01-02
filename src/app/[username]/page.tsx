@@ -20,9 +20,6 @@ import { Footer } from "@/components/layout/Footer";
 import { format, setWeek, startOfWeek, endOfWeek } from "date-fns";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
-import { EditAvatarDialog } from "@/components/profile/EditAvatarDialog";
-import { EditUsernameDialog } from "@/components/profile/EditUsernameDialog";
-
 interface UserProfile {
     uid: string;
     username: string;
@@ -48,8 +45,6 @@ export default function PublicProfile() {
     const [resolutions, setResolutions] = useState<Resolution[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [isAvatarEditOpen, setIsAvatarEditOpen] = useState(false);
-    const [isUsernameEditOpen, setIsUsernameEditOpen] = useState(false);
 
     const isOwner = currentUser?.uid === profile?.uid;
 
@@ -144,9 +139,9 @@ export default function PublicProfile() {
 
             {/* Profile Header */}
             <section className="bg-white border-b border-emerald-100 relative overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-br from-emerald-50 to-teal-50/50" />
+                <div className="absolute top-0 inset-x-0 h-16 bg-gradient-to-br from-emerald-50 to-teal-50/50" />
 
-                <div className="container mx-auto px-4 pt-20 pb-12 relative">
+                <div className="container mx-auto px-4 pt-10 pb-12 relative">
                     <div className="flex flex-col items-center gap-6">
                         <div className="relative group">
                             <Avatar className="h-32 w-32 border-4 border-white shadow-xl bg-white">
@@ -155,30 +150,11 @@ export default function PublicProfile() {
                                     {profile.username[0].toUpperCase()}
                                 </AvatarFallback>
                             </Avatar>
-                            {isOwner && (
-                                <button
-                                    onClick={() => setIsAvatarEditOpen(true)}
-                                    className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <Pencil className="h-8 w-8 text-white" />
-                                </button>
-                            )}
                         </div>
 
                         <div className="flex-1 text-center mb-2">
-                            <div className="flex items-center justify-center gap-3 mb-2">
+                            <div className="flex items-center justify-center gap-1.5 mb-2">
                                 <h1 className="text-3xl font-bold text-slate-900">{profile.username}</h1>
-                                {isOwner && (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-900"
-                                        onClick={() => setIsUsernameEditOpen(true)}
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                        <span className="sr-only">Edit Username</span>
-                                    </Button>
-                                )}
                             </div>
                             <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
                                 <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-full">
@@ -285,27 +261,7 @@ export default function PublicProfile() {
 
             <Footer />
 
-            {profile && (
-                <>
-                    <EditAvatarDialog
-                        open={isAvatarEditOpen}
-                        onOpenChange={setIsAvatarEditOpen}
-                        currentUsername={profile.username}
-                        currentPhotoURL={profile.photoURL}
-                        onSuccess={() => {
-                            window.location.reload();
-                        }}
-                    />
-                    <EditUsernameDialog
-                        open={isUsernameEditOpen}
-                        onOpenChange={setIsUsernameEditOpen}
-                        currentUsername={profile.username}
-                        onSuccess={(newUsername) => {
-                            router.push(`/${newUsername}`);
-                        }}
-                    />
-                </>
-            )}
+
         </div>
     );
 }

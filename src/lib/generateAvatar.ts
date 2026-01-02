@@ -1,51 +1,137 @@
 export const generateAvatar = (seed: string): string => {
-    // Simple hash function to generate deterministic numbers from seed
-    const hash = (str: string) => {
-        let h = 0;
+    // 1. Robust Hash Function (MurmurHash3-like or FNV-1a)
+    const fnv1a = (str: string) => {
+        let hash = 0x811c9dc5;
         for (let i = 0; i < str.length; i++) {
-            h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+            hash ^= str.charCodeAt(i);
+            hash = Math.imul(hash, 0x01000193);
         }
-        return h;
+        return hash >>> 0;
     };
 
-    const h = Math.abs(hash(seed));
+    // 2. Random Number Generator (seeded)
+    const mulberry32 = (a: number) => {
+        return () => {
+            let t = a += 0x6D2B79F5;
+            t = Math.imul(t ^ t >>> 15, t | 1);
+            t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+    };
 
-    // Curated emerald/teal based color palette to match theme
-    const bgColors = [
-        ["#ecfdf5", "#059669"], // Emerald 50/600
-        ["#f0fdf4", "#16a34a"], // Green 50/600
-        ["#f0f9ff", "#0284c7"], // Sky 50/600
-        ["#eff6ff", "#2563eb"], // Blue 50/600
-        ["#faf5ff", "#9333ea"], // Purple 50/600
-        ["#fff1f2", "#e11d48"], // Rose 50/600
-        ["#fff7ed", "#ea580c"], // Orange 50/600
-        ["#fefce8", "#ca8a04"], // Yellow 50/600
-        ["#f8fafc", "#475569"], // Slate 50/600
+    const hashVal = fnv1a(seed);
+    const random = mulberry32(hashVal);
+
+    // 3. Vibrant Gradient Palettes (High Contrast & Fluid)
+    const palettes = [
+        ["#4158D0", "#C850C0", "#FFCC70"], // 0: Peach/Purple/Blue
+        ["#0093E9", "#80D0C7", "#ffffff"], // 1: Cyan/White
+        ["#8EC5FC", "#E0C3FC", "#FFFFFF"], // 2: Lavender/Blue
+        ["#D9AFD9", "#97D9E1", "#FFFFFF"], // 3: Pink/Teal
+        ["#FBAB7E", "#F7CE68", "#FFFFFF"], // 4: Sunset
+        ["#85FFBD", "#FFFB7D", "#FFFFFF"], // 5: Lime/Yellow
+        ["#FF9A9E", "#FECFEF", "#FFFFFF"], // 6: Warm Pink
+        ["#FA8BFF", "#2BD2FF", "#2BFF88"], // 7: Neon
+        ["#FF3CAC", "#784BA0", "#2B86C5"], // 8: Berry
+        ["#21D4FD", "#B721FF", "#FFFFFF"]  // 9: Electric
     ];
 
-    const idx = h % bgColors.length;
-    const [bg, fg] = bgColors[idx];
+    const palette = palettes[Math.floor(random() * palettes.length)];
 
-    // Generate some deterministic geometry based on seed
-    const shapeType = h % 3; // 0=circle, 1=rect, 2=triangle
+    // 4. Generate Organic Blob Paths
+    // We create a "blob" by connecting random points around a circle with Bezier curves
+    const generateBlob = (cx: number, cy: number, size: number, complexity: number, irregularity: number) => {
+        const points = [];
+        const angleStep = (Math.PI * 2) / complexity;
 
-    let shapeSvg = "";
-    if (shapeType === 0) {
-        shapeSvg = `<circle cx="50" cy="50" r="25" fill="${fg}" />`;
-    } else if (shapeType === 1) {
-        shapeSvg = `<rect x="25" y="25" width="50" height="50" rx="8" fill="${fg}" />`;
-    } else {
-        shapeSvg = `<polygon points="50,25 75,75 25,75" fill="${fg}" />`;
+        for (let i = 0; i < complexity; i++) {
+            const angle = (i * angleStep) + (random() * 0.2); // slight angle jitter
+            const dist = size * (0.8 + (random() * irregularity)); // varying radius
+            const x = cx + Math.cos(angle) * dist;
+            const y = cy + Math.sin(angle) * dist;
+            points.push({ x, y });
+        }
+
+        // Generate Path Command (Smooth Catmull-Rom or Quadratic approximations)
+        // Simple Quadratic Bezier loop
+        let d = `M ${points[0].x} ${points[0].y}`;
+        for (let i = 0; i < points.length; i++) {
+            const p0 = points[i];
+            const p1 = points[(i + 1) % points.length];
+            // Control point is halfway between
+            const cpX = (p0.x + p1.x) / 2;
+            const cpY = (p0.y + p1.y) / 2;
+            // For a smooth blob, we actually curve TO the midpoint, using the point as control? 
+            // Better: use midpoints as knots and P_i as controls.
+            // Simplified: Quadratic curve to next point midpoint
+        }
+
+        // Easier: Cubic Bezier smoothing
+        // Let's create a smooth path string manually
+        // Start from midpoint of last and first
+        const pLast = points[points.length - 1];
+        const pFirst = points[0];
+        const midX = (pLast.x + pFirst.x) / 2;
+        const midY = (pLast.y + pFirst.y) / 2;
+        d = `M ${midX} ${midY}`;
+
+        for (let i = 0; i < points.length; i++) {
+            const p1 = points[i];
+            const p2 = points[(i + 1) % points.length];
+            const nextMidX = (p1.x + p2.x) / 2;
+            const nextMidY = (p1.y + p2.y) / 2;
+            d += ` Q ${p1.x} ${p1.y} ${nextMidX} ${nextMidY}`;
+        }
+
+        return d;
+    };
+
+    // Generate 3-5 layers of blobs
+    const layerCount = 3 + Math.floor(random() * 3);
+    let layersSvg = "";
+
+    // Background Rect
+    layersSvg += `<rect width="100" height="100" fill="${palette[0]}" />`;
+
+    for (let i = 0; i < layerCount; i++) {
+        const color = palette[Math.floor(random() * palette.length)];
+        const size = 30 + (random() * 40);
+        const x = 20 + (random() * 60);
+        const y = 20 + (random() * 60);
+        const complexity = 3 + Math.floor(random() * 3); // 3-5 points
+        const opacity = 0.5 + (random() * 0.5);
+
+        const path = generateBlob(x, y, size, complexity, 0.4);
+
+        // Random blend modes or just opacity
+        layersSvg += `<path d="${path}" fill="${color}" fill-opacity="${opacity}" style="mix-blend-mode: multiply;" />`;
     }
 
-    // SVG Template
+    // Overlay a Gradient for unification
+    const gradId = `grad_${hashVal}`;
+    const filterId = `noise_${hashVal}`;
+
     const svg = `
     <svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100" height="100" fill="${bg}" />
-        ${shapeSvg}
+        <defs>
+            <filter id="${filterId}">
+                <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" />
+                <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" />
+                <feComposite operator="in" in2="SourceGraphic" result="startNoise" />
+                <feBlend mode="overlay" in="startNoise" in2="SourceGraphic" />
+            </filter>
+            <linearGradient id="${gradId}" x1="0%" y1="0%" x2="100%" y2="100%">
+                 <stop offset="0%" style="stop-color:${palette[0]}00" />
+                 <stop offset="100%" style="stop-color:${palette[palette.length - 1]}66" />
+            </linearGradient>
+        </defs>
+        
+        <g filter="url(#${filterId})">
+            ${layersSvg}
+            <rect width="100" height="100" fill="url(#${gradId})" />
+        </g>
     </svg>
     `.trim();
 
-    // Convert to Data URI
-    return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+    return `data:image/svg+xml;base64,${btoa(svg)}`;
 };

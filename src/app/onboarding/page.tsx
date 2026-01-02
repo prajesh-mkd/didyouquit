@@ -28,10 +28,48 @@ import { Loader2, Check, X } from "lucide-react";
 import { getFriendlyErrorMessage } from "@/lib/error-utils";
 import { generateAvatar } from "@/lib/generateAvatar";
 
+import { IMAGINATIVE_USERNAMES } from "@/lib/constants/usernames";
+
 const COUNTRIES = [
-    "United States", "United Kingdom", "Canada", "Australia", "India",
-    "Germany", "France", "Japan", "Brazil", "Other"
+    "United States",
+    // ... (rest of countries list is unchanged, but included for context if needed, though replace_file_content targets ranges)
+
+    "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan",
+    "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
+    "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo (Congo-Brazzaville)", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czechia",
+    "Democratic Republic of the Congo", "Denmark", "Djibouti", "Dominica", "Dominican Republic",
+    "East Timor", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia",
+    "Fiji", "Finland", "France",
+    "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana",
+    "Haiti", "Honduras", "Hungary",
+    "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Ivory Coast",
+    "Jamaica", "Japan", "Jordan",
+    "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan",
+    "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg",
+    "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar",
+    "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway",
+    "Oman",
+    "Pakistan", "Palau", "Palestine State", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal",
+    "Qatar",
+    "Romania", "Russia", "Rwanda",
+    "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria",
+    "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu",
+    "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "Uruguay", "Uzbekistan",
+    "Vanuatu", "Vatican City", "Venezuela", "Vietnam",
+    "Yemen",
+    "Zambia", "Zimbabwe"
 ];
+
+const checkUsernameAvailability = async (name: string): Promise<boolean> => {
+    try {
+        const q = query(collection(db, "users"), where("username", "==", name));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.empty;
+    } catch (error) {
+        console.error("Error checking username:", error);
+        return false;
+    }
+};
 
 export default function Onboarding() {
     const { user, userData, loading, refreshUserData } = useAuth();
@@ -50,9 +88,33 @@ export default function Onboarding() {
             } else if (userData) {
                 router.push("/my-resolutions");
             } else {
-                // Generate random username
-                const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-                setUsername(`user${randomSuffix}`);
+                // Generate username with iterative length strategy
+                const generateUsername = async () => {
+                    const randomName = IMAGINATIVE_USERNAMES[Math.floor(Math.random() * IMAGINATIVE_USERNAMES.length)];
+
+                    // Try 2 digits
+                    let suffix = Math.floor(Math.random() * 90) + 10;
+                    let candidate = `${randomName}${suffix}`;
+                    if (await checkUsernameAvailability(candidate)) {
+                        setUsername(candidate);
+                        return;
+                    }
+
+                    // Try 3 digits
+                    suffix = Math.floor(Math.random() * 900) + 100;
+                    candidate = `${randomName}${suffix}`;
+                    if (await checkUsernameAvailability(candidate)) {
+                        setUsername(candidate);
+                        return;
+                    }
+
+                    // Try 4 digits (Final fallback)
+                    suffix = Math.floor(Math.random() * 9000) + 1000;
+                    candidate = `${randomName}${suffix}`;
+                    setUsername(candidate);
+                };
+
+                generateUsername();
             }
         }
     }, [user, userData, loading, router]);
@@ -66,11 +128,10 @@ export default function Onboarding() {
             }
             setIsChecking(true);
             try {
-                const q = query(collection(db, "users"), where("username", "==", username));
-                const querySnapshot = await getDocs(q);
-                setIsAvailable(querySnapshot.empty);
+                const available = await checkUsernameAvailability(username);
+                setIsAvailable(available);
             } catch (error) {
-                console.error("Error checking username:", error);
+                console.error(error);
             } finally {
                 setIsChecking(false);
             }
@@ -101,7 +162,7 @@ export default function Onboarding() {
                 uid: user.uid,
                 username,
                 country,
-                photoURL: user.photoURL || generateAvatar(username),
+                photoURL: generateAvatar(username),
                 createdAt: serverTimestamp(),
             });
             await refreshUserData();
@@ -153,8 +214,10 @@ export default function Onboarding() {
                                     ) : null}
                                 </div>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                This will be your unique handle.
+                            <p className={`text-xs ${isAvailable === false ? "text-red-500 font-medium" : "text-muted-foreground"}`}>
+                                {isAvailable === false
+                                    ? "This username is already taken. Please try another."
+                                    : "This will be your unique handle."}
                             </p>
                         </div>
 
@@ -174,8 +237,8 @@ export default function Onboarding() {
                             </Select>
                         </div>
 
-                        <Button type="submit" className="w-full" disabled={isSubmitting || !isAvailable}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Start Tracking"}
+                        <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-lg font-medium shadow-lg shadow-emerald-200" disabled={isSubmitting || !isAvailable}>
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Let's Go!"}
                         </Button>
                     </form>
                 </CardContent>

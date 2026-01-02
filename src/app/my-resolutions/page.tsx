@@ -38,6 +38,7 @@ import { DeleteConfirmDialog } from "@/components/dashboard/DeleteConfirmDialog"
 import { EditResolutionDialog } from "@/components/dashboard/EditResolutionDialog";
 import { format, setWeek, startOfWeek, endOfWeek } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { EmailVerificationBanner } from "@/components/dashboard/EmailVerificationBanner";
 
 interface Resolution {
     id: string;
@@ -61,10 +62,14 @@ export default function Dashboard() {
     const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
-        if (!authLoading && !user) {
-            router.push("/");
+        if (!authLoading) {
+            if (!user) {
+                router.push("/");
+            } else if (!userData) {
+                router.push("/onboarding");
+            }
         }
-    }, [authLoading, user, router]);
+    }, [authLoading, user, userData, router]);
 
     useEffect(() => {
         if (!user) return;
@@ -177,6 +182,8 @@ export default function Dashboard() {
         <div className="min-h-screen flex flex-col bg-[#F0FDF4]">
             <Header />
             <main className="container py-8 px-4 flex-1">
+
+                {user && <EmailVerificationBanner user={user} />}
 
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
