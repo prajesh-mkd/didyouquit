@@ -104,7 +104,7 @@ export default function Onboarding() {
                 createdAt: serverTimestamp(),
             });
             await refreshUserData();
-            router.push("/dashboard");
+            router.push("/my-resolutions");
             toast.success("Welcome aboard!");
         } catch (error: any) {
             const msg = getFriendlyErrorMessage(error);

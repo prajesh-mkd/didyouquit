@@ -41,7 +41,7 @@ export function Header() {
                                 Public Resolutions 2026
                             </Link>
                             {user && (
-                                <Link href="/dashboard" className="text-sm font-medium hover:text-emerald-600 transition-colors">
+                                <Link href="/my-resolutions" className="text-sm font-medium hover:text-emerald-600 transition-colors">
                                     My Resolutions
                                 </Link>
                             )}
