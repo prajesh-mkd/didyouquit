@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Globe, Calendar, Target, Award, MapPin } from "lucide-react";
+import { Loader2, Globe, Calendar, Target, Award, MapPin, Pencil } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import {
@@ -18,6 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { format, setWeek, startOfWeek, endOfWeek } from "date-fns";
+import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
+import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 
 interface UserProfile {
     uid: string;
@@ -36,12 +39,17 @@ interface Resolution {
 
 export default function PublicProfile() {
     const params = useParams();
+    const router = useRouter();
     const username = params.username as string;
+    const { user: currentUser } = useAuth();
 
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [resolutions, setResolutions] = useState<Resolution[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [isEditOpen, setIsEditOpen] = useState(false);
+
+    const isOwner = currentUser?.uid === profile?.uid;
 
     // Date Helpers
     const currentYear = new Date().getFullYear();
@@ -138,15 +146,38 @@ export default function PublicProfile() {
 
                 <div className="container mx-auto px-4 pt-20 pb-12 relative">
                     <div className="flex flex-col items-center gap-6">
-                        <Avatar className="h-32 w-32 border-4 border-white shadow-xl bg-white">
-                            <AvatarImage src={profile.photoURL} />
-                            <AvatarFallback className="text-3xl bg-emerald-100 text-emerald-700 font-bold">
-                                {profile.username[0].toUpperCase()}
-                            </AvatarFallback>
-                        </Avatar>
+                        <div className="relative group">
+                            <Avatar className="h-32 w-32 border-4 border-white shadow-xl bg-white">
+                                <AvatarImage src={profile.photoURL} />
+                                <AvatarFallback className="text-3xl bg-emerald-100 text-emerald-700 font-bold">
+                                    {profile.username[0].toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                            {isOwner && (
+                                <button
+                                    onClick={() => setIsEditOpen(true)}
+                                    className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <Pencil className="h-8 w-8 text-white" />
+                                </button>
+                            )}
+                        </div>
 
                         <div className="flex-1 text-center mb-2">
-                            <h1 className="text-3xl font-bold text-slate-900 mb-2">{profile.username}</h1>
+                            <div className="flex items-center justify-center gap-3 mb-2">
+                                <h1 className="text-3xl font-bold text-slate-900">{profile.username}</h1>
+                                {isOwner && (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-900"
+                                        onClick={() => setIsEditOpen(true)}
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                        <span className="sr-only">Edit Profile</span>
+                                    </Button>
+                                )}
+                            </div>
                             <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
                                 <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-full">
                                     <Globe className="h-3.5 w-3.5" />
@@ -249,7 +280,26 @@ export default function PublicProfile() {
                 )}
             </main>
 
+
             <Footer />
+
+            {profile && (
+                <EditProfileDialog
+                    open={isEditOpen}
+                    onOpenChange={setIsEditOpen}
+                    currentUsername={profile.username}
+                    currentPhotoURL={profile.photoURL}
+                    onSuccess={(newUsername) => {
+                        // Optimistic update or redirect if username changed
+                        if (newUsername !== profile.username) {
+                            router.push(`/${newUsername}`);
+                        } else {
+                            // If just photo changed, we could refresh, but reloading page or updating state is clearer
+                            window.location.reload();
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }
