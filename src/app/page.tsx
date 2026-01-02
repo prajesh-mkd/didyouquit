@@ -139,6 +139,7 @@ function HomeContent() {
       await signInWithPopup(auth, provider);
       setAuthLoading(false);
       setAuthOpen(false);
+      router.push("/my-resolutions");
       toast.success(authMode === "signup" ? "Account created! Welcome." : "Welcome back!");
     } catch (error: any) {
       const msg = getFriendlyErrorMessage(error);
@@ -157,6 +158,7 @@ function HomeContent() {
         toast.success("Account created! Verification email sent.");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
+        router.push("/my-resolutions");
         toast.success("Welcome back!");
       }
       setAuthLoading(false);
