@@ -103,19 +103,19 @@ export function EmailVerificationBanner({ user }: Props) {
 
     // Standard Banner
     return (
-        <Alert className="mb-6 border-blue-200 bg-blue-50 text-blue-900">
-            <Mail className="h-4 w-4 text-blue-600" />
-            <AlertTitle className="font-bold text-blue-800">Please verify your email</AlertTitle>
+        <Alert className="mb-6 border-emerald-200 bg-emerald-50 text-emerald-900">
+            <Mail className="h-4 w-4 text-emerald-600" />
+            <AlertTitle className="font-bold text-emerald-800">Please verify your email</AlertTitle>
             <AlertDescription className="mt-2 flex flex-col sm:flex-row sm:items-center gap-3">
-                <span className="text-blue-700">
-                    We sent a link to <strong>{user.email}</strong>. Please check your inbox (and spam).
+                <span className="text-emerald-700">
+                    We sent a verification link to <strong>{user.email}</strong>. Check your inbox. If it’s not there, check spam.
                 </span>
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={handleResend}
                     disabled={sending || sent}
-                    className="bg-white border-blue-200 text-blue-700 hover:bg-blue-100 h-8 whitespace-nowrap w-fit"
+                    className="bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-100 h-8 whitespace-nowrap w-fit"
                 >
                     {sent ? "Email Sent" : (sending ? "Sending..." : "Resend Link")}
                 </Button>

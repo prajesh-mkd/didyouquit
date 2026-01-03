@@ -1,0 +1,522 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { Header } from "@/components/layout/Header";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Loader2, ArrowLeft, Send, MessageSquare, Reply, Trash2, Pencil, MoreHorizontal } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, deleteDoc } from "firebase/firestore";
+import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+
+interface Comment {
+    id: string;
+    content: string;
+    author: {
+        uid: string;
+        username: string;
+        photoURL?: string;
+    };
+    createdAt: any;
+    parentId?: string | null;
+    replies?: Comment[];
+}
+
+interface ForumTopic {
+    id: string;
+    title: string;
+    content: string;
+    author: {
+        uid: string;
+        username: string;
+        photoURL?: string;
+    };
+    createdAt: any;
+    commentCount: number;
+}
+
+function CommentItem({
+    comment,
+    onReply,
+    replyingTo,
+    replyContent,
+    setReplyContent,
+    onSubmitReply,
+    submitting,
+    user,
+    onDelete,
+    onEdit
+}: any) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState(comment.content);
+    const [editSubmitting, setEditSubmitting] = useState(false);
+
+    const handleSaveEdit = async () => {
+        if (!editContent.trim()) return;
+        setEditSubmitting(true);
+        await onEdit(comment.id, editContent);
+        setEditSubmitting(false);
+        setIsEditing(false);
+    }
+
+    return (
+        <div className="flex gap-3 p-4 bg-white rounded-lg border border-slate-100 mb-3 group">
+            <Avatar className="h-8 w-8">
+                <AvatarImage src={comment.author.photoURL} />
+                <AvatarFallback>{comment.author.username?.[0]?.toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-baseline justify-between gap-2 mb-1">
+                    <div className="flex items-baseline gap-2">
+                        <Link href={`/${comment.author.username}`} className="font-semibold text-sm text-slate-900 hover:text-emerald-600 hover:underline transition-colors" onClick={(e) => e.stopPropagation()}>
+                            {comment.author.username}
+                        </Link>
+                        <span className="text-xs text-slate-400">
+                            {comment.createdAt?.seconds ? formatDistanceToNow(new Date(comment.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                        </span>
+                    </div>
+
+                    {user && user.uid === comment.author.uid && !isEditing && (
+                        <div className="flex items-center gap-1">
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-slate-400 hover:text-emerald-600" onClick={() => setIsEditing(true)}>
+                                <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-slate-400 hover:text-red-600" onClick={() => onDelete(comment.id)}>
+                                <Trash2 className="h-3 w-3" />
+                            </Button>
+                        </div>
+                    )}
+                </div>
+
+                {isEditing ? (
+                    <div className="mb-2">
+                        <Textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className="text-sm min-h-[60px] mb-2"
+                        />
+                        <div className="flex gap-2">
+                            <Button size="sm" onClick={handleSaveEdit} disabled={editSubmitting} className="h-7 text-xs bg-emerald-600">
+                                {editSubmitting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null} Save
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} className="h-7 text-xs">Cancel</Button>
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-slate-700 text-sm whitespace-pre-wrap mb-2">{comment.content}</p>
+                )}
+
+                {!isEditing && user && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-slate-400 hover:text-emerald-600 text-xs"
+                        onClick={() => onReply(comment.id)}
+                    >
+                        <Reply className="h-3 w-3 mr-1" /> Reply
+                    </Button>
+                )}
+
+                {replyingTo === comment.id && (
+                    <div className="mt-3 pl-4 border-l-2 border-slate-100">
+                        <Textarea
+                            placeholder="Write a reply..."
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            className="text-sm min-h-[60px] mb-2"
+                            autoFocus
+                        />
+                        <div className="flex gap-2">
+                            <Button
+                                size="sm"
+                                className="h-7 text-xs bg-emerald-600"
+                                disabled={submitting || !replyContent.trim()}
+                                onClick={(e) => onSubmitReply(e, comment.id)}
+                            >
+                                {submitting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null} Reply
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onReply(null)}>Cancel</Button>
+                        </div>
+                    </div>
+                )}
+
+                {comment.replies && comment.replies.length > 0 && (
+                    <div className="mt-4 pl-4 border-l-2 border-emerald-50 space-y-3">
+                        {comment.replies.map((reply: any) => (
+                            <CommentItem
+                                key={reply.id}
+                                comment={reply}
+                                onReply={onReply}
+                                replyingTo={replyingTo}
+                                replyContent={replyContent}
+                                setReplyContent={setReplyContent}
+                                onSubmitReply={onSubmitReply}
+                                submitting={submitting}
+                                user={user}
+                                onDelete={onDelete}
+                                onEdit={onEdit}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+export default function TopicPage() {
+    const { topicId } = useParams();
+    const { user, userData } = useAuth();
+    const router = useRouter();
+
+    const [topic, setTopic] = useState<ForumTopic | null>(null);
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+
+    // Reply State
+    const [replyingTo, setReplyingTo] = useState<string | null>(null);
+    const [replyContent, setReplyContent] = useState("");
+    const [newComment, setNewComment] = useState("");
+
+    // Edit Topic State
+    const [isEditTopicOpen, setIsEditTopicOpen] = useState(false);
+    const [editTopicTitle, setEditTopicTitle] = useState("");
+    const [editTopicContent, setEditTopicContent] = useState("");
+    const [isEditingTopic, setIsEditingTopic] = useState(false);
+
+    // Fetch Topic
+    useEffect(() => {
+        if (!topicId) return;
+        const fetchTopic = async () => {
+            try {
+                const docRef = doc(db, "forum_topics", topicId as string);
+                const unsubscribe = onSnapshot(docRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        setTopic({ id: docSnap.id, ...docSnap.data() } as ForumTopic);
+                        setEditTopicTitle(docSnap.data().title);
+                        setEditTopicContent(docSnap.data().content);
+                    } else {
+                        // Only redirect if we know it really doesn't exist AND we aren't just loading
+                        // onSnapshot might fire with !exists if deleted
+                        // But we handle delete redirect manually
+                    }
+                    setLoading(false);
+                });
+                return () => unsubscribe();
+            } catch (error) {
+                console.error(error);
+                setLoading(false);
+            }
+        };
+        fetchTopic();
+    }, [topicId, router]);
+
+    // Fetch Comments Real-time
+    useEffect(() => {
+        if (!topicId) return;
+        const q = query(
+            collection(db, "forum_topics", topicId as string, "comments"),
+            orderBy("createdAt", "asc")
+        );
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const allComments: Comment[] = [];
+            snapshot.forEach((doc) => {
+                allComments.push({ id: doc.id, ...doc.data() } as Comment);
+            });
+
+            // Build Tree
+            const commentMap = new Map<string, Comment>();
+            allComments.forEach(c => {
+                c.replies = [];
+                commentMap.set(c.id, c);
+            });
+
+            const rootComments: Comment[] = [];
+            allComments.forEach(c => {
+                if (c.parentId && commentMap.has(c.parentId)) {
+                    commentMap.get(c.parentId)!.replies!.push(c);
+                } else {
+                    rootComments.push(c);
+                }
+            });
+
+            setComments(rootComments);
+        });
+        return () => unsubscribe();
+    }, [topicId]);
+
+    const handlePostComment = async (e: React.FormEvent, parentId: string | null = null) => {
+        e.preventDefault();
+        const content = parentId ? replyContent : newComment;
+
+        if (!user || !content.trim() || !topicId) return;
+
+        setSubmitting(true);
+        try {
+            await addDoc(collection(db, "forum_topics", topicId as string, "comments"), {
+                content: content,
+                parentId: parentId,
+                author: {
+                    uid: user.uid,
+                    username: userData?.username || "Anonymous",
+                    photoURL: userData?.photoURL || null
+                },
+                createdAt: serverTimestamp()
+            });
+
+            await updateDoc(doc(db, "forum_topics", topicId as string), {
+                commentCount: increment(1)
+            });
+
+            if (parentId) {
+                setReplyContent("");
+                setReplyingTo(null);
+            } else {
+                setNewComment("");
+            }
+            toast.success("Comment added");
+        } catch (error) {
+            toast.error("Failed to post comment");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleDeleteComment = async (commentId: string) => {
+        if (!confirm("Are you sure you want to delete this comment?")) return;
+        try {
+            await deleteDoc(doc(db, "forum_topics", topicId as string, "comments", commentId));
+
+            // Fix: Decrement comment count on delete
+            await updateDoc(doc(db, "forum_topics", topicId as string), {
+                commentCount: increment(-1)
+            });
+
+            toast.success("Comment deleted");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete comment");
+        }
+    };
+
+    const handleEditComment = async (commentId: string, newContent: string) => {
+        try {
+            await updateDoc(doc(db, "forum_topics", topicId as string, "comments", commentId), {
+                content: newContent
+            });
+            toast.success("Comment updated");
+        } catch (error) {
+            toast.error("Failed to update comment");
+        }
+    };
+
+    const handleDeleteTopic = async () => {
+        if (!confirm("Are you sure? This will delete the post and all its comments.")) return;
+        try {
+            await deleteDoc(doc(db, "forum_topics", topicId as string));
+            toast.success("Post deleted");
+            router.push("/forums");
+        } catch (error) {
+            toast.error("Failed to delete post");
+        }
+    };
+
+    const handleUpdateTopic = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editTopicTitle.trim() || !editTopicContent.trim()) return;
+
+        setIsEditingTopic(true);
+        try {
+            await updateDoc(doc(db, "forum_topics", topicId as string), {
+                title: editTopicTitle,
+                content: editTopicContent
+            });
+            setIsEditTopicOpen(false);
+            toast.success("Post updated");
+        } catch (error) {
+            toast.error("Failed to update post");
+        } finally {
+            setIsEditingTopic(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-[#F0FDF4]">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+            </div>
+        );
+    }
+
+    if (!topic) return null;
+
+    return (
+        <div className="min-h-screen flex flex-col bg-[#F0FDF4]">
+            <Header />
+            <main className="container py-8 px-4 flex-1 max-w-4xl mx-auto">
+                <Link href="/forums" className="inline-flex items-center text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
+                    <ArrowLeft className="h-4 w-4 mr-1" /> Back to Forums
+                </Link>
+
+                {/* Main Topic Card */}
+                <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-8 group relative">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10 border border-slate-100">
+                                <AvatarImage src={topic.author.photoURL} />
+                                <AvatarFallback>{topic.author.username?.[0]?.toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <Link href={`/${topic.author.username}`} className="font-semibold text-slate-900 hover:text-emerald-600 hover:underline transition-colors">
+                                    {topic.author.username}
+                                </Link>
+                                <div className="text-xs text-slate-500">
+                                    {topic.createdAt?.seconds ? formatDistanceToNow(new Date(topic.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                                </div>
+                            </div>
+                        </div>
+
+                        {user && user.uid === topic.author.uid && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-800">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <Dialog open={isEditTopicOpen} onOpenChange={setIsEditTopicOpen}>
+                                        <DialogTrigger asChild>
+                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                <Pencil className="mr-2 h-4 w-4" /> Edit Post
+                                            </DropdownMenuItem>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Edit Post</DialogTitle>
+                                            </DialogHeader>
+                                            <form onSubmit={handleUpdateTopic} className="space-y-4 py-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium">Title</label>
+                                                    <Input
+                                                        value={editTopicTitle}
+                                                        onChange={e => setEditTopicTitle(e.target.value)}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium">Content</label>
+                                                    <Textarea
+                                                        value={editTopicContent}
+                                                        onChange={e => setEditTopicContent(e.target.value)}
+                                                        className="min-h-[150px]"
+                                                        required
+                                                    />
+                                                </div>
+                                                <DialogFooter>
+                                                    <Button type="submit" disabled={isEditingTopic} className="bg-emerald-600">
+                                                        {isEditingTopic ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
+                                                    </Button>
+                                                </DialogFooter>
+                                            </form>
+                                        </DialogContent>
+                                    </Dialog>
+                                    <DropdownMenuItem className="text-red-600 focus:text-red-700 focus:bg-red-50" onClick={handleDeleteTopic}>
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Post
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </div>
+
+                    <h1 className="text-2xl font-bold text-slate-900 mb-4">{topic.title}</h1>
+                    <div className="prose prose-emerald max-w-none text-slate-700 mb-6 whitespace-pre-wrap">
+                        {topic.content}
+                    </div>
+
+                    <div className="flex items-center gap-4 pt-4 border-t border-slate-50">
+                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                            <MessageSquare className="h-4 w-4" />
+                            {comments.length} Comments
+                        </div>
+                    </div>
+                </div>
+
+                {/* Comments Section */}
+                <div className="space-y-6">
+                    <h3 className="font-semibold text-slate-900 text-lg">Comments</h3>
+
+                    {/* Comment Form */}
+                    {user ? (
+                        <form onSubmit={(e) => handlePostComment(e, null)} className="flex gap-4 items-start">
+                            <Avatar className="h-8 w-8 mt-1">
+                                <AvatarImage src={userData?.photoURL} />
+                                <AvatarFallback>{userData?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 space-y-2">
+                                <Textarea
+                                    placeholder="Write a comment..."
+                                    value={newComment}
+                                    onChange={(e) => setNewComment(e.target.value)}
+                                    className="min-h-[80px] bg-white"
+                                />
+                                <Button type="submit" disabled={submitting || !newComment.trim()} size="sm" className="bg-emerald-600">
+                                    {submitting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Send className="h-3 w-3 mr-2" />}
+                                    Post Comment
+                                </Button>
+                            </div>
+                        </form>
+                    ) : (
+                        <div className="p-4 bg-slate-50 rounded-lg text-center text-sm text-slate-500">
+                            Please log in to leave a comment.
+                        </div>
+                    )}
+
+                    {/* Comments List */}
+                    <div className="space-y-4">
+                        {comments.length === 0 ? (
+                            <p className="text-slate-400 italic text-center py-8">No comments yet.</p>
+                        ) : (
+                            comments.map((comment) => (
+                                <CommentItem
+                                    key={comment.id}
+                                    comment={comment}
+                                    onReply={(id) => setReplyingTo(id === replyingTo ? null : id)}
+                                    replyingTo={replyingTo}
+                                    replyContent={replyContent}
+                                    setReplyContent={setReplyContent}
+                                    onSubmitReply={handlePostComment}
+                                    submitting={submitting}
+                                    user={user}
+                                    onDelete={handleDeleteComment}
+                                    onEdit={handleEditComment}
+                                />
+                            ))
+                        )}
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
+}

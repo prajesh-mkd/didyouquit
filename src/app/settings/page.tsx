@@ -22,6 +22,10 @@ import { EditCountryDialog } from "@/components/profile/EditCountryDialog";
 export default function SettingsPage() {
     const { user, userData } = useAuth();
     const router = useRouter();
+
+    if (user?.email === 'contact@didyouquit.com') {
+        router.push("/admin");
+    }
     const [isDeleting, setIsDeleting] = useState(false);
     const [isAvatarOpen, setIsAvatarOpen] = useState(false);
     const [isUsernameOpen, setIsUsernameEditOpen] = useState(false);
@@ -125,7 +129,7 @@ export default function SettingsPage() {
                                 size="sm"
                                 onClick={handleDeleteAccount}
                                 disabled={isDeleting}
-                                className="text-red-500 hover:text-red-600 hover:bg-red-50 h-auto px-4 py-2 self-start sm:self-center"
+                                className="text-slate-500 border border-slate-200 hover:text-slate-700 hover:bg-slate-50 h-auto px-4 py-2 self-start sm:self-center"
                             >
                                 {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Delete Account"}
                             </Button>

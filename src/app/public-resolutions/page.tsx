@@ -7,11 +7,12 @@ import { db } from "@/lib/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, Globe, Target, Users, Calendar } from "lucide-react";
+import { Loader2, Globe, Target, Users, Calendar, Flame } from "lucide-react";
 import Link from "next/link";
 import { startOfWeek, endOfWeek, format, setWeek, getISOWeek, getYear } from "date-fns";
 import { PublicResolutionCard } from "@/components/resolutions/PublicResolutionCard";
 import { TimelinePills } from "@/components/resolutions/TimelinePills";
+import { calculateStreak } from "@/lib/streak-utils";
 
 interface PublicResolution {
     id: string;
@@ -20,10 +21,10 @@ interface PublicResolution {
     weeklyLog?: { [key: string]: boolean };
     user?: {
         username: string;
-        container: string;
-        photoURL?: string;
         country?: string;
+        photoURL?: string;
     };
+    description?: string;
 }
 
 import { Header } from "@/components/layout/Header";
@@ -72,6 +73,10 @@ export default function PublicResolutionsPage() {
         try {
             const newResolutions: PublicResolution[] = [];
             const userIdsToFetch = new Set<string>();
+
+            // 0. Fetch Hidden Users List (to filter out)
+            const hiddenUsersSnap = await getDocs(query(collection(db, "users"), where("isHidden", "==", true)));
+            const hiddenUserIds = new Set(hiddenUsersSnap.docs.map(d => d.id));
 
             // 1. Fetch User's Own Resolutions FIRST (Only on initial load)
             if (isInitial && user) {
@@ -133,6 +138,10 @@ export default function PublicResolutionsPage() {
             for (const docSnapshot of snapshot.docs) {
                 // Skip if we already added this (i.e. it's the user's own resolution we fetched in step 1)
                 if (newResolutions.some(r => r.id === docSnapshot.id)) continue;
+
+                // Skip if user is hidden
+                const dataRaw = docSnapshot.data();
+                if (hiddenUserIds.has(dataRaw.uid)) continue;
 
                 const data = docSnapshot.data();
                 const res: PublicResolution = {
@@ -206,7 +215,7 @@ export default function PublicResolutionsPage() {
     }, []);
 
     const currentYear = new Date().getFullYear();
-    const weeks = Array.from({ length: 52 }, (_, i) => i + 1);
+
 
     if (loading) {
         return (
@@ -225,8 +234,8 @@ export default function PublicResolutionsPage() {
                     <p className="text-center text-slate-600 mb-4">See what the world is committing to this year.</p>
                     {user && (
                         <div className="flex justify-center mb-12">
-                            <p className="text-sm text-emerald-600 font-medium bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-200">
-                                Your resolutions are always pinned to the top for you.
+                            <p className="text-sm text-emerald-600 font-medium bg-emerald-50 px-4 py-1.5 rounded-lg border border-emerald-200">
+                                Your resolutions are pinned to the top for you.
                             </p>
                         </div>
                     )}
@@ -253,7 +262,7 @@ export default function PublicResolutionsPage() {
                                                 Member
                                             </div>
                                         </th>
-                                        <th className="p-4 font-semibold border-b border-emerald-100 w-[200px]">
+                                        <th className="p-4 pl-12 font-semibold border-b border-emerald-100 w-[42%]">
                                             <div className="flex items-center gap-2">
                                                 <Target className="h-4 w-4 text-emerald-600" />
                                                 Resolution
@@ -279,7 +288,7 @@ export default function PublicResolutionsPage() {
                                                         </AvatarFallback>
                                                     </Avatar>
                                                     <div>
-                                                        <span className="font-medium text-slate-700 group-hover:text-emerald-700 transition-colors block">
+                                                        <span className="text-xs font-bold text-emerald-700 group-hover:text-emerald-800 transition-colors block">
                                                             {res.user?.username || "Anonymous"}
                                                         </span>
                                                         <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
@@ -289,10 +298,30 @@ export default function PublicResolutionsPage() {
                                                     </div>
                                                 </Link>
                                             </td>
-                                            <td className="p-4">
+                                            <td className="p-4 pl-12">
                                                 <div className="flex items-center gap-2 font-medium text-slate-800">
                                                     {res.title}
+                                                    {calculateStreak(res.weeklyLog || {}) > 0 && (
+                                                        <TooltipProvider delayDuration={0}>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-help" title="">
+                                                                        <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
+                                                                        <span className="text-[10px] font-bold text-orange-600">{calculateStreak(res.weeklyLog || {})}</span>
+                                                                    </div>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>{calculateStreak(res.weeklyLog || {})} Week Streak!</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    )}
                                                 </div>
+                                                {res.description && (
+                                                    <div className="text-sm text-slate-500 italic mt-0.5 max-w-[90%] line-clamp-2">
+                                                        "{res.description}"
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="p-4 pr-10">
                                                 <TimelinePills resId={res.id} weeklyLog={res.weeklyLog} currentYear={currentYear} />

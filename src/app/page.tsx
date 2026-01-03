@@ -30,22 +30,26 @@ import Link from "next/link";
 import { startOfWeek, endOfWeek, format, setWeek } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getFriendlyErrorMessage } from "@/lib/error-utils";
-import { LogOut } from "lucide-react";
+import { LogOut, Flame } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { ForgotPasswordDialog } from "@/components/auth/ForgotPasswordDialog";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
+import { TimelinePills } from "@/components/resolutions/TimelinePills";
+import { calculateStreak } from "@/lib/streak-utils";
 
 interface PublicResolution {
   id: string;
   title: string;
   uid: string;
+  weeklyLog: Record<string, boolean>;
   createdAt: any;
   user?: {
     username: string;
     country: string;
     photoURL?: string;
   };
+  description?: string;
 }
 
 function HomeContent() {
@@ -57,7 +61,8 @@ function HomeContent() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -134,11 +139,11 @@ function HomeContent() {
   }, []);
 
   const handleGoogleLogin = async () => {
-    setAuthLoading(true);
+    setIsGoogleLoading(true);
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      setAuthLoading(false);
+      setIsGoogleLoading(false);
       setAuthOpen(false);
 
       const details = getAdditionalUserInfo(result);
@@ -152,13 +157,13 @@ function HomeContent() {
     } catch (error: any) {
       const msg = getFriendlyErrorMessage(error);
       if (msg) toast.error(msg);
-      setAuthLoading(false);
+      setIsGoogleLoading(false);
     }
   };
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthLoading(true);
+    setIsEmailLoading(true);
     try {
       if (authMode === "signup") {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -170,12 +175,12 @@ function HomeContent() {
         router.push("/my-resolutions");
         toast.success("Welcome back!");
       }
-      setAuthLoading(false);
+      setIsEmailLoading(false);
       setAuthOpen(false);
     } catch (error: any) {
       const msg = getFriendlyErrorMessage(error);
       if (msg) toast.error(msg);
-      setAuthLoading(false);
+      setIsEmailLoading(false);
     }
   };
 
@@ -294,32 +299,12 @@ function HomeContent() {
 
                     <div className="bg-slate-50/50 rounded-lg p-3 border border-slate-100">
                       <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold">Progress (52 Weeks)</p>
-                      <div className="flex flex-wrap gap-3">
-                        <TooltipProvider delayDuration={0}>
-                          {weeks.map((week) => {
-                            const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
-                            const status = (res as any).weeklyLog?.[weekKey];
-
-                            let colorClass = "bg-slate-200 border-slate-300";
-                            if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
-                            if (status === false) colorClass = "bg-red-400 border-red-400";
-
-                            return (
-                              <Tooltip key={week}>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className={`w-4 h-4 rounded-full border ${colorClass} shrink-0 cursor-default focus:outline-none focus:ring-1 focus:ring-emerald-500`}
-                                  />
-                                </TooltipTrigger>
-                                <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
-                                  <p className="font-bold mb-0.5">Week {week}</p>
-                                  <p className="text-slate-300 font-normal">{getWeekRange(week)}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            );
-                          })}
-                        </TooltipProvider>
+                      <div className="w-full">
+                        <TimelinePills
+                          resId={res.id}
+                          weeklyLog={res.weeklyLog}
+                          currentYear={currentYear}
+                        />
                       </div>
                     </div>
                   </div>
@@ -327,7 +312,7 @@ function HomeContent() {
               </div>
 
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse table-fixed">
                   <thead className="bg-emerald-50/50 text-emerald-900">
                     <tr>
                       <th className="p-4 pl-10 font-semibold border-b border-emerald-100 w-[250px]">
@@ -336,13 +321,13 @@ function HomeContent() {
                           Member
                         </div>
                       </th>
-                      <th className="p-4 font-semibold border-b border-emerald-100">
+                      <th className="p-4 pl-12 font-semibold border-b border-emerald-100 w-[42%]">
                         <div className="flex items-center gap-2">
                           <Target className="h-4 w-4 text-emerald-600" />
                           Resolution
                         </div>
                       </th>
-                      <th className="p-4 font-semibold border-b border-emerald-100 min-w-[300px]">
+                      <th className="p-4 pr-10 font-semibold border-b border-emerald-100">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-emerald-600" />
                           Progress (52 Weeks)
@@ -353,7 +338,7 @@ function HomeContent() {
                   <tbody className="divide-y divide-slate-50">
                     {publicResolutions.map((res) => (
                       <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="p-4 pl-6">
+                        <td className="p-4 pl-10">
                           <Link href={`/${res.user?.username || res.uid}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                             <Avatar className="h-10 w-10 border border-slate-200">
                               <AvatarImage src={res.user?.photoURL} />
@@ -362,7 +347,7 @@ function HomeContent() {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <span className="font-medium text-slate-700 group-hover:text-emerald-700 transition-colors block">
+                              <span className="text-xs font-bold text-emerald-700 group-hover:text-emerald-800 transition-colors block">
                                 {res.user?.username || "Anonymous"}
                               </span>
                               <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
@@ -372,38 +357,29 @@ function HomeContent() {
                             </div>
                           </Link>
                         </td>
-                        <td className="p-4">
+                        <td className="p-4 pl-12">
                           <div className="flex items-center gap-2 font-medium text-slate-800">
                             {res.title}
+                            {calculateStreak(res.weeklyLog) > 0 && (
+                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-50 rounded-full border border-orange-100" title="Current Streak">
+                                <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
+                                <span className="text-[10px] font-bold text-orange-600">{calculateStreak(res.weeklyLog)}</span>
+                              </div>
+                            )}
                           </div>
+                          {res.description && (
+                            <div className="text-sm text-slate-500 italic mt-0.5 max-w-[90%] line-clamp-2">
+                              "{res.description}"
+                            </div>
+                          )}
                         </td>
-                        <td className="p-4">
-                          <div className="flex flex-wrap gap-3 max-w-[600px]">
-                            <TooltipProvider delayDuration={0}>
-                              {weeks.map((week) => {
-                                const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
-                                const status = (res as any).weeklyLog?.[weekKey];
-
-                                let colorClass = "bg-slate-100 border-slate-200";
-                                if (status === true) colorClass = "bg-emerald-500 border-emerald-500";
-                                if (status === false) colorClass = "bg-red-400 border-red-400";
-
-                                return (
-                                  <Tooltip key={week}>
-                                    <TooltipTrigger asChild>
-                                      <button
-                                        type="button"
-                                        className={`w-4 h-4 rounded-full border ${colorClass} cursor-default focus:outline-none focus:ring-1 focus:ring-emerald-500`}
-                                      />
-                                    </TooltipTrigger>
-                                    <TooltipContent className="bg-slate-800 text-white border-0 text-xs">
-                                      <p className="font-bold mb-0.5">Week {week}</p>
-                                      <p className="text-slate-300 font-normal">{getWeekRange(week)}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                );
-                              })}
-                            </TooltipProvider>
+                        <td className="p-4 pr-10">
+                          <div className="w-full">
+                            <TimelinePills
+                              resId={res.id}
+                              weeklyLog={res.weeklyLog}
+                              currentYear={currentYear}
+                            />
                           </div>
                         </td>
                       </tr>
@@ -422,7 +398,7 @@ function HomeContent() {
             </Button>
           </div>
         </div>
-      </section>
+      </section >
 
       <Footer />
 
@@ -443,9 +419,9 @@ function HomeContent() {
             variant="outline"
             className="w-full bg-white border-slate-200 hover:bg-slate-50 h-12 text-base font-medium text-slate-700"
             onClick={handleGoogleLogin}
-            disabled={authLoading}
+            disabled={isGoogleLoading || isEmailLoading}
           >
-            {authLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
+            {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
               <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -512,9 +488,9 @@ function HomeContent() {
             <Button
               type="submit"
               className="w-full h-12 text-base bg-emerald-500 hover:bg-emerald-600 text-white mt-2"
-              disabled={authLoading}
+              disabled={isGoogleLoading || isEmailLoading}
             >
-              {authLoading ? <Loader2 className="animate-spin" /> : (authMode === "signup" ? "Create Account" : "Log In")}
+              {isEmailLoading ? <Loader2 className="animate-spin" /> : (authMode === "signup" ? "Create Account" : "Log In")}
             </Button>
 
             {authMode === "signup" && (
@@ -541,7 +517,6 @@ function HomeContent() {
           </div>
         </DialogContent>
       </Dialog>
-
       <ForgotPasswordDialog
         open={forgotPasswordOpen}
         onOpenChange={setForgotPasswordOpen}

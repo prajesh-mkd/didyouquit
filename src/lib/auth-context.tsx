@@ -3,7 +3,9 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "./firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+
+import { UserProfile } from "./types";
 
 interface AuthContextType {
     user: User | null;
@@ -12,13 +14,7 @@ interface AuthContextType {
     refreshUserData: () => Promise<void>;
 }
 
-export interface UserData {
-    uid: string;
-    username: string;
-    country: string;
-    photoURL: string;
-    createdAt: any;
-}
+export type UserData = UserProfile;
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
@@ -34,7 +30,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [userData, setUserData] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchUserData = async (uid: string) => {
+    const fetchUserData = async (uid: string, email: string | null) => {
         try {
             const docRef = doc(db, "users", uid);
             const docSnap = getDoc(docRef);
@@ -42,7 +38,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             // Actually we want to display username, so waiting is okay.
             const snapshot = await docSnap;
             if (snapshot.exists()) {
-                setUserData(snapshot.data() as UserData);
+                const data = snapshot.data() as UserData;
+                setUserData(data);
+
+                // Backfill email if missing in Firestore
+                if (email && !data.email) {
+                    await updateDoc(docRef, { email: email });
+                    setUserData({ ...data, email: email });
+                }
             } else {
                 setUserData(null);
             }
@@ -55,7 +58,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setUser(user);
             if (user) {
-                await fetchUserData(user.uid);
+                await fetchUserData(user.uid, user.email);
             } else {
                 setUserData(null);
             }
@@ -67,7 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const refreshUserData = async () => {
         if (user) {
-            await fetchUserData(user.uid);
+            await fetchUserData(user.uid, user.email);
         }
     };
 

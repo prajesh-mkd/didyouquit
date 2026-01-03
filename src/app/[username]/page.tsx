@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, doc, getDoc, setDoc, deleteDoc, serverTimestamp, getCountFromServer } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Globe, Calendar, Target, Award, MapPin, Pencil } from "lucide-react";
+import { Loader2, Globe, Calendar, Target, Award, MapPin, Pencil, Users, UserPlus, UserCheck, Flame } from "lucide-react";
+import { toast } from "sonner";
 import { clsx } from "clsx";
 import Link from "next/link";
 import {
@@ -20,33 +21,37 @@ import { Footer } from "@/components/layout/Footer";
 import { format, setWeek, startOfWeek, endOfWeek } from "date-fns";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
-interface UserProfile {
-    uid: string;
-    username: string;
-    country: string;
-    photoURL: string;
-    createdAt?: any;
-}
+import { TimelinePills } from "@/components/resolutions/TimelinePills";
+import { calculateStreak } from "@/lib/streak-utils";
+
+import { UserProfile } from "@/lib/types";
 
 interface Resolution {
     id: string;
     title: string;
     weeklyLog: Record<string, boolean>;
     createdAt?: any;
+    description?: string;
 }
 
 export default function PublicProfile() {
     const params = useParams();
     const router = useRouter();
     const username = params.username as string;
-    const { user: currentUser } = useAuth();
+    const { user, userData } = useAuth();
 
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [resolutions, setResolutions] = useState<Resolution[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-    const isOwner = currentUser?.uid === profile?.uid;
+    // Follow System State
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followersCount, setFollowersCount] = useState(0);
+    const [followingCount, setFollowingCount] = useState(0);
+    const [followLoading, setFollowLoading] = useState(false);
+
+    const isOwner = user?.uid === profile?.uid;
 
     // Date Helpers
     const currentYear = new Date().getFullYear();
@@ -93,6 +98,10 @@ export default function PublicProfile() {
                 resData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
                 setResolutions(resData);
+
+                // Fetch follow data
+                fetchFollowData(userData.uid);
+
             } catch (err) {
                 console.error(err);
                 setError("Failed to load profile");
@@ -101,8 +110,69 @@ export default function PublicProfile() {
             }
         };
 
+        const fetchFollowData = async (uid: string) => {
+            try {
+                // Check if I am following this user
+                if (user) {
+                    const docRef = doc(db, "users", user.uid, "following", uid);
+                    const docSnap = await getDoc(docRef);
+                    setIsFollowing(docSnap.exists());
+                }
+            } catch (error) {
+                console.error("Error fetching follow data:", error);
+            }
+            // Counts are hidden from UI per user request, so we don't fetch them.
+        };
+
         if (username) fetchData();
-    }, [username]);
+    }, [username, user]); // Added user to dependency array for follow status check
+
+    const handleFollow = async () => {
+        if (!user || !profile) {
+            toast.error("Please log in to follow");
+            return;
+        }
+        setFollowLoading(true);
+        try {
+            // Add to my following
+            await setDoc(doc(db, "users", user.uid, "following", profile.uid), {
+                username: profile.username,
+                photoURL: profile.photoURL,
+                timestamp: serverTimestamp()
+            });
+            // Add to their followers
+            await setDoc(doc(db, "users", profile.uid, "followers", user.uid), {
+                username: userData?.username || "Anonymous",
+                photoURL: userData?.photoURL || null,
+                timestamp: serverTimestamp()
+            });
+
+            setIsFollowing(true);
+            setFollowersCount(prev => prev + 1);
+            toast.success(`Following ${profile.username}`);
+        } catch (error) {
+            toast.error("Failed to follow");
+        } finally {
+            setFollowLoading(false);
+        }
+    };
+
+    const handleUnfollow = async () => {
+        if (!user || !profile) return;
+        setFollowLoading(true);
+        try {
+            await deleteDoc(doc(db, "users", user.uid, "following", profile.uid));
+            await deleteDoc(doc(db, "users", profile.uid, "followers", user.uid));
+
+            setIsFollowing(false);
+            setFollowersCount(prev => Math.max(0, prev - 1));
+            toast.success(`Unfollowed ${profile.username}`);
+        } catch (error) {
+            toast.error("Failed to unfollow");
+        } finally {
+            setFollowLoading(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -172,6 +242,33 @@ export default function PublicProfile() {
                             </div>
                         </div>
 
+                        {/* Follow Action */}
+                        <div className="flex flex-col items-center gap-4 mt-4">
+                            {user && user.uid !== profile?.uid && (
+                                <Button
+                                    onClick={isFollowing ? handleUnfollow : handleFollow}
+                                    disabled={followLoading}
+                                    size="sm"
+                                    variant={isFollowing ? "outline" : "default"}
+                                    className={isFollowing ? "border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800" : "bg-emerald-600 hover:bg-emerald-700 text-white min-w-[120px]"}
+                                >
+                                    {followLoading ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : isFollowing ? (
+                                        <>
+                                            <UserCheck className="h-4 w-4 mr-1.5" /> Following
+                                        </>
+                                    ) : (
+                                        <>
+                                            <UserPlus className="h-4 w-4 mr-1.5" /> Follow
+                                        </>
+                                    )}
+                                </Button>
+                            )}
+                        </div>
+
+
+
 
                     </div>
                 </div>
@@ -187,73 +284,94 @@ export default function PublicProfile() {
                         <p className="text-slate-500">{profile.username} hasn't shared any goals yet.</p>
                     </div>
                 ) : (
-                    <div className="grid gap-6">
-                        <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">My Resolutions 2026</h2>
-                        {resolutions.map((res) => (
-                            <div key={res.id} className="bg-white rounded-xl p-6 md:p-8 border border-slate-100 shadow-sm transition-shadow hover:shadow-md">
-                                <div className="flex items-start justify-between mb-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
-                                            <Target className="h-5 w-5 text-emerald-600" />
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                        {/* Mobile View (Cards) */}
+                        <div className="md:hidden divide-y divide-slate-100">
+                            {resolutions.map((res) => (
+                                <div key={res.id} className="p-6">
+                                    <div className="flex items-start justify-between mb-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+                                                <Target className="h-5 w-5 text-emerald-600" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-xl text-slate-900">{res.title}</h3>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="font-bold text-xl text-slate-900">{res.title}</h3>
+                                    </div>
+
+                                    <div className="mt-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h4 className="text-sm font-semibold text-slate-700">Progress (52 Weeks)</h4>
+                                        </div>
+
+                                        <div className="w-full">
+                                            <TimelinePills
+                                                resId={res.id}
+                                                weeklyLog={res.weeklyLog}
+                                                currentYear={currentYear}
+                                            />
                                         </div>
                                     </div>
                                 </div>
+                            ))}
+                        </div>
 
-                                <div className="bg-slate-50/50 rounded-xl p-6 border border-slate-100">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h4 className="text-sm font-semibold text-slate-700">Progress (52 Weeks)</h4>
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-3">
-                                        <TooltipProvider delayDuration={0}>
-                                            {weeks.map((week) => {
-                                                const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
-                                                const status = res.weeklyLog?.[weekKey];
-
-                                                let colorClass = "bg-slate-200 border-slate-300";
-                                                let statusText = "Upcoming";
-
-                                                if (status === true) {
-                                                    colorClass = "bg-emerald-500 border-emerald-500 shadow-sm shadow-emerald-200";
-                                                    statusText = "Kept it 🔥";
-                                                } else if (status === false) {
-                                                    colorClass = "bg-red-400 border-red-400";
-                                                    statusText = "Missed";
-                                                }
-
-                                                return (
-                                                    <Tooltip key={week}>
-                                                        <TooltipTrigger asChild>
-                                                            <button
-                                                                type="button"
-                                                                className={clsx(
-                                                                    "w-4 h-4 rounded-full border shrink-0 transition-transform hover:scale-125 focus:scale-125 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-slate-400",
-                                                                    colorClass
-                                                                )}
-                                                            />
-                                                        </TooltipTrigger>
-                                                        <TooltipContent className="bg-slate-900 text-white border-none shadow-xl">
-                                                            <div className="text-xs">
-                                                                <p className="font-bold mb-0.5">Week {week}</p>
-                                                                <p className="text-slate-300 mb-1.5">{getWeekRange(week)}</p>
-                                                                <p className={clsx(
-                                                                    "font-medium",
-                                                                    status === true ? "text-emerald-400" :
-                                                                        status === false ? "text-red-400" : "text-slate-400"
-                                                                )}>{statusText}</p>
-                                                            </div>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                );
-                                            })}
-                                        </TooltipProvider>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                        {/* Desktop View (Table) */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left border-collapse table-fixed">
+                                <thead className="bg-emerald-50/50 text-emerald-900">
+                                    <tr>
+                                        <th className="p-4 pl-12 font-semibold border-b border-emerald-100 w-[60%]">
+                                            <div className="flex items-center gap-2">
+                                                <Target className="h-4 w-4 text-emerald-600" />
+                                                Resolution
+                                            </div>
+                                        </th>
+                                        <th className="p-4 pr-10 font-semibold border-b border-emerald-100">
+                                            <div className="flex items-center gap-2">
+                                                <Calendar className="h-4 w-4 text-emerald-600" />
+                                                Progress (52 Weeks)
+                                            </div>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {resolutions.map((res) => (
+                                        <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
+                                            <td className="p-4 pl-12">
+                                                <div className="flex items-center gap-2 font-medium text-slate-800 text-lg">
+                                                    {res.title}
+                                                    {calculateStreak(res.weeklyLog) > 0 && (
+                                                        <TooltipProvider delayDuration={0}>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-help">
+                                                                        <Flame className="h-3.5 w-3.5 text-orange-500 fill-orange-500" />
+                                                                        <span className="text-xs font-bold text-orange-600">{calculateStreak(res.weeklyLog)}</span>
+                                                                    </div>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>{calculateStreak(res.weeklyLog)} Week Streak!</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    )}
+                                                </div>
+                                                {res.description && (
+                                                    <div className="text-sm text-slate-500 italic mt-0.5 max-w-[90%] line-clamp-2">
+                                                        "{res.description}"
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="p-4 pr-10">
+                                                <TimelinePills resId={res.id} weeklyLog={res.weeklyLog} currentYear={currentYear} />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
             </main>

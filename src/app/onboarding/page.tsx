@@ -160,6 +160,7 @@ export default function Onboarding() {
         try {
             await setDoc(doc(db, "users", user.uid), {
                 uid: user.uid,
+                email: user.email,
                 username,
                 country,
                 photoURL: generateAvatar(username),

@@ -1,0 +1,1088 @@
+"use client";
+
+import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Header } from "@/components/layout/Header";
+import { Loader2, Trash2, Shield, EyeOff, Eye, ChevronLeft, ChevronRight, Target, ChevronDown, ChevronUp } from "lucide-react";
+import { collection, query, orderBy, getDocs, getDoc, doc, deleteDoc, updateDoc, limit, startAfter, QueryDocumentSnapshot, endBefore, limitToLast, increment, where, collectionGroup } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatDistanceToNow } from "date-fns";
+
+// Types
+import { UserProfile, AppConfig } from "@/lib/types";
+import { CreditCard, ToggleLeft, ToggleRight, AlertTriangle } from "lucide-react";
+import { setDoc } from "firebase/firestore";
+interface Comment {
+    id: string;
+    content: string;
+    author: {
+        uid: string;
+        username: string;
+        photoURL?: string;
+    };
+    createdAt: any;
+    parentId?: string | null;
+    replies?: Comment[];
+}
+
+interface PostWithComments {
+    id: string;
+    title: string;
+    content: string;
+    author: {
+        uid: string;
+        username: string;
+        photoURL?: string;
+    };
+    createdAt: any;
+    comments: Comment[];
+    commentCount?: number;
+}
+
+export default function AdminPage() {
+    const { user, loading } = useAuth();
+    const router = useRouter();
+    const [users, setUsers] = useState<UserProfile[]>([]);
+
+    // Config State
+    const [config, setConfig] = useState<AppConfig | null>(null);
+    const [savingConfig, setSavingConfig] = useState(false);
+
+    // Posts State
+    const [posts, setPosts] = useState<PostWithComments[]>([]);
+    const [loadingPosts, setLoadingPosts] = useState(false);
+
+    // Pagination State
+    const [pageCursors, setPageCursors] = useState<QueryDocumentSnapshot<any>[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+
+    // Current page snapshots for posts
+    const [currentSnapshots, setCurrentSnapshots] = useState<QueryDocumentSnapshot<any>[]>([]);
+
+    useEffect(() => {
+        if (!loading) {
+            if (!user || user.email !== 'contact@didyouquit.com') {
+                router.push("/");
+            } else {
+                fetchUsers();
+                fetchConfig();
+                loadPage(null); // Initial fetch for posts
+            }
+        }
+    }, [user, loading, router]);
+
+    const fetchUsers = async () => {
+        try {
+            const usersSnap = await getDocs(query(collection(db, "users"), orderBy("createdAt", "desc")));
+            setUsers(usersSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile)));
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to fetch users");
+        }
+    };
+
+    const fetchConfig = async () => {
+        try {
+            const docSnap = await getDoc(doc(db, "app_config", "subscription_settings"));
+            if (docSnap.exists()) {
+                setConfig(docSnap.data() as AppConfig);
+            } else {
+                // Initialize default if missing
+                const defaultConfig: AppConfig = {
+                    mode: 'test',
+                    activeTier: 'promo_jan',
+                    promo_jan: {
+                        monthlyPriceId: '',
+                        yearlyPriceId: '',
+                        displayMonthly: '$1.99',
+                        displayYearly: '$19.99',
+                        marketingHeader: 'New Year Special!',
+                        marketingSubtext: 'Lock in this price for life. Offer ends Jan 31st.'
+                    },
+                    standard: {
+                        monthlyPriceId: '',
+                        yearlyPriceId: '',
+                        displayMonthly: '$4.99',
+                        displayYearly: '$47.99',
+                        marketingHeader: 'Pro Membership',
+                        marketingSubtext: 'Invest in your better self.'
+                    }
+                };
+                await setDoc(doc(db, "app_config", "subscription_settings"), defaultConfig);
+                setConfig(defaultConfig);
+            }
+        } catch (error) {
+            console.error("Config load error", error);
+        }
+    };
+
+    const updateConfig = async (newConfig: Partial<AppConfig>) => {
+        if (!config) return;
+        setSavingConfig(true);
+        try {
+            const updated = { ...config, ...newConfig };
+            await setDoc(doc(db, "app_config", "subscription_settings"), updated);
+            setConfig(updated);
+            toast.success("Settings saved");
+        } catch (error) {
+            toast.error("Failed to save settings");
+        } finally {
+            setSavingConfig(false);
+        }
+    };
+
+    const fetchPostsWithComments = async (cursor: QueryDocumentSnapshot<any> | null = null) => {
+        setLoadingPosts(true);
+        try {
+            // 1. Fetch Posts
+            let q = query(
+                collection(db, "forum_topics"),
+                orderBy("createdAt", "desc"),
+                limit(50)
+            );
+
+            if (cursor) {
+                q = query(
+                    collection(db, "forum_topics"),
+                    orderBy("createdAt", "desc"),
+                    startAfter(cursor),
+                    limit(50)
+                );
+            }
+
+            const postsSnap = await getDocs(q);
+            const postsData = postsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+            setHasMore(postsSnap.docs.length === 50);
+
+            // 2. Fetch Comments for EACH post (Parallel)
+            const enrichedPosts = await Promise.all(postsData.map(async (post) => {
+                const commentsRef = collection(db, "forum_topics", post.id, "comments");
+                const commentsQ = query(commentsRef, orderBy("createdAt", "asc"));
+                const commentsSnap = await getDocs(commentsQ);
+
+                const allComments = commentsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Comment));
+
+                // Build Logic Tree
+                const commentMap = new Map<string, Comment>();
+                allComments.forEach(c => {
+                    c.replies = [];
+                    commentMap.set(c.id, c);
+                });
+
+                const rootComments: Comment[] = [];
+                allComments.forEach(c => {
+                    if (c.parentId && commentMap.has(c.parentId)) {
+                        commentMap.get(c.parentId)!.replies!.push(c);
+                    } else {
+                        rootComments.push(c);
+                    }
+                });
+
+                return {
+                    ...post,
+                    comments: rootComments
+                } as PostWithComments;
+            }));
+
+            // Store snapshots for current view
+            setCurrentSnapshots(postsSnap.docs);
+            setPosts(enrichedPosts);
+
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to fetch posts");
+        } finally {
+            setLoadingPosts(false);
+        }
+    };
+
+    // Redoing the fetch/pagination logic to be robust
+    // We need to keep a reference to the actual snapshots
+
+
+    const loadPage = async (cursor: QueryDocumentSnapshot | null) => {
+        setLoadingPosts(true);
+        try {
+            let q = query(
+                collection(db, "forum_topics"),
+                orderBy("createdAt", "desc"),
+                limit(50)
+            );
+
+            if (cursor) {
+                q = query(
+                    collection(db, "forum_topics"),
+                    orderBy("createdAt", "desc"),
+                    startAfter(cursor),
+                    limit(50)
+                );
+            }
+
+            const snap = await getDocs(q);
+            setCurrentSnapshots(snap.docs);
+            setHasMore(snap.docs.length === 50);
+
+            // Fetch comments
+            const enrichedPosts = await Promise.all(snap.docs.map(async (docSnap) => {
+                const post = { id: docSnap.id, ...docSnap.data() } as any;
+
+                const commentsRef = collection(db, "forum_topics", post.id, "comments");
+                const commentsQ = query(commentsRef, orderBy("createdAt", "asc"));
+                const commentsSnap = await getDocs(commentsQ);
+
+                const allComments = commentsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Comment));
+
+                // Build Tree
+                const commentMap = new Map<string, Comment>();
+                allComments.forEach(c => {
+                    c.replies = [];
+                    commentMap.set(c.id, c);
+                });
+
+                const rootComments: Comment[] = [];
+                allComments.forEach(c => {
+                    if (c.parentId && commentMap.has(c.parentId)) {
+                        commentMap.get(c.parentId)!.replies!.push(c);
+                    } else {
+                        rootComments.push(c);
+                    }
+                });
+
+                return {
+                    ...post,
+                    comments: rootComments
+                } as PostWithComments;
+            }));
+
+            setPosts(enrichedPosts);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to load page");
+        } finally {
+            setLoadingPosts(false);
+        }
+    }
+
+    const goToNextPage = () => {
+        if (currentSnapshots.length === 0) return;
+        const lastVisible = currentSnapshots[currentSnapshots.length - 1];
+        setPageCursors(prev => [...prev, lastVisible]);
+        setCurrentPage(prev => prev + 1);
+        loadPage(lastVisible);
+    };
+
+    const goToPrevPage = () => {
+        if (pageCursors.length === 0) return;
+        const newCursors = [...pageCursors];
+        newCursors.pop(); // Remove current page's start cursor (which was prev page's end)
+        const prevCursor = newCursors.length > 0 ? newCursors[newCursors.length - 1] : null; // If empty, we are at start
+
+        setPageCursors(newCursors);
+        setCurrentPage(prev => prev - 1);
+        loadPage(prevCursor);
+    };
+
+
+    const handleToggleHideUser = async (userId: string, currentStatus: boolean) => {
+        try {
+            await updateDoc(doc(db, "users", userId), { isHidden: !currentStatus });
+            setUsers(users.map(u => u.uid === userId ? { ...u, isHidden: !currentStatus } : u));
+            toast.success(currentStatus ? "User unhidden" : "User hidden");
+        } catch (error) {
+            toast.error("Failed to toggle visibility");
+        }
+    };
+
+    // Maintenance State
+    const [scanningOrphans, setScanningOrphans] = useState(false);
+    const [cleaningOrphans, setCleaningOrphans] = useState(false);
+    const [orphanReport, setOrphanReport] = useState<{
+        resolutions: QueryDocumentSnapshot[];
+        topics: QueryDocumentSnapshot[];
+        comments: QueryDocumentSnapshot[];
+    } | null>(null);
+
+    const deleteTopicFull = async (topicId: string) => {
+        // 1. Delete all comments
+        const commentsRef = collection(db, "forum_topics", topicId, "comments");
+        const commentsSnap = await getDocs(commentsRef);
+        const commentDeletes = commentsSnap.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(commentDeletes);
+
+        // 2. Delete topic
+        await deleteDoc(doc(db, "forum_topics", topicId));
+    };
+
+    const handleScanOrphans = async () => {
+        setScanningOrphans(true);
+        setOrphanReport(null);
+
+        try {
+            // 1. Fetch ALL Users first for lookup
+            const usersSnap = await getDocs(query(collection(db, "users")));
+            const validUserIds = new Set(usersSnap.docs.map(d => d.id));
+
+            // 2. Scan Resolutions (orphan users)
+            const resSnap = await getDocs(collection(db, "resolutions"));
+            const orphanedResolutions = resSnap.docs.filter(doc => !validUserIds.has(doc.data().uid));
+
+            // 3. Scan Topics (orphan users)
+            const topicsSnap = await getDocs(collection(db, "forum_topics"));
+            const validTopicIds = new Set(topicsSnap.docs.map(d => d.id));
+            const orphanedTopics = topicsSnap.docs.filter(doc => {
+                const data = doc.data();
+                if (!data.author) return true;
+                if (data.author.uid && !validUserIds.has(data.author.uid)) return true;
+                return false;
+            });
+
+            // Update validTopicIds: remove the ones we just marked as orphans
+            orphanedTopics.forEach(t => validTopicIds.delete(t.id));
+
+            // 4. Scan "Ghost" Comments
+            const commentsGroupSnap = await getDocs(collectionGroup(db, "comments"));
+            const orphanedComments = commentsGroupSnap.docs.filter(doc => {
+                const parentTopicId = doc.ref.parent.parent?.id;
+                return parentTopicId && !validTopicIds.has(parentTopicId);
+            });
+
+            setOrphanReport({
+                resolutions: orphanedResolutions,
+                topics: orphanedTopics,
+                comments: orphanedComments
+            });
+
+            if (orphanedResolutions.length === 0 && orphanedTopics.length === 0 && orphanedComments.length === 0) {
+                toast.success("Great news! No orphans found.");
+            } else {
+                toast.info(`Found orphans: ${orphanedResolutions.length} Res, ${orphanedTopics.length} Topics, ${orphanedComments.length} Comments.`);
+            }
+
+        } catch (error) {
+            console.error(error);
+            toast.error("Scan failed.");
+        } finally {
+            setScanningOrphans(false);
+        }
+    };
+
+    const handleExecuteClean = async () => {
+        if (!orphanReport) return;
+        if (!confirm(`Are you sure? This will PERMANENTLY DELETE:
+- ${orphanReport.resolutions.length} Resolutions
+- ${orphanReport.topics.length} Topics
+- ${orphanReport.comments.length} Comments/Replies`)) return;
+
+        setCleaningOrphans(true);
+        try {
+            // 1. Clean Resolutions
+            await Promise.all(orphanReport.resolutions.map(d => deleteDoc(d.ref)));
+
+            // 2. Clean Topics
+            await Promise.all(orphanReport.topics.map(d => deleteTopicFull(d.id)));
+
+            // 3. Clean Ghost Comments
+            await Promise.all(orphanReport.comments.map(d => deleteDoc(d.ref)));
+
+            toast.success("Cleanup execution complete!");
+            setOrphanReport(null);
+
+            // Refresh main data
+            fetchUsers();
+            loadPage(null);
+
+        } catch (error) {
+            console.error(error);
+            toast.error("Cleanup failed.");
+        } finally {
+            setCleaningOrphans(false);
+        }
+    };
+
+    const handleDeleteUser = async (userId: string) => {
+        const userToDelete = users.find(u => u.uid === userId);
+        if (userToDelete?.subscriptionStatus === 'active') {
+            alert("CANNOT DELETE: This user has an ACTIVE subscription. They must cancel it first to avoid being billed for a deleted account.");
+            return;
+        }
+
+        if (!confirm("Are you sure you want to PERMANENTLY delete this user? This will also delete ALL their resolutions and forum posts.")) return;
+        try {
+            // 1. Delete Resolutions
+            const resQ = query(collection(db, "resolutions"), where("uid", "==", userId));
+            const resSnap = await getDocs(resQ);
+            await Promise.all(resSnap.docs.map(d => deleteDoc(d.ref)));
+
+            // 2. Delete Forum Topics (and their comments)
+            // Note: We need to query by author.uid. ensure your security rules allow this query if needed, or index it.
+            const topicsQ = query(collection(db, "forum_topics"), where("author.uid", "==", userId));
+            const topicsSnap = await getDocs(topicsQ);
+            await Promise.all(topicsSnap.docs.map(d => deleteTopicFull(d.id)));
+
+            // 3. Delete User Profile
+            await deleteDoc(doc(db, "users", userId));
+
+            setUsers(users.filter(u => u.uid !== userId));
+            toast.success("User and all associated data deleted.");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete user and data");
+        }
+    };
+
+    const handleDeletePost = async (postId: string) => {
+        if (!confirm("Delete this post? This will delete the thread and all replies.")) return;
+        try {
+            await deleteTopicFull(postId);
+            setPosts(posts.filter(p => p.id !== postId));
+            toast.success("Post and replies deleted");
+        } catch (error) {
+            toast.error("Failed to delete post");
+        }
+    };
+
+    const handleDeleteComment = async (postId: string, commentId: string) => {
+        if (!confirm("Delete this reply?")) return;
+        try {
+            await deleteDoc(doc(db, "forum_topics", postId, "comments", commentId));
+
+            // Decrement comment count (keep existing logic)
+            await updateDoc(doc(db, "forum_topics", postId), {
+                commentCount: increment(-1)
+            });
+
+            // Optimistic Update (keep existing logic)
+            setPosts(prevPosts => prevPosts.map(post => {
+                if (post.id !== postId) return post;
+                const filterComments = (comments: Comment[]): Comment[] => {
+                    return comments
+                        .filter(c => c.id !== commentId)
+                        .map(c => ({
+                            ...c,
+                            replies: c.replies ? filterComments(c.replies) : []
+                        }));
+                };
+                return {
+                    ...post,
+                    comments: filterComments(post.comments),
+                    commentCount: Math.max(0, (post.commentCount || 0) - 1)
+                };
+            }));
+
+            toast.success("Reply deleted");
+        } catch (error) {
+            toast.error("Failed to delete reply");
+        }
+    };
+
+    if (loading || (user?.email !== 'contact@didyouquit.com')) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-slate-50">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-slate-50">
+            <Header />
+            <main className="container py-8 px-4 mx-auto max-w-6xl">
+                <div className="flex items-center gap-3 mb-8">
+                    <Shield className="h-8 w-8 text-red-600" />
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900">Super Admin Dashboard</h1>
+                        <p className="text-slate-500 text-sm">Manage users, content, and system health.</p>
+                    </div>
+                </div>
+
+                <Tabs defaultValue="users">
+                    <TabsList className="mb-6">
+                        <TabsTrigger value="users">Manage Users ({users.length})</TabsTrigger>
+                        <TabsTrigger value="content">Manage Content</TabsTrigger>
+                        <TabsTrigger value="maintenance" className="text-amber-700 data-[state=active]:bg-amber-50 data-[state=active]:text-amber-800">
+                            Maintenance
+                        </TabsTrigger>
+                        <TabsTrigger value="monetization" className="text-emerald-700 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-800">
+                            Monetization
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="users">
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="p-4 font-medium text-slate-500 w-10"></th>
+                                        <th className="p-4 font-medium text-slate-500">User</th>
+                                        <th className="p-4 font-medium text-slate-500">Email</th>
+                                        <th className="p-4 font-medium text-slate-500">Status</th>
+                                        <th className="p-4 font-medium text-slate-500 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {users.map(u => (
+                                        <UserRow
+                                            key={u.uid}
+                                            user={u}
+                                            onToggleHide={handleToggleHideUser}
+                                            onDelete={handleDeleteUser}
+                                        />
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="content">
+                        {/* Inline Posts List */}
+                        <div className="space-y-8">
+                            {posts.map(post => (
+                                <div key={post.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-6">
+                                    {/* Post Header */}
+                                    <div className="flex items-start justify-between gap-4 mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-10 w-10 border border-slate-200">
+                                                <AvatarImage src={post.author?.photoURL} />
+                                                <AvatarFallback>{post.author?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <div className="font-bold text-slate-900 text-lg leading-tight">{post.title}</div>
+                                                <div className="text-xs text-slate-500 mt-1">
+                                                    by {post.author?.username} • {post.createdAt?.seconds ? formatDistanceToNow(new Date(post.createdAt.seconds * 1000), { addSuffix: true }) : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                                            onClick={() => handleDeletePost(post.id)}
+                                        >
+                                            <Trash2 className="h-3 w-3 mr-1" /> Delete Thread
+                                        </Button>
+                                    </div>
+
+                                    {/* Post Content */}
+                                    <p className="text-slate-700 text-base leading-relaxed whitespace-pre-wrap pl-[52px] mb-6 border-l-2 border-slate-100 ml-5 py-1">
+                                        {post.content}
+                                    </p>
+
+                                    {/* Inline Comments */}
+                                    {post.comments.length > 0 && (
+                                        <div className="pl-[52px]">
+                                            <div className="text-sm font-semibold text-slate-900 mb-3 block">Replies</div>
+                                            <div className="space-y-4">
+                                                {post.comments.map(comment => (
+                                                    <AdminCommentItem
+                                                        key={comment.id}
+                                                        comment={comment}
+                                                        postId={post.id}
+                                                        onDelete={handleDeleteComment}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+
+                            {posts.length === 0 && !loadingPosts && (
+                                <div className="p-8 text-center text-slate-500 bg-white rounded-xl border border-slate-200">No posts found.</div>
+                            )}
+                        </div>
+
+                        {/* Pagination Controls */}
+                        <div className="flex items-center justify-between mt-8 mb-12 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <Button
+                                variant="outline"
+                                onClick={goToPrevPage}
+                                disabled={currentPage === 1 || loadingPosts}
+                                className="w-32"
+                            >
+                                <ChevronLeft className="h-4 w-4 mr-2" /> Previous
+                            </Button>
+
+                            <span className="text-sm font-medium text-slate-600">
+                                Page {currentPage}
+                            </span>
+
+                            <Button
+                                variant="outline"
+                                onClick={goToNextPage}
+                                disabled={!hasMore || loadingPosts}
+                                className="w-32"
+                            >
+                                {loadingPosts ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                Next <ChevronRight className="h-4 w-4 ml-2" />
+                            </Button>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="maintenance">
+                        <div className="max-w-2xl mx-auto mt-12 space-y-8">
+                            {/* Step 1: Scan */}
+                            <div className="bg-white border border-slate-200 rounded-xl p-8 text-center shadow-sm">
+                                <div className="mx-auto w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mb-4">
+                                    <Shield className="h-6 w-6 text-emerald-600" />
+                                </div>
+                                <h2 className="text-xl font-bold text-slate-900 mb-2">Step 1: Scan for Orphans</h2>
+                                <p className="text-slate-500 mb-8 max-w-sm mx-auto">
+                                    Safely scan the database to identify resolutions, topics, and replies that belong to non-existent users.
+                                </p>
+                                <Button
+                                    size="lg"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white w-full max-w-xs"
+                                    onClick={handleScanOrphans}
+                                    disabled={scanningOrphans || cleaningOrphans}
+                                >
+                                    {scanningOrphans ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />}
+                                    {scanningOrphans ? "Scanning Database..." : "Scan Database"}
+                                </Button>
+                            </div>
+
+                            {/* Step 2: Review & Clean */}
+                            {orphanReport && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 animate-in fade-in slide-in-from-bottom-4">
+                                    <div className="text-center mb-8">
+                                        <h2 className="text-xl font-bold text-amber-900 mb-2">Step 2: Review Findings</h2>
+                                        <p className="text-amber-800/70">
+                                            The following items were found to be orphaned (missing parent user or topic).
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-6 mb-8">
+                                        {/* Resolutions List */}
+                                        <div className="bg-white rounded-lg border border-amber-100 overflow-hidden flex flex-col max-h-96">
+                                            <div className="p-3 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="text-xs font-semibold text-amber-900 uppercase tracking-wide">Resolutions</div>
+                                                    <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{orphanReport.resolutions.length}</span>
+                                                </div>
+                                            </div>
+                                            {orphanReport.resolutions.length > 0 ? (
+                                                <div className="overflow-y-auto p-0">
+                                                    <table className="w-full text-left text-xs">
+                                                        <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
+                                                            <tr>
+                                                                <th className="p-2 font-medium text-slate-500 w-24">ID</th>
+                                                                <th className="p-2 font-medium text-slate-500">Title</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-50">
+                                                            {orphanReport.resolutions.map(doc => (
+                                                                <tr key={doc.id} className="hover:bg-slate-50">
+                                                                    <td className="p-2 font-mono text-slate-400 align-top select-all">{doc.id}</td>
+                                                                    <td className="p-2 text-slate-700 font-medium">{doc.data().title || "Untitled"}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center text-slate-400 text-xs py-8 bg-slate-50/50">No orphaned resolutions found.</div>
+                                            )}
+                                        </div>
+
+                                        {/* Topics List */}
+                                        <div className="bg-white rounded-lg border border-amber-100 overflow-hidden flex flex-col max-h-96">
+                                            <div className="p-3 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="text-xs font-semibold text-amber-900 uppercase tracking-wide">Topics</div>
+                                                    <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{orphanReport.topics.length}</span>
+                                                </div>
+                                            </div>
+                                            {orphanReport.topics.length > 0 ? (
+                                                <div className="overflow-y-auto p-0">
+                                                    <table className="w-full text-left text-xs">
+                                                        <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
+                                                            <tr>
+                                                                <th className="p-2 font-medium text-slate-500 w-24">ID</th>
+                                                                <th className="p-2 font-medium text-slate-500">Title</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-50">
+                                                            {orphanReport.topics.map(doc => (
+                                                                <tr key={doc.id} className="hover:bg-slate-50">
+                                                                    <td className="p-2 font-mono text-slate-400 align-top select-all">{doc.id}</td>
+                                                                    <td className="p-2 text-slate-700 font-medium">{doc.data().title || "Untitled"}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center text-slate-400 text-xs py-8 bg-slate-50/50">No orphaned topics found.</div>
+                                            )}
+                                        </div>
+
+                                        {/* Ghost Replies List */}
+                                        <div className="bg-white rounded-lg border border-amber-100 overflow-hidden flex flex-col max-h-96">
+                                            <div className="p-3 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="text-xs font-semibold text-amber-900 uppercase tracking-wide">Ghost Replies</div>
+                                                    <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{orphanReport.comments.length}</span>
+                                                </div>
+                                            </div>
+                                            {orphanReport.comments.length > 0 ? (
+                                                <div className="overflow-y-auto p-0">
+                                                    <table className="w-full text-left text-xs">
+                                                        <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
+                                                            <tr>
+                                                                <th className="p-2 font-medium text-slate-500 w-24">ID</th>
+                                                                <th className="p-2 font-medium text-slate-500">Parent Topic ID</th>
+                                                                <th className="p-2 font-medium text-slate-500">Content</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-50">
+                                                            {orphanReport.comments.map(doc => {
+                                                                const d = doc.data();
+                                                                const parentId = doc.ref.parent.parent?.id || "Unknown";
+                                                                return (
+                                                                    <tr key={doc.id} className="hover:bg-slate-50">
+                                                                        <td className="p-2 font-mono text-slate-400 align-top select-all">{doc.id}</td>
+                                                                        <td className="p-2 font-mono text-amber-600/80 align-top select-all font-medium">{parentId}</td>
+                                                                        <td className="p-2 text-slate-700">{d.content || "No Content"}</td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center text-slate-400 text-xs py-8 bg-slate-50/50">No ghost replies found.</div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-center">
+                                        {orphanReport.resolutions.length === 0 && orphanReport.topics.length === 0 && orphanReport.comments.length === 0 ? (
+                                            <div className="text-green-600 font-medium flex items-center gap-2">
+                                                <Target className="h-5 w-5" /> Database is clean! No action needed.
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                size="lg"
+                                                variant="destructive"
+                                                className="w-full max-w-xs shadow-lg shadow-red-500/20"
+                                                onClick={handleExecuteClean}
+                                                disabled={cleaningOrphans}
+                                            >
+                                                {cleaningOrphans ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                                {cleaningOrphans ? "Cleaning..." : "PERMANENTLY DELETE ORPHANS"}
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="monetization">
+                        <div className="max-w-4xl mx-auto mt-8 space-y-8">
+                            {/* Environment Switcher */}
+                            <div className="bg-slate-900 text-white rounded-xl p-8 shadow-xl border border-slate-800 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-3 opacity-10">
+                                    <CreditCard className="h-48 w-48 rotate-12" />
+                                </div>
+
+                                <div className="relative z-10 flex items-start justify-between">
+                                    <div>
+                                        <h2 className="text-2xl font-bold mb-2">Payment Environment</h2>
+                                        <p className="text-slate-400 mb-6 max-w-md">
+                                            Switch between Live Mode (Real Money) and Test Mode (Sandbox).
+                                            Currently active: <span className={clsx("font-bold px-2 py-0.5 rounded text-sm uppercase", config?.mode === 'live' ? "bg-red-500 text-white" : "bg-blue-500 text-white")}>{config?.mode || 'loading...'}</span>
+                                        </p>
+
+                                        <div className="flex bg-slate-800/50 p-1 rounded-lg inline-flex">
+                                            <button
+                                                onClick={() => updateConfig({ mode: 'test' })}
+                                                className={clsx("px-4 py-2 rounded-md text-sm font-bold transition-all", config?.mode === 'test' ? "bg-blue-500 text-white shadow-lg" : "text-slate-400 hover:text-white")}
+                                            >
+                                                Test Mode
+                                            </button>
+                                            <button
+                                                onClick={() => updateConfig({ mode: 'live' })}
+                                                className={clsx("px-4 py-2 rounded-md text-sm font-bold transition-all", config?.mode === 'live' ? "bg-red-500 text-white shadow-lg" : "text-slate-400 hover:text-white")}
+                                            >
+                                                Live Mode
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {config?.mode === 'live' && (
+                                        <div className="bg-red-900/30 border border-red-500/30 p-4 rounded-lg flex gap-3 max-w-sm">
+                                            <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
+                                            <div className="text-xs text-red-200">
+                                                <strong>Warning: Live Mode Active</strong><br />
+                                                Real transactions will be processed. Ensure your Stripe Live keys are configured in .env.local.
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Pricing Strategy */}
+                            <div className="grid md:grid-cols-2 gap-6">
+                                {/* Promo Strategy */}
+                                <div className={clsx("border-2 rounded-xl p-6 relative transition-all cursor-pointer", config?.activeTier === 'promo_jan' ? "border-emerald-500 bg-emerald-50/10 ring-4 ring-emerald-500/10" : "border-slate-200 bg-white hover:border-emerald-200")} onClick={() => updateConfig({ activeTier: 'promo_jan' })}>
+                                    {config?.activeTier === 'promo_jan' && (
+                                        <div className="absolute -top-3 left-6 px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full shadow-lg">
+                                            ACTIVE STRATEGY
+                                        </div>
+                                    )}
+                                    <h3 className="text-lg font-bold text-slate-900 mb-1">January Promo</h3>
+                                    <p className="text-sm text-slate-500 mb-4">Aggressive pricing for Q1 acquisition.</p>
+
+                                    <div className="space-y-3">
+                                        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-medium text-slate-600">Monthly ($1.99)</span>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="Stripe Monthly Price ID"
+                                                className="w-full text-xs p-1.5 border rounded bg-white font-mono"
+                                                value={config?.promo_jan?.monthlyPriceId || ''}
+                                                onChange={(e) => updateConfig({
+                                                    promo_jan: { ...config?.promo_jan, monthlyPriceId: e.target.value } as any
+                                                })}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
+                                        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-medium text-slate-600">Yearly ($19.99)</span>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="Stripe Yearly Price ID"
+                                                className="w-full text-xs p-1.5 border rounded bg-white font-mono"
+                                                value={config?.promo_jan?.yearlyPriceId || ''}
+                                                onChange={(e) => updateConfig({
+                                                    promo_jan: { ...config?.promo_jan, yearlyPriceId: e.target.value } as any
+                                                })}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Standard Strategy */}
+                                <div className={clsx("border-2 rounded-xl p-6 relative transition-all cursor-pointer", config?.activeTier === 'standard' ? "border-emerald-500 bg-emerald-50/10 ring-4 ring-emerald-500/10" : "border-slate-200 bg-white hover:border-emerald-200")} onClick={() => updateConfig({ activeTier: 'standard' })}>
+                                    {config?.activeTier === 'standard' && (
+                                        <div className="absolute -top-3 left-6 px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full shadow-lg">
+                                            ACTIVE STRATEGY
+                                        </div>
+                                    )}
+                                    <h3 className="text-lg font-bold text-slate-900 mb-1">Standard Pricing</h3>
+                                    <p className="text-sm text-slate-500 mb-4">Sustainable pricing for long-term growth.</p>
+
+                                    <div className="space-y-3">
+                                        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-medium text-slate-600">Monthly ($4.99)</span>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="Stripe Monthly Price ID"
+                                                className="w-full text-xs p-1.5 border rounded bg-white font-mono"
+                                                value={config?.standard?.monthlyPriceId || ''}
+                                                onChange={(e) => updateConfig({
+                                                    standard: { ...config?.standard, monthlyPriceId: e.target.value } as any
+                                                })}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
+                                        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-medium text-slate-600">Yearly ($47.99)</span>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="Stripe Yearly Price ID"
+                                                className="w-full text-xs p-1.5 border rounded bg-white font-mono"
+                                                value={config?.standard?.yearlyPriceId || ''}
+                                                onChange={(e) => updateConfig({
+                                                    standard: { ...config?.standard, yearlyPriceId: e.target.value } as any
+                                                })}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </TabsContent>
+                </Tabs>
+            </main>
+        </div>
+    );
+}
+
+function UserRow({ user, onToggleHide, onDelete }: { user: any, onToggleHide: any, onDelete: any }) {
+    const [expanded, setExpanded] = useState(true); // Default to expanded
+    const [resolutions, setResolutions] = useState<any[]>([]);
+    const [loadingRes, setLoadingRes] = useState(true); // Default to loading
+    const [loaded, setLoaded] = useState(false);
+
+    useEffect(() => {
+        // Auto-fetch on mount
+        const fetchRes = async () => {
+            try {
+                const q = query(collection(db, "resolutions"), where("uid", "==", user.uid));
+                const snap = await getDocs(q);
+                setResolutions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            } catch (error) {
+                console.error("Error loading resolutions", error);
+            } finally {
+                setLoadingRes(false);
+                setLoaded(true);
+            }
+        };
+        fetchRes();
+    }, [user.uid]);
+
+    const toggleExpand = () => {
+        setExpanded(!expanded);
+    };
+
+    return (
+        <>
+            <tr className={`hover:bg-slate-50/50 transition-colors ${expanded ? "bg-slate-50/80" : ""}`}>
+                <td className="p-4">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400" onClick={toggleExpand}>
+                        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                </td>
+                <td className="p-4">
+                    <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={user.photoURL} />
+                            <AvatarFallback>{user.username?.[0]?.toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium text-slate-900">{user.username}</span>
+                    </div>
+                </td>
+                <td className="p-4 text-slate-600">
+                    {user.email || <span className="text-slate-300 italic">No Email</span>}
+                </td>
+                <td className="p-4">
+                    {user.isHidden ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-100 text-red-700 text-xs font-medium">
+                            <EyeOff className="h-3 w-3" /> Hidden
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+                            Active
+                        </span>
+                    )}
+                </td>
+                <td className="p-4 text-right space-x-2">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className={user.isHidden ? "text-emerald-600 hover:text-emerald-700" : "text-amber-600 hover:text-amber-700"}
+                        onClick={() => onToggleHide(user.uid, user.isHidden)}
+                    >
+                        {user.isHidden ? <><Eye className="h-4 w-4 mr-1" /> Unhide</> : <><EyeOff className="h-4 w-4 mr-1" /> Hide</>}
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => onDelete(user.uid)}
+                        disabled={user.email === 'contact@didyouquit.com'}
+                        title={user.email === 'contact@didyouquit.com' ? "Cannot delete Super Admin" : "Delete User"}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </td>
+            </tr>
+            {expanded && (
+                <tr className="bg-slate-50/50">
+                    <td colSpan={5} className="p-4 pl-12 pt-0 pb-6 border-b border-slate-100">
+                        <div className="bg-white rounded-lg border border-slate-200 p-4">
+                            <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-3">
+                                <Target className="h-4 w-4 text-emerald-600" />
+                                User Resolutions ({loadingRes ? "..." : resolutions.length})
+                            </h4>
+                            {loadingRes ? (
+                                <div className="flex justify-center py-4">
+                                    <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                                </div>
+                            ) : resolutions.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {resolutions.map(res => (
+                                        <div key={res.id} className="p-3 bg-slate-50 rounded border border-slate-100 text-sm">
+                                            <div className="font-medium text-slate-900 mb-1">{res.title}</div>
+                                            {res.description && <div className="text-slate-500 text-xs line-clamp-1">{res.description}</div>}
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-medium">
+                                                    Current Streak: {res.currentStreak || 0}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-slate-400 italic text-sm">No resolutions found.</p>
+                            )}
+                        </div>
+                    </td>
+                </tr>
+            )}
+        </>
+    );
+}
+
+function AdminCommentItem({ comment, postId, onDelete }: { comment: Comment, postId: string, onDelete: (pid: string, cid: string) => void }) {
+    return (
+        <div className="flex gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200/60">
+            <Avatar className="h-8 w-8 mt-1 border border-slate-200 bg-white">
+                <AvatarImage src={comment.author?.photoURL} />
+                <AvatarFallback>{comment.author?.username?.[0]?.toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-sm text-slate-900">{comment.author?.username || "Unknown"}</span>
+                            <span className="text-xs text-slate-400">
+                                {comment.createdAt?.seconds ? formatDistanceToNow(new Date(comment.createdAt.seconds * 1000), { addSuffix: true }) : ''}
+                            </span>
+                        </div>
+                        <p className="text-slate-700 text-sm whitespace-pre-wrap">{comment.content}</p>
+                    </div>
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+                        title="Delete Reply"
+                        onClick={() => onDelete(postId, comment.id)}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </div>
+
+                {/* Nested Replies */}
+                {comment.replies && comment.replies.length > 0 && (
+                    <div className="mt-4 pl-4 border-l-2 border-slate-200 space-y-4">
+                        {comment.replies.map((reply: any) => (
+                            <AdminCommentItem
+                                key={reply.id}
+                                comment={reply}
+                                postId={postId}
+                                onDelete={onDelete}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

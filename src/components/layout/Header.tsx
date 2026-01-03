@@ -34,18 +34,29 @@ export function Header() {
                     <span>DidYouQuit<span className="text-emerald-600">?</span></span>
                 </Link>
 
-                {user ? (
-                    <div className="flex items-center gap-4">
-                        <div className="hidden md:flex items-center gap-4 mr-4">
-                            <Link href="/public-resolutions" className="text-sm font-medium hover:text-emerald-600 transition-colors">
+                <div className="flex items-center gap-4">
+                    {/* Public Links - Always Visible */}
+                    <div className="hidden md:flex items-center gap-2 mr-2">
+                        <Button variant="ghost" asChild className="text-slate-600 hover:text-emerald-600 hover:bg-emerald-50">
+                            <Link href="/public-resolutions">
                                 Public Resolutions 2026
                             </Link>
-                            {user && (
-                                <Link href="/my-resolutions" className="text-sm font-medium hover:text-emerald-600 transition-colors">
+                        </Button>
+                        <Button variant="ghost" asChild className="text-slate-600 hover:text-emerald-600 hover:bg-emerald-50">
+                            <Link href="/forums">
+                                Community Forum
+                            </Link>
+                        </Button>
+                        {user && (
+                            <Button variant="ghost" asChild className="text-slate-600 hover:text-emerald-600 hover:bg-emerald-50">
+                                <Link href="/my-resolutions">
                                     My Resolutions
                                 </Link>
-                            )}
-                        </div>
+                            </Button>
+                        )}
+                    </div>
+
+                    {user ? (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="relative h-8 w-8">
@@ -69,11 +80,24 @@ export function Header() {
                                     <Link href="/my-resolutions">My Resolutions</Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
-                                    <Link href={`/${userData?.username || user.uid}`}>Public Profile</Link>
+                                    <Link href="/following">Following</Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
-                                    <Link href="/settings">Edit Profile</Link>
+                                    <Link href={`/${userData?.username || user.uid}`}>Public Profile</Link>
                                 </DropdownMenuItem>
+                                {user.email !== 'contact@didyouquit.com' && (
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/settings">Edit Profile</Link>
+                                    </DropdownMenuItem>
+                                )}
+                                {user.email === 'contact@didyouquit.com' && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem asChild className="bg-red-50 hover:bg-red-100 text-red-900 font-semibold cursor-pointer">
+                                            <Link href="/admin">Super Admin</Link>
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={handleSignOut}>
                                     <LogOut className="mr-2 h-4 w-4" />
@@ -81,17 +105,17 @@ export function Header() {
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" asChild>
-                            <Link href="/?auth=login">Log In</Link>
-                        </Button>
-                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" asChild>
-                            <Link href="/?auth=signup">Get Started</Link>
-                        </Button>
-                    </div>
-                )}
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <Button variant="ghost" asChild>
+                                <Link href="/?auth=login">Log In</Link>
+                            </Button>
+                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" asChild>
+                                <Link href="/?auth=signup">Get Started</Link>
+                            </Button>
+                        </div>
+                    )}
+                </div>
             </div>
         </header>
     );
