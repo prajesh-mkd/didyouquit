@@ -54,7 +54,11 @@ service cloud.firestore {
     match /forum_topics/{topicId} {
       allow read: if true;
       allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && resource.data.author.uid == request.auth.uid;
+      allow update: if request.auth != null && (
+        resource.data.author.uid == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
+      );
+      allow delete: if request.auth != null && resource.data.author.uid == request.auth.uid;
       
       match /comments/{commentId} {
         allow read: if true;
