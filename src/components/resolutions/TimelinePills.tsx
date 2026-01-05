@@ -106,7 +106,7 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
                                     flex flex-col items-center justify-center 
                                     min-w-[100px] h-[52px] 
                                     rounded-lg border ${bgClass} 
-                                    text-xs snap-start flex-shrink-0 relative overflow-hidden
+                                    text-xs snap-start flex-shrink-0 relative overflow-hidden transform-gpu [backface-visibility:hidden]
                                     ${onStatusChange && !isLocked ? 'cursor-pointer hover:opacity-90 active:scale-95 transition-all' : ''}
                                     ${isLocked ? 'bg-slate-50 cursor-default' : ''}
                                 `}
@@ -122,7 +122,7 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
                                 >
                                     {/* Flat Edge Pulse */}
                                     <div
-                                        className="absolute top-0 bottom-0 right-[-3px] w-[6px] h-full animate-pulse-right bg-orange-400 shadow-[2px_0_5px_rgba(251,146,60,0.3)]"
+                                        className="absolute top-0 bottom-0 right-[-3px] w-[6px] h-full animate-pulse-right bg-orange-400 shadow-[2px_0_5px_rgba(251,146,60,0.3)] will-change-transform"
                                     />
                                 </div>
                             )}
