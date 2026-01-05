@@ -149,10 +149,28 @@ export async function POST(req: NextRequest) {
             const cancelAtPeriodEnd = (sub as any).cancel_at_period_end;
             const planInterval = (sub as any).items?.data?.[0]?.price?.recurring?.interval || 'month';
 
-            // Find user by customerId
-            const usersSnap = await adminDb.collection("users").where("stripeCustomerId", "==", customerId).get();
-            if (!usersSnap.empty) {
-                const userDoc = usersSnap.docs[0];
+            // Find user by customerId (Robust Search)
+            let userDoc = null;
+
+            // 1. Try Legacy ID
+            const legacySnap = await adminDb.collection("users").where("stripeCustomerId", "==", customerId).get();
+            if (!legacySnap.empty) {
+                userDoc = legacySnap.docs[0];
+            } else {
+                // 2. Try Test ID
+                const testSnap = await adminDb.collection("users").where("stripeIds.test", "==", customerId).get();
+                if (!testSnap.empty) {
+                    userDoc = testSnap.docs[0];
+                } else {
+                    // 3. Try Live ID
+                    const liveSnap = await adminDb.collection("users").where("stripeIds.live", "==", customerId).get();
+                    if (!liveSnap.empty) {
+                        userDoc = liveSnap.docs[0];
+                    }
+                }
+            }
+
+            if (userDoc) {
                 await userDoc.ref.update({
                     subscriptionStatus: status,
                     currentPeriodEnd: currentPeriodEnd,
@@ -161,8 +179,10 @@ export async function POST(req: NextRequest) {
                     isPro: status === 'active' || status === 'trialing' || status === 'past_due'
                 });
                 console.log(`[Webhook] User ${userDoc.id} subscription updated: ${status}`);
+                return NextResponse.json({ received: true, status: "updated", uid: userDoc.id });
             } else {
                 console.log(`[Webhook] No user found for customer ${customerId}`);
+                return NextResponse.json({ received: true, status: "ignored_no_user_found", customerId }, { status: 200 }); // 200 to verify logic ran
             }
         }
     } catch (error: any) {
