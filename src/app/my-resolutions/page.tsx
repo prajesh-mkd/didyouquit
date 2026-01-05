@@ -282,6 +282,7 @@ export default function Dashboard() {
                         resolutionTitle: res.title,
                         content: note,
                         weekKey,
+                        status: status, // Save the check-in status (Kept/Missed)
                         createdAt: serverTimestamp(),
                         likes: 0
                     });

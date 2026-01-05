@@ -7,7 +7,7 @@ import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, ArrowLeft, Send, MessageSquare, Reply, Trash2, Pencil } from "lucide-react";
+import { Loader2, ArrowLeft, Send, MessageSquare, Reply, Trash2, Pencil, CheckCircle2, XCircle } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, deleteDoc } from "firebase/firestore";
 import { toast } from "sonner";
@@ -39,6 +39,7 @@ interface JournalEntry {
     weekKey: string;
     createdAt: any;
     commentCount?: number;
+    status?: boolean;
 }
 
 function getWeekInfo(weekKey: string) {
@@ -401,6 +402,12 @@ export default function JournalPage() {
                                             <span className="font-medium text-emerald-600">
                                                 {entry.resolutionTitle}
                                             </span>
+                                            {entry.status !== undefined && (
+                                                <div className={`flex items-center gap-1 text-[10px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded-full border ml-2 ${entry.status ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"}`}>
+                                                    {entry.status ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                                    {entry.status ? "Kept It" : "Missed It"}
+                                                </div>
+                                            )}
                                         </div>
                                         {weekInfo && (
                                             <div className="flex items-center gap-2 text-slate-400 bg-slate-50 w-fit px-2 py-1 rounded-md mt-1">
