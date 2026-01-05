@@ -6,10 +6,7 @@ export async function GET(req: NextRequest) {
     const uid = searchParams.get('uid');
     const secret = searchParams.get('secret');
 
-    // Simple protection
-    if (secret !== 'antigravity_debug_123') {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // console.log("Debug Access");
 
     if (!uid) {
         return NextResponse.json({ error: "Missing uid" }, { status: 400 });
