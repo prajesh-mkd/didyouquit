@@ -144,32 +144,6 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                                 </p>
 
                                 <div className="flex items-center gap-4 text-xs text-slate-500">
-                                    {isProfileView ? (
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-5 w-5 border border-slate-100">
-                                                <AvatarImage src={entry.photoURL} />
-                                                <AvatarFallback className="bg-emerald-50 text-emerald-600">
-                                                    {entry.username[0]?.toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <span>{entry.username}</span>
-                                        </div>
-                                    ) : (
-                                        <Link
-                                            href={`/${entry.username}`}
-                                            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <Avatar className="h-5 w-5 border border-slate-100">
-                                                <AvatarImage src={entry.photoURL} />
-                                                <AvatarFallback className="bg-emerald-50 text-emerald-600">
-                                                    {entry.username[0]?.toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <span className="hover:underline">{entry.username}</span>
-                                        </Link>
-                                    )}
-                                    <span>•</span>
                                     <span>{entry.createdAt?.seconds ? formatDistanceToNow(new Date(entry.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}</span>
                                 </div>
                             </div>
