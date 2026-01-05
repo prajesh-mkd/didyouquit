@@ -38,12 +38,14 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
         if (scrollContainerRef.current) {
             // Target the PREVIOUS week (so user sees context), unless it's week 1
             const targetWeekNum = currentWeekNum > 1 ? currentWeekNum - 1 : 1;
-            const targetWeekId = `pill-${resId}-${targetWeekNum}`;
 
             // Use setTimeout to ensure layout is final before scrolling
             // Increased to 300ms to be safe against rendering delays
             const timer = setTimeout(() => {
-                const element = document.getElementById(targetWeekId);
+                // Scope selector to THIS container to avoid issues with duplicate IDs (e.g. mobile/desktop views)
+                // We use data-week-num attribute for reliable scoping
+                const element = scrollContainerRef.current?.querySelector(`[data-week-num="${targetWeekNum}"]`);
+
                 if (element) {
                     // scrollIntoView is more robust than manual offset calculation
                     // inline: 'start' aligns it to the left
@@ -107,6 +109,7 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
                         <div
                             key={week}
                             id={`pill-${resId}-${week}`}
+                            data-week-num={week}
                             className={`
                                     flex flex-col items-center justify-center 
                                     min-w-[100px] h-[52px] 
