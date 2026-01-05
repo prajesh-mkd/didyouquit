@@ -198,18 +198,21 @@ export default function SubscriptionPage() {
                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                {isPro ? (
+                                {isPro || userData.subscriptionStatus === 'unpaid' || userData.subscriptionStatus === 'past_due' ? (
                                     <Button
                                         onClick={handleManageSubscription}
                                         disabled={loadingPortal}
-                                        className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-400 shadow-sm"
+                                        className={cn(
+                                            "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-400 shadow-sm",
+                                            (userData.subscriptionStatus === 'unpaid' || userData.subscriptionStatus === 'past_due') && "border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 hover:text-red-900"
+                                        )}
                                     >
                                         {loadingPortal ? (
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         ) : (
                                             <CreditCard className="mr-2 h-4 w-4" />
                                         )}
-                                        Manage Subscription
+                                        {userData.subscriptionStatus === 'unpaid' || userData.subscriptionStatus === 'past_due' ? "Update Payment Method" : "Manage Subscription"}
                                     </Button>
                                 ) : (
                                     <>

@@ -622,6 +622,34 @@ export default function AdminPage() {
         }
     };
 
+    const handleSetStatus = async (uid: string, status: string) => {
+        const loadingId = toast.loading(`Setting status to ${status}...`);
+        try {
+            const token = await user?.getIdToken();
+            const res = await fetch('/api/admin/set_status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ uid, status })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                // Optimistic Update
+                setUsers(users.map(u =>
+                    u.uid === uid ? { ...u, subscriptionStatus: status as any, isPro: data.isPro } : u
+                ));
+                toast.success(`Updated to ${status}`, { id: loadingId });
+            } else {
+                toast.error(data.error || "Update failed", { id: loadingId });
+            }
+        } catch (error) {
+            toast.error("Failed to call API", { id: loadingId });
+        }
+    };
+
     if (loading || (user?.email !== 'contact@didyouquit.com')) {
         return (
             <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -669,6 +697,7 @@ export default function AdminPage() {
                                         <th className="p-4 font-medium text-slate-500 text-right">Actions</th>
                                     </tr>
                                 </thead>
+
                                 <tbody className="divide-y divide-slate-100">
                                     {users.map(u => (
                                         <UserRow
@@ -676,6 +705,7 @@ export default function AdminPage() {
                                             user={u}
                                             onToggleHide={handleToggleHideUser}
                                             onDelete={handleDeleteUser}
+                                            onSetStatus={handleSetStatus}
                                         />
                                     ))}
                                 </tbody>
@@ -1581,7 +1611,7 @@ export default function AdminPage() {
         </div>
     );
 }
-function UserRow({ user, onToggleHide, onDelete }: { user: any, onToggleHide: any, onDelete: any }) {
+function UserRow({ user, onToggleHide, onDelete, onSetStatus }: { user: any, onToggleHide: any, onDelete: any, onSetStatus: any }) {
     const [expanded, setExpanded] = useState(true); // Default to expanded
     const [resolutions, setResolutions] = useState<any[]>([]);
     const [loadingRes, setLoadingRes] = useState(true); // Default to loading
@@ -1688,6 +1718,47 @@ function UserRow({ user, onToggleHide, onDelete }: { user: any, onToggleHide: an
                             ) : (
                                 <p className="text-slate-400 italic text-sm">No resolutions found.</p>
                             )}
+                        </div>
+
+                        {/* Subscription Simulator */}
+                        <div className="bg-white rounded-lg border border-slate-200 p-4 mt-4">
+                            <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-3">
+                                <CreditCard className="h-4 w-4 text-purple-600" />
+                                Subscription Simulation (Force State)
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    size="sm" variant="outline"
+                                    className="h-7 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                    onClick={() => onSetStatus(user.uid, 'active')}
+                                >
+                                    Force Active (Pro)
+                                </Button>
+                                <Button
+                                    size="sm" variant="outline"
+                                    className="h-7 text-xs border-amber-200 text-amber-700 hover:bg-amber-50"
+                                    onClick={() => onSetStatus(user.uid, 'past_due')}
+                                >
+                                    Force Past Due (Pro + Warning)
+                                </Button>
+                                <Button
+                                    size="sm" variant="outline"
+                                    className="h-7 text-xs border-red-200 text-red-700 hover:bg-red-50"
+                                    onClick={() => onSetStatus(user.uid, 'unpaid')}
+                                >
+                                    Force Unpaid (Not Pro)
+                                </Button>
+                                <Button
+                                    size="sm" variant="outline"
+                                    className="h-7 text-xs border-slate-200 text-slate-700 hover:bg-slate-50"
+                                    onClick={() => onSetStatus(user.uid, 'canceled')}
+                                >
+                                    Force Canceled (Not Pro)
+                                </Button>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-2">
+                                * This directly updates Firestore. Webhooks might overwrite this if a real Stripe event comes in later.
+                            </p>
                         </div>
                     </td>
                 </tr>

@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
                     currentPeriodEnd: currentPeriodEnd,
                     cancelAtPeriodEnd: cancelAtPeriodEnd,
                     planInterval: planInterval,
-                    isPro: status === 'active' || status === 'trialing'
+                    isPro: status === 'active' || status === 'trialing' || status === 'past_due'
                 });
                 console.log(`[Webhook] User ${userDoc.id} subscription updated: ${status}`);
             } else {

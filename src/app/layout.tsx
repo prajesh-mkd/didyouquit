@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   description: "Track your New Year resolutions simply.",
 };
 
+import { SubscriptionStatusBanner } from "@/components/subscription/SubscriptionStatusBanner";
+
+// ... (other imports)
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -21,6 +25,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className} suppressHydrationWarning={true}>
         <AuthProvider>
+          <SubscriptionStatusBanner />
           {children}
           <Toaster />
         </AuthProvider>

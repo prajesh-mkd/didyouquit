@@ -9,7 +9,7 @@ export interface UserProfile {
     country?: string; // e.g. "US", "IN"
 
     // Subscription / Monetization
-    subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'none' | 'trialing';
+    subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'none' | 'trialing' | 'unpaid';
     stripeCustomerId?: string;
     subscriptionId?: string;
     currentPeriodEnd?: any; // Firestore Timestamp or string
