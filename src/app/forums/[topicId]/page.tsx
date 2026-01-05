@@ -29,6 +29,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { createNotification } from "@/lib/notifications";
 
 interface Comment {
     id: string;
@@ -293,9 +294,41 @@ export default function TopicPage() {
             if (parentId) {
                 setReplyContent("");
                 setReplyingTo(null);
+
+                // Notify Parent Comment Author
+                try {
+                    const parentSnap = await getDoc(doc(db, "forum_topics", topicId as string, "comments", parentId));
+                    if (parentSnap.exists()) {
+                        const parentData = parentSnap.data();
+                        if (parentData.author.uid !== user.uid && parentData.author.uid !== topic?.author.uid) {
+                            await createNotification(parentData.author.uid, 'reply', {
+                                senderUid: user.uid,
+                                senderUsername: userData?.username || "Anonymous",
+                                senderPhotoURL: userData?.photoURL,
+                                refId: topicId as string,
+                                refText: content
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error notifying parent author", e);
+                }
+
             } else {
                 setNewComment("");
             }
+
+            // Notify Topic Author
+            if (topic && topic.author.uid !== user.uid) {
+                await createNotification(topic.author.uid, 'reply', {
+                    senderUid: user.uid,
+                    senderUsername: userData?.username || "Anonymous",
+                    senderPhotoURL: userData?.photoURL,
+                    refId: topic.id,
+                    refText: content
+                });
+            }
+
             toast.success("Comment added");
         } catch (error) {
             toast.error("Failed to post comment");
@@ -471,7 +504,7 @@ export default function TopicPage() {
                     {user ? (
                         <form onSubmit={(e) => handlePostComment(e, null)} className="flex gap-4 items-start">
                             <Avatar className="h-8 w-8 mt-1">
-                                <AvatarImage src={userData?.photoURL} />
+                                <AvatarImage src={userData?.photoURL || undefined} />
                                 <AvatarFallback>{userData?.username?.[0]?.toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 space-y-2">
@@ -502,7 +535,7 @@ export default function TopicPage() {
                                 <CommentItem
                                     key={comment.id}
                                     comment={comment}
-                                    onReply={(id) => setReplyingTo(id === replyingTo ? null : id)}
+                                    onReply={(id: string | null) => setReplyingTo(id === replyingTo ? null : id)}
                                     replyingTo={replyingTo}
                                     replyContent={replyContent}
                                     setReplyContent={setReplyContent}

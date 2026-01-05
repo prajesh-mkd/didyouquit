@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     let event: Stripe.Event;
     // We instantiate with a default key just to get value-added types.
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", { apiVersion: "2025-01-27.acacia" });
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", { apiVersion: "2025-12-15.clover" as any, typescript: true });
 
     try {
         event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
@@ -49,10 +49,27 @@ export async function POST(req: NextRequest) {
             const subscriptionId = session.subscription as string;
 
             if (uid) {
+                // Retrieve the subscription to get the period end and cancellation status
+                let currentPeriodEnd = null;
+                let cancelAtPeriodEnd = false;
+                let planInterval = 'month';
+
+                try {
+                    const sub = await stripe.subscriptions.retrieve(subscriptionId);
+                    currentPeriodEnd = new Date((sub as any).current_period_end * 1000);
+                    cancelAtPeriodEnd = (sub as any).cancel_at_period_end;
+                    planInterval = (sub as any).items.data[0].price.recurring?.interval || 'month';
+                } catch (e) {
+                    console.error("Error fetching sub details in checkout webhook:", e);
+                }
+
                 await adminDb.collection("users").doc(uid).update({
                     subscriptionStatus: 'active',
                     stripeCustomerId: customerId,
                     subscriptionId: subscriptionId,
+                    currentPeriodEnd: currentPeriodEnd,
+                    cancelAtPeriodEnd: cancelAtPeriodEnd,
+                    planInterval: planInterval,
                     isPro: true
                 });
                 console.log(`[Webhook] User ${uid} upgraded to PRO.`);
@@ -62,6 +79,9 @@ export async function POST(req: NextRequest) {
             const sub = event.data.object as Stripe.Subscription;
             const customerId = sub.customer as string;
             const status = sub.status; // 'active', 'canceled', 'past_due'
+            const currentPeriodEnd = new Date((sub as any).current_period_end * 1000);
+            const cancelAtPeriodEnd = (sub as any).cancel_at_period_end;
+            const planInterval = (sub as any).items.data[0]?.price?.recurring?.interval || 'month';
 
             // Find user by customerId
             const usersSnap = await adminDb.collection("users").where("stripeCustomerId", "==", customerId).get();
@@ -69,6 +89,9 @@ export async function POST(req: NextRequest) {
                 const userDoc = usersSnap.docs[0];
                 await userDoc.ref.update({
                     subscriptionStatus: status,
+                    currentPeriodEnd: currentPeriodEnd,
+                    cancelAtPeriodEnd: cancelAtPeriodEnd,
+                    planInterval: planInterval,
                     isPro: status === 'active' || status === 'trialing'
                 });
                 console.log(`[Webhook] User ${userDoc.id} subscription updated: ${status}`);

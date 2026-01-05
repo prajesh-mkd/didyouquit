@@ -21,6 +21,12 @@ export function Header() {
     const { user, userData } = useAuth();
     const router = useRouter();
 
+    const normalizedEmail = user?.email?.toLowerCase().trim();
+    const isSuperAdmin = normalizedEmail === 'contact@didyouquit.com';
+
+    // DEBUG: Remove this after fixing
+    console.log("[Header] Auth Check:", { email: user?.email, normalizedEmail, isSuperAdmin });
+
     const handleSignOut = async () => {
         await signOut(auth);
         router.push("/");
@@ -29,7 +35,7 @@ export function Header() {
     return (
         <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
             <div className="container flex h-14 items-center justify-between px-4">
-                <Link href="/" className="flex items-center gap-2 font-bold text-xl">
+                <Link href="/?home=true" className="flex items-center gap-2 font-bold text-xl">
                     <Target className="h-6 w-6 text-emerald-600" />
                     <span>DidYouQuit<span className="text-emerald-600">?</span></span>
                 </Link>
@@ -61,7 +67,7 @@ export function Header() {
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="relative h-8 w-8">
                                     <Avatar className="h-8 w-8">
-                                        <AvatarImage src={userData?.photoURL} alt={userData?.username || "User"} />
+                                        <AvatarImage src={userData?.photoURL ?? undefined} alt={userData?.username || "User"} />
                                         <AvatarFallback>{userData?.username?.slice(0, 2).toUpperCase() || "U"}</AvatarFallback>
                                     </Avatar>
                                 </Button>
@@ -85,12 +91,15 @@ export function Header() {
                                 <DropdownMenuItem asChild>
                                     <Link href={`/${userData?.username || user.uid}`}>Public Profile</Link>
                                 </DropdownMenuItem>
-                                {user.email !== 'contact@didyouquit.com' && (
+                                {!isSuperAdmin && (
                                     <DropdownMenuItem asChild>
                                         <Link href="/settings">Edit Profile</Link>
                                     </DropdownMenuItem>
                                 )}
-                                {user.email === 'contact@didyouquit.com' && (
+                                <DropdownMenuItem asChild>
+                                    <Link href="/subscription">Subscription</Link>
+                                </DropdownMenuItem>
+                                {isSuperAdmin && (
                                     <>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem asChild className="bg-red-50 hover:bg-red-100 text-red-900 font-semibold cursor-pointer">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { adminDb } from "@/lib/firebase-admin";
 
 export async function POST(req: NextRequest) {
     try {
@@ -14,21 +15,21 @@ export async function POST(req: NextRequest) {
         // But if I signed up in Test, and app switches to Live, I shouldn't be able to manage my Test sub?
         // Let's assume the Config 'mode' drives which key we use.
 
-        // START: Config Fetch Logic (Simplified for brevity, ideally shared util)
-        // For now, we use the default env vars which SHOULD be set to the active mode keys by a deployment script or manual set.
-        // But wait, the User wants dynamic switching.
-        // So we should read Firestore config here too?
+        const configDoc = await adminDb.collection("app_config").doc("subscription_settings").get();
+        const config = configDoc.data() as any;
+        const mode = config?.mode || 'test';
+        const apiKey = mode === 'live'
+            ? process.env.STRIPE_SECRET_KEY_LIVE
+            : process.env.STRIPE_SECRET_KEY_TEST;
 
-        // Let's read the environment variable logic:
-        // We will default to the standard process.env.STRIPE_SECRET_KEY which points to the "Active" one.
-        // The Admin "Toggle" might just be a UI thing for "Active Strategy", but "Test vs Live" usually requires changing the secret key.
-        // If we really want dynamic switching without redeploy, we need to read the `mode` from Firestore and select the key.
+        // Use the config ID we just generated if available
+        const portalConfigId = config?.[mode]?.portalConfigId;
 
-        // Let's rely on standard env var for now to avoid complexity.
-        // The Admin Toggle for "Test/Live" will purely update the `mode` in Firestore, 
-        // and we will update `src/lib/stripe-server.ts` to pick the right key based on that mode.
+        if (!apiKey) {
+            return NextResponse.json({ error: "Stripe Config Missing" }, { status: 500 });
+        }
 
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-01-27.acacia" });
+        const stripe = new Stripe(apiKey, { apiVersion: "2025-12-15.clover" as any });
 
         if (!stripeCustomerId) {
             return NextResponse.json({ error: "No customer ID" }, { status: 400 });
@@ -36,7 +37,8 @@ export async function POST(req: NextRequest) {
 
         const session = await stripe.billingPortal.sessions.create({
             customer: stripeCustomerId,
-            return_url: `${req.headers.get("origin")}/my-resolutions`,
+            return_url: `${req.headers.get("origin")}/subscription`,
+            configuration: portalConfigId // Use the custom configuration with Update enabled
         });
 
         return NextResponse.json({ url: session.url });

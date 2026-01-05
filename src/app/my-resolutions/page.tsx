@@ -15,7 +15,12 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, Trash2, Pencil, RefreshCw, CheckCircle2, XCircle, Target, Settings, Calendar, Flame } from "lucide-react";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import { Plus, Loader2, Trash2, Pencil, RefreshCw, CheckCircle2, XCircle, Target, Settings, Calendar, Flame, Info } from "lucide-react";
 import { db } from "@/lib/firebase";
 import {
     collection,
@@ -29,7 +34,9 @@ import {
     serverTimestamp,
 } from "firebase/firestore";
 import { toast } from "sonner";
+import { notifyFollowers } from "@/lib/notifications";
 import { getFriendlyErrorMessage } from "@/lib/error-utils";
+import { PaywallModal } from "@/components/subscription/PaywallModal";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { getCurrentWeekKey, getWeekLabel } from "@/lib/date-utils";
@@ -38,13 +45,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { DeleteConfirmDialog } from "@/components/dashboard/DeleteConfirmDialog";
 import { EditResolutionDialog } from "@/components/dashboard/EditResolutionDialog";
 import { format, setWeek, startOfWeek, endOfWeek, subWeeks, getISOWeek, getYear } from "date-fns";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EmailVerificationBanner } from "@/components/dashboard/EmailVerificationBanner";
 import { TimelinePills } from "@/components/resolutions/TimelinePills";
+import { CheckInDialog } from "@/components/resolutions/CheckInDialog";
 import { calculateStreak } from "@/lib/streak-utils";
 import { AppConfig, UserProfile } from "@/lib/types"; // Ensure UserProfile is imported
 import { getDoc } from "firebase/firestore";
 import { loadStripe } from "@stripe/stripe-js";
+import { useSimulatedDate } from "@/lib/hooks/use-simulated-date";
 
 interface Resolution {
     id: string;
@@ -74,6 +82,12 @@ export default function Dashboard() {
     const [config, setConfig] = useState<AppConfig | null>(null);
     const [showPaywall, setShowPaywall] = useState(false);
     const [loadingCheckout, setLoadingCheckout] = useState<'month' | 'year' | null>(null);
+
+    // Check-in State (for Dashboard Card)
+    const [checkInRes, setCheckInRes] = useState<Resolution | null>(null);
+    const [initialCheckInStatus, setInitialCheckInStatus] = useState<boolean | null>(null);
+
+    const simulation = useSimulatedDate();
 
     // Initial Config Fetch
     useEffect(() => {
@@ -106,40 +120,22 @@ export default function Dashboard() {
     const isPro = userData?.subscriptionStatus === 'active' || userData?.subscriptionStatus === 'trialing';
 
     // Get active pricing details
-    const activeTierKey = config?.activeTier || 'promo_jan';
-    // @ts-ignore
-    const pricing = config?.[activeTierKey] || {
+    // Get active pricing details
+    const mode = config?.mode || 'test';
+    const strategy = config?.strategy || 'sale';
+
+
+    // Deep fallback if config is completely missing to avoid crash
+    const pricing = {
+        features: ['Unlimited Resolutions', 'Advanced Analytics', 'Community Badges'],
         displayMonthly: '$1.99',
         displayYearly: '$19.99',
         marketingHeader: 'Start Your Journey',
-        marketingSubtext: 'Invest in yourself today.'
+        marketingSubtext: 'Invest in yourself today.',
+        ...(config?.[mode]?.[strategy] || {})
     };
 
-    const handleSubscribe = async (interval: 'month' | 'year') => {
-        if (!user) return;
-        setLoadingCheckout(interval);
-        try {
-            const res = await fetch('/api/checkout_session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    uid: user.uid,
-                    email: user.email,
-                    interval
-                })
-            });
-            const data = await res.json();
-            if (data.error) throw new Error(data.error);
-            if (data.sessionId) {
-                const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-                await stripe?.redirectToCheckout({ sessionId: data.sessionId });
-            }
-        } catch (error: any) {
-            toast.error(error.message || "Checkout failed");
-        } finally {
-            setLoadingCheckout(null);
-        }
-    };
+    // handleSubscribe and renderPrice moved to PaywallModal component
 
     const handleManageSubscription = async () => {
         if (!userData?.stripeCustomerId) return;
@@ -156,16 +152,28 @@ export default function Dashboard() {
         }
     };
 
+    // Profile Check with Safety Buffer
+    // Prevents "Onboarding Flash" where userData might lag behind authLoading for a split second.
+    const [profileCheckBuffer, setProfileCheckBuffer] = useState(true);
+
     useEffect(() => {
-        if (!authLoading) {
+        // Start buffer timer on mount
+        const timer = setTimeout(() => setProfileCheckBuffer(false), 800);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!authLoading && !profileCheckBuffer) {
             if (!user) {
                 router.push("/");
             } else if (!userData) {
+                // Only redirect to onboarding if we are SURE userData is missing after buffer
                 router.push("/onboarding");
             }
         }
-    }, [authLoading, user, userData, router]);
+    }, [authLoading, user, userData, router, profileCheckBuffer]);
 
+    // Don't fetch resolutions until we have user
     useEffect(() => {
         if (!user) return;
         const q = query(
@@ -233,15 +241,24 @@ export default function Dashboard() {
         }
     };
 
-    const handleSaveEdit = async (newTitle: string) => {
+    const handleSaveEdit = async (newTitle: string, newDescription: string) => {
         if (!editRes) return;
         const resRef = doc(db, "resolutions", editRes.id);
-        await updateDoc(resRef, { title: newTitle });
+        const updates: any = { title: newTitle };
+        if (newDescription !== undefined) {
+            updates.description = newDescription;
+        }
+        await updateDoc(resRef, updates);
         toast.success("Resolution updated");
         setEditRes(null);
     };
 
     const handleCheckIn = async (res: Resolution, weekKey: string, status: boolean, note?: string) => {
+        if (!isPro) {
+            setShowPaywall(true);
+            return;
+        }
+
         try {
             const resRef = doc(db, "resolutions", res.id);
             const updates: any = {
@@ -251,25 +268,57 @@ export default function Dashboard() {
                 updates[`weeklyNotes.${weekKey}`] = note;
             }
             await updateDoc(resRef, updates);
+
+            // Sync to Public Journal Entries if a note exists
+            if (note && note.trim().length > 0) {
+                try {
+                    await addDoc(collection(db, "journal_entries"), {
+                        uid: user?.uid,
+                        username: userData?.username || "Anonymous",
+                        photoURL: userData?.photoURL || null,
+                        resolutionId: res.id,
+                        resolutionTitle: res.title,
+                        content: note,
+                        weekKey,
+                        createdAt: serverTimestamp(),
+                        likes: 0
+                    });
+
+                    // Notify followers
+                    if (user?.uid) {
+                        await notifyFollowers(user.uid, 'new_journal', {
+                            senderUid: user.uid,
+                            senderUsername: userData?.username || "Anonymous",
+                            senderPhotoURL: userData?.photoURL,
+                            refId: res.id, // Linking to resolution for now, ideally to the journal ID but we just created it async
+                            refText: `Posted a check-in for ${res.title}`
+                        });
+                    }
+                } catch (err) {
+                    console.error("Failed to sync journal", err);
+                }
+            }
+
             toast.success("Check-in saved!");
         } catch (error: any) {
             toast.error("Failed to update status");
         }
     };
 
-    const currentYear = new Date().getFullYear();
+    const currentYear = simulation.date.getFullYear();
     const currentWeekInfo = getCurrentWeekKey(); // e.g., "2026-W01"
     const weeks = Array.from({ length: 52 }, (_, i) => i + 1);
 
     const getWeekRange = (weekNum: number) => {
-        const now = new Date();
+        const now = simulation.date;
         const targetDate = setWeek(now, weekNum, { weekStartsOn: 1 });
         const start = startOfWeek(targetDate, { weekStartsOn: 1 });
         const end = endOfWeek(targetDate, { weekStartsOn: 1 });
         return `${format(start, "MMM d")} - ${format(end, "MMM d")}`;
     };
 
-    if (authLoading || loading) {
+    // Show loader during Auth, initial Load, OR Profile Buffer
+    if (authLoading || loading || (user && !userData && profileCheckBuffer)) {
         return (
             <div className="flex h-screen items-center justify-center bg-[#F0FDF4]">
                 <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
@@ -279,20 +328,33 @@ export default function Dashboard() {
 
     // Calculate Last Week Info for Check-in
     // We want to prompt for the *last completed week*
-    const now = new Date();
-    const lastWeekDate = subWeeks(now, 1);
-    const lastWeekKey = `${getYear(lastWeekDate)}-W${getISOWeek(lastWeekDate).toString().padStart(2, '0')}`;
-    const lastWeekEnd = endOfWeek(lastWeekDate, { weekStartsOn: 1 });
+    const now = simulation.date;
+    const currentWeekNum = getISOWeek(now);
+    const isFirstWeek = currentWeekNum === 1;
 
-    // Filter for "Last Week Check-in"
+    // Logic:
+    // If it's Week 1: Show Week 1, but DISABLE check-in (Waiting for next Monday).
+    // If it's Week 2+: Show Previous Week, ENABLE check-in.
+
+    let targetWeekDate = isFirstWeek ? now : subWeeks(now, 1);
+    const targetWeekNum = getISOWeek(targetWeekDate);
+    const targetYear = getYear(targetWeekDate);
+    const targetWeekKey = `${targetYear}-W${targetWeekNum.toString().padStart(2, '0')}`;
+    const targetWeekEnd = endOfWeek(targetWeekDate, { weekStartsOn: 1 });
+
+    // For Week 1, the "Next Monday" is the start of Week 2
+    const checkinStartDate = format(startOfWeek(setWeek(now, 2, { weekStartsOn: 1 }), { weekStartsOn: 1 }), "EEE, MMM d");
+
+    // Filter for Check-ins
+    // If First Week: Show ALL resolutions (none are checked in yet).
+    // If Normal: Show only MISSING resolutions for *Last Week*.
     const pendingResolutions = resolutions.filter(res => {
         // 1. Is the check-in missing?
-        if (res.weeklyLog[lastWeekKey] !== undefined) return false;
+        if (res.weeklyLog[targetWeekKey] !== undefined) return false;
 
         // 2. Did the resolution exist during that week?
-        // We compare creation time. If created AFTER the week ended, skip it.
         const createdAtMs = res.createdAt?.seconds * 1000 || Date.now();
-        if (createdAtMs > lastWeekEnd.getTime()) return false;
+        if (createdAtMs > targetWeekEnd.getTime()) return false;
 
         return true;
     });
@@ -310,69 +372,79 @@ export default function Dashboard() {
                         <h1 className="text-3xl font-bold text-emerald-950">My Resolutions</h1>
                         <p className="text-emerald-800/60 mt-1">Track your progress and stay consistent.</p>
                     </div>
+
+                    {!isPro ? (
+                        <Button
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 shadow-md"
+                            onClick={() => setShowPaywall(true)}
+                        >
+                            <Plus className="mr-1 h-4 w-4" /> Add New Resolution
+                        </Button>
+                    ) : (
+                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 shadow-md">
+                                    <Plus className="mr-1 h-4 w-4" /> Add New Resolution
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Add New Resolution</DialogTitle>
+                                    <DialogDescription>Try to be more specific.</DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleCreateResolution}>
+                                    <div className="grid gap-4 py-4">
+
+                                        <Input
+                                            placeholder="E.g. Exercise three times a week..."
+                                            value={newResTitle}
+                                            onChange={(e) => setNewResTitle(e.target.value)}
+                                            required
+                                        />
+                                        <div className="space-y-1">
+                                            <label className="text-sm text-slate-500 font-medium">Why is this important to you?</label>
+                                            <Textarea
+                                                placeholder="Sharing your 'why' creates a stronger commitment and helps others understand your journey."
+                                                value={newResDescription}
+                                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewResDescription(e.target.value)}
+                                                className="min-h-[100px]"
+                                            />
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button type="submit" disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Add Resolution"}
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    )}
                 </div>
 
-                {!isPro ? (
-                    <Button
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 shadow-md"
-                        onClick={() => setShowPaywall(true)}
-                    >
-                        <Plus className="mr-1 h-4 w-4" /> Add New Resolution
-                    </Button>
-                ) : (
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 shadow-md">
-                                <Plus className="mr-1 h-4 w-4" /> Add New Resolution
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Add New Resolution</DialogTitle>
-                                <DialogDescription>Try to be more specific.</DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleCreateResolution}>
-                                <div className="grid gap-4 py-4">
 
-                                    <Input
-                                        placeholder="E.g. Exercise three times a week..."
-                                        value={newResTitle}
-                                        onChange={(e) => setNewResTitle(e.target.value)}
-                                        required
-                                    />
-                                    <div className="space-y-1">
-                                        <label className="text-sm text-slate-500 font-medium">Why is this important to you?</label>
-                                        <Textarea
-                                            placeholder="Sharing your 'why' creates a stronger commitment and helps others understand your journey."
-                                            value={newResDescription}
-                                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewResDescription(e.target.value)}
-                                            className="min-h-[100px]"
-                                        />
-                                    </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button type="submit" disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Add Resolution"}
-                                    </Button>
-                                </DialogFooter>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
-                )}
-
-
-                {/* Weekly Check-in Card - Only show if there are resolutions */}
+                {/* Weekly Check-in Card - Show if Pending OR First Week */}
                 {
-                    resolutions.length > 0 && (
+                    resolutions.length > 0 && (pendingResolutions.length > 0 || isFirstWeek) && (
                         <div className="bg-white rounded-xl p-6 border border-emerald-100 shadow-sm mb-10">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="bg-emerald-100 p-2 rounded-full">
                                     <RefreshCw className="h-5 w-5 text-emerald-600" />
                                 </div>
                                 <div>
-                                    <h2 className="font-bold text-lg text-emerald-950">Weekly Check-in</h2>
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="font-bold text-lg text-emerald-950">Weekly Check-in</h2>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Info className="h-4 w-4 text-emerald-400 cursor-pointer hover:text-emerald-600 transition-colors" />
+                                            </PopoverTrigger>
+                                            <PopoverContent className="max-w-xs text-center p-3 text-sm">
+                                                <p>Check-ins are for the week that just completed. They become available every Monday to help you reflect on your progress.</p>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
                                     <p className="text-sm text-slate-500">
-                                        Week {lastWeekKey.split('-W')[1]} ({getWeekRange(parseInt(lastWeekKey.split('-W')[1]))})
+                                        Week {targetWeekNum} ({getWeekRange(targetWeekNum)})
                                     </p>
                                 </div>
                             </div>
@@ -383,23 +455,45 @@ export default function Dashboard() {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <p className="text-xs text-muted-foreground/60 italic text-center mb-2">"Honesty is the best policy."</p>
+                                    <p className="text-xs text-muted-foreground/60 italic text-center mb-2">
+                                        {isFirstWeek
+                                            ? `You can check-in starting ${checkinStartDate}.`
+                                            : "Did you keep your resolutions last week?"
+                                        }
+                                    </p>
                                     {pendingResolutions.map(res => (
                                         <div key={res.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
                                             <span className="font-medium text-slate-700">{res.title}</span>
                                             <div className="flex gap-2">
                                                 <Button
                                                     size="sm"
-                                                    onClick={() => handleCheckIn(res, lastWeekKey, true)}
-                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                    variant="outline"
+                                                    disabled={isFirstWeek}
+                                                    onClick={() => {
+                                                        if (!isPro) { setShowPaywall(true); return; }
+                                                        setCheckInRes(res);
+                                                        setInitialCheckInStatus(true);
+                                                    }}
+                                                    className={clsx(
+                                                        "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200",
+                                                        isFirstWeek && "opacity-50 cursor-not-allowed hover:bg-transparent hover:text-emerald-600"
+                                                    )}
                                                 >
                                                     <CheckCircle2 className="mr-1 h-4 w-4" /> Kept It
                                                 </Button>
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
-                                                    onClick={() => handleCheckIn(res, lastWeekKey, false)}
-                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                                    disabled={isFirstWeek}
+                                                    onClick={() => {
+                                                        if (!isPro) { setShowPaywall(true); return; }
+                                                        setCheckInRes(res);
+                                                        setInitialCheckInStatus(false);
+                                                    }}
+                                                    className={clsx(
+                                                        "text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200",
+                                                        isFirstWeek && "opacity-50 cursor-not-allowed hover:bg-transparent hover:text-red-600"
+                                                    )}
                                                 >
                                                     <XCircle className="mr-1 h-4 w-4" /> Missed It
                                                 </Button>
@@ -419,7 +513,11 @@ export default function Dashboard() {
                             <p className="text-emerald-800/60 mb-6">
                                 Start by adding your first resolution for the year.
                             </p>
-                            <Button onClick={() => setIsDialogOpen(true)} variant="outline" className="border-emerald-200 text-emerald-700">
+                            <Button
+                                onClick={() => !isPro ? setShowPaywall(true) : setIsDialogOpen(true)}
+                                variant="outline"
+                                className="border-emerald-200 text-emerald-700"
+                            >
                                 Add Resolution
                             </Button>
                         </div>
@@ -437,7 +535,7 @@ export default function Dashboard() {
                                                 <TooltipProvider delayDuration={0}>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-600" onClick={() => setEditRes(res)}>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-600" onClick={() => !isPro ? setShowPaywall(true) : setEditRes(res)}>
                                                                 <Pencil className="h-4 w-4" />
                                                             </Button>
                                                         </TooltipTrigger>
@@ -445,7 +543,7 @@ export default function Dashboard() {
                                                     </Tooltip>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={() => setDeleteRes(res)}>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={() => !isPro ? setShowPaywall(true) : setDeleteRes(res)}>
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </TooltipTrigger>
@@ -528,7 +626,7 @@ export default function Dashboard() {
                                                         <TooltipProvider delayDuration={0}>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-600" onClick={() => setEditRes(res)}>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-600" onClick={() => !isPro ? setShowPaywall(true) : setEditRes(res)}>
                                                                         <Pencil className="h-4 w-4" />
                                                                     </Button>
                                                                 </TooltipTrigger>
@@ -536,7 +634,7 @@ export default function Dashboard() {
                                                             </Tooltip>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={() => setDeleteRes(res)}>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={() => !isPro ? setShowPaywall(true) : setDeleteRes(res)}>
                                                                         <Trash2 className="h-4 w-4" />
                                                                     </Button>
                                                                 </TooltipTrigger>
@@ -562,8 +660,9 @@ export default function Dashboard() {
                                 </table>
                             </div>
                         </div>
-
-        </main >
+                    )
+                }
+            </main >
 
             <Footer />
 
@@ -571,6 +670,7 @@ export default function Dashboard() {
                 open={!!editRes}
                 onOpenChange={(open) => !open && setEditRes(null)}
                 initialTitle={editRes?.title || ""}
+                initialDescription={editRes?.description}
                 onSave={handleSaveEdit}
             />
 
@@ -582,50 +682,28 @@ export default function Dashboard() {
             />
 
             {/* Paywall Dialog */}
-            <Dialog open={showPaywall} onOpenChange={setShowPaywall}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-bold text-center text-emerald-950">
-                            {pricing.marketingHeader || "Unleash Your Potential"}
-                        </DialogTitle>
-                        <DialogDescription className="text-center text-base">
-                            {pricing.marketingSubtext || "Join the community of doers."}
-                        </DialogDescription>
-                    </DialogHeader>
+            <PaywallModal
+                open={showPaywall}
+                onOpenChange={setShowPaywall}
+                pricing={pricing}
+                user={user}
+            />
 
-                    <div className="grid gap-4 py-4">
-                        <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 space-y-2">
-                            <ul className="space-y-2 text-sm text-emerald-900">
-                                <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Unlimited Resolutions</li>
-                                <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Advanced Analytics</li>
-                                <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Community Badges</li>
-                            </ul>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <button
-                                onClick={() => handleSubscribe('month')}
-                                disabled={!!loadingCheckout}
-                                className="flex flex-col items-center justify-center p-4 border-2 border-slate-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/10 transition-all"
-                            >
-                                <span className="text-sm font-medium text-slate-500">Monthly</span>
-                                <span className="text-2xl font-bold text-slate-900">{pricing.displayMonthly}</span>
-                                {loadingCheckout === 'month' && <Loader2 className="h-4 w-4 animate-spin mt-2" />}
-                            </button>
-                            <button
-                                onClick={() => handleSubscribe('year')}
-                                disabled={!!loadingCheckout}
-                                className="flex flex-col items-center justify-center p-4 border-2 border-emerald-500 bg-emerald-50/10 rounded-xl relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] px-2 py-0.5 font-bold rounded-bl-lg">BEST VALUE</div>
-                                <span className="text-sm font-medium text-slate-500">Yearly</span>
-                                <span className="text-2xl font-bold text-slate-900">{pricing.displayYearly}</span>
-                                {loadingCheckout === 'year' && <Loader2 className="h-4 w-4 animate-spin mt-2" />}
-                            </button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            {/* Reused Check-in Dialog for Dashboard Card */}
+            <CheckInDialog
+                open={!!checkInRes}
+                onOpenChange={(open) => {
+                    if (!open) setCheckInRes(null);
+                }}
+                title={`Weekly Check-in: ${checkInRes?.title}`}
+                initialStatus={initialCheckInStatus}
+                onSave={(status, note) => {
+                    if (checkInRes) {
+                        handleCheckIn(checkInRes, targetWeekKey, status, note);
+                        setCheckInRes(null);
+                    }
+                }}
+            />
         </div >
     );
 }

@@ -9,17 +9,25 @@ export interface UserProfile {
     country?: string; // e.g. "US", "IN"
 
     // Subscription / Monetization
-    subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'none';
+    subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'none' | 'trialing';
     stripeCustomerId?: string;
     subscriptionId?: string;
+    currentPeriodEnd?: any; // Firestore Timestamp or string
+    cancelAtPeriodEnd?: boolean;
+    planInterval?: 'month' | 'year';
     isPro?: boolean; // Convenience flag
 }
 
 export interface AppConfig {
     mode: 'test' | 'live';
-    activeTier: string;
-    promo_jan: PricingTier;
-    standard: PricingTier;
+    strategy: 'sale' | 'regular';
+    test: EnvironmentConfig;
+    live: EnvironmentConfig;
+}
+
+export interface EnvironmentConfig {
+    sale: PricingTier;
+    regular: PricingTier;
 }
 
 export interface PricingTier {
@@ -29,4 +37,9 @@ export interface PricingTier {
     displayYearly: string;
     marketingHeader: string;
     marketingSubtext: string;
+    features: string[];
+    crossoutMonthly?: string;
+    crossoutYearly?: string;
+    promoMonthly?: string;
+    promoYearly?: string;
 }

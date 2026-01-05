@@ -29,15 +29,17 @@ export async function POST(req: NextRequest) {
         }
 
         const stripe = new Stripe(apiKey, {
-            apiVersion: "2025-01-27.acacia",
+            apiVersion: "2025-12-15.clover" as any, // Cast to any to avoid strict type mismatch if needed, or matches lint
         });
 
         // 3. Determine Price ID
-        const tier = config.activeTier || 'promo_jan';
-        const tierConfig = (config as any)[tier]; // e.g. config.promo_jan
+        // Logic: specific config based on mode (test/live) AND strategy (sale/regular)
+        const envConfig = mode === 'live' ? config.live : config.test;
+        const strategy = config.strategy || 'sale'; // Default to sale if missing
+        const tierConfig = envConfig[strategy];
 
         if (!tierConfig) {
-            return NextResponse.json({ error: `Invalid tier configuration: ${tier}` }, { status: 500 });
+            return NextResponse.json({ error: `Invalid configuration for mode: ${mode}` }, { status: 500 });
         }
 
         const priceId = interval === 'year' ? tierConfig.yearlyPriceId : tierConfig.monthlyPriceId;
@@ -59,13 +61,13 @@ export async function POST(req: NextRequest) {
                 },
             ],
             mode: "subscription",
-            success_url: `${req.headers.get("origin")}/my-resolutions?success=true`,
-            cancel_url: `${req.headers.get("origin")}/my-resolutions?canceled=true`,
+            success_url: `${req.headers.get("origin")}/subscription?success=true`,
+            cancel_url: `${req.headers.get("origin")}/subscription?canceled=true`,
             // Optional: allow promotion codes
             allow_promotion_codes: true,
         });
 
-        return NextResponse.json({ sessionId: session.id });
+        return NextResponse.json({ sessionId: session.id, url: session.url });
     } catch (err: any) {
         console.error("Checkout Session Error:", err);
         return NextResponse.json({ error: err.message }, { status: 500 });

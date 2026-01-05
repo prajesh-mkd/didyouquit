@@ -109,7 +109,7 @@ export default function FollowingPage() {
                         </div>
                         <h3 className="text-lg font-medium text-slate-900 mb-1">Not following anyone yet</h3>
                         <p className="text-slate-500 mb-6">Find people with similar goals to follow!</p>
-                        <Button onClick={() => router.push("/")} variant="outline">
+                        <Button onClick={() => router.push("/public-resolutions")} variant="outline">
                             Browse Public Resolutions
                         </Button>
                     </div>

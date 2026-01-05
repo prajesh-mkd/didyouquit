@@ -62,5 +62,24 @@ service cloud.firestore {
         allow update, delete: if request.auth != null && resource.data.author.uid == request.auth.uid;
       }
     }
+
+    // Weekly Journals
+    match /journal_entries/{entryId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+        // Recipient can read their own notifications
+        allow read: if request.auth != null && resource.data.recipientUid == request.auth.uid;
+        // Any authenticated user can create a notification (sender)
+        allow create: if request.auth != null; 
+        // Recipient can update (mark as read)
+        allow update: if request.auth != null && resource.data.recipientUid == request.auth.uid;
+        // Recipient can delete
+        allow delete: if request.auth != null && resource.data.recipientUid == request.auth.uid;
+    }
   }
 }

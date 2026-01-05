@@ -4,14 +4,30 @@ import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/Header";
-import { Loader2, Trash2, Shield, EyeOff, Eye, ChevronLeft, ChevronRight, Target, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Trash2, Shield, EyeOff, Eye, ChevronLeft, ChevronRight, Target, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { collection, query, orderBy, getDocs, getDoc, doc, deleteDoc, updateDoc, limit, startAfter, QueryDocumentSnapshot, endBefore, limitToLast, increment, where, collectionGroup } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useSimulatedDate } from "@/lib/hooks/use-simulated-date";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 // Types
 import { UserProfile, AppConfig } from "@/lib/types";
@@ -52,6 +68,10 @@ export default function AdminPage() {
     // Config State
     const [config, setConfig] = useState<AppConfig | null>(null);
     const [savingConfig, setSavingConfig] = useState(false);
+    const [pendingMode, setPendingMode] = useState<'test' | 'live' | null>(null);
+    const [pendingStrategy, setPendingStrategy] = useState<'sale' | 'regular' | null>(null);
+    const [alertOpen, setAlertOpen] = useState(false);
+    const [marketingTab, setMarketingTab] = useState<'sale' | 'regular'>('sale');
 
     // Posts State
     const [posts, setPosts] = useState<PostWithComments[]>([]);
@@ -65,9 +85,74 @@ export default function AdminPage() {
     // Current page snapshots for posts
     const [currentSnapshots, setCurrentSnapshots] = useState<QueryDocumentSnapshot<any>[]>([]);
 
+    // Price Loading State
+    const [loadingPrice, setLoadingPrice] = useState(false);
+
+    // Simulation Hook
+    const simulation = useSimulatedDate();
+    const [simDateInput, setSimDateInput] = useState("");
+
+    useEffect(() => {
+        if (simulation.date) {
+            setSimDateInput(simulation.date.toISOString().split('T')[0]);
+        }
+    }, [simulation.date]);
+
+    const handleSimulationToggle = (enabled: boolean) => {
+        if (enabled) {
+            // Enable with current input date or today
+            const dateToSet = simDateInput ? new Date(simDateInput) : new Date();
+            // Adjust for timezone offset to prevent "previous day" glitch
+            const userTimezoneOffset = dateToSet.getTimezoneOffset() * 60000;
+            const adjustedDate = new Date(dateToSet.getTime() + userTimezoneOffset);
+            simulation.enableSimulation(adjustedDate);
+            toast.success("Time Simulation Enabled 🕰️");
+        } else {
+            simulation.disableSimulation();
+            toast.info("returned to Real Time");
+        }
+    };
+
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSimDateInput(e.target.value);
+        if (simulation.isSimulated) {
+            const dateToSet = new Date(e.target.value);
+            const userTimezoneOffset = dateToSet.getTimezoneOffset() * 60000;
+            const adjustedDate = new Date(dateToSet.getTime() + userTimezoneOffset);
+            simulation.enableSimulation(adjustedDate);
+        }
+    };
+
+    const fetchPriceDetails = async (priceId: string | undefined, env: 'test' | 'live') => {
+        if (!priceId) return;
+        setLoadingPrice(true);
+        try {
+            const res = await fetch('/api/price-details', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ priceId, env }),
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                toast.success(`Valid Price: ${data.displayString}`, {
+                    description: `${data.currency.toUpperCase()} ${(data.amount / 100).toFixed(2)}`
+                });
+            } else {
+                toast.error(`Invalid Price ID (${env})`, {
+                    description: data.error
+                });
+            }
+        } catch (error) {
+            toast.error("Failed to check price");
+        } finally {
+            setLoadingPrice(false);
+        }
+    };
+
     useEffect(() => {
         if (!loading) {
-            if (!user || user.email !== 'contact@didyouquit.com') {
+            if (!user || user.email?.toLowerCase().trim() !== 'contact@didyouquit.com') {
                 router.push("/");
             } else {
                 fetchUsers();
@@ -76,6 +161,13 @@ export default function AdminPage() {
             }
         }
     }, [user, loading, router]);
+
+    // Auto-switch marketing tab to match active strategy
+    useEffect(() => {
+        if (config?.strategy) {
+            setMarketingTab(config.strategy);
+        }
+    }, [config?.strategy]);
 
     const fetchUsers = async () => {
         try {
@@ -91,27 +183,36 @@ export default function AdminPage() {
         try {
             const docSnap = await getDoc(doc(db, "app_config", "subscription_settings"));
             if (docSnap.exists()) {
-                setConfig(docSnap.data() as AppConfig);
+                const data = docSnap.data() as AppConfig;
+                setConfig(data);
+                if (data.strategy) setMarketingTab(data.strategy);
             } else {
                 // Initialize default if missing
+                // Initialize default if missing
+                const defaultTier = {
+                    monthlyPriceId: '',
+                    yearlyPriceId: '',
+                    displayMonthly: '$4.99',
+                    displayYearly: '$47.99',
+                    marketingHeader: 'Pro Membership',
+                    marketingSubtext: 'Invest in your better self.',
+                    features: [
+                        'Unlimited Resolutions',
+                        'Advanced Analytics',
+                        'Community Badges'
+                    ]
+                };
+
                 const defaultConfig: AppConfig = {
                     mode: 'test',
-                    activeTier: 'promo_jan',
-                    promo_jan: {
-                        monthlyPriceId: '',
-                        yearlyPriceId: '',
-                        displayMonthly: '$1.99',
-                        displayYearly: '$19.99',
-                        marketingHeader: 'New Year Special!',
-                        marketingSubtext: 'Lock in this price for life. Offer ends Jan 31st.'
+                    strategy: 'sale',
+                    test: {
+                        sale: { ...defaultTier, displayMonthly: '$1.99', displayYearly: '$19.99', marketingHeader: 'Sale Pricing' },
+                        regular: { ...defaultTier, marketingHeader: 'Regular Pricing' }
                     },
-                    standard: {
-                        monthlyPriceId: '',
-                        yearlyPriceId: '',
-                        displayMonthly: '$4.99',
-                        displayYearly: '$47.99',
-                        marketingHeader: 'Pro Membership',
-                        marketingSubtext: 'Invest in your better self.'
+                    live: {
+                        sale: { ...defaultTier, displayMonthly: '$1.99', displayYearly: '$19.99', marketingHeader: 'Sale Pricing' },
+                        regular: { ...defaultTier, marketingHeader: 'Live Pricing' }
                     }
                 };
                 await setDoc(doc(db, "app_config", "subscription_settings"), defaultConfig);
@@ -136,6 +237,46 @@ export default function AdminPage() {
             setSavingConfig(false);
         }
     };
+
+    const syncStripePrice = async (env: 'test' | 'live', strategy: 'sale' | 'regular', interval: 'monthly' | 'yearly', priceId: string) => {
+        if (!priceId) return;
+        if (!config) return;
+
+        const toastId = toast.loading("Fetching price from Stripe...");
+        try {
+            const res = await fetch('/api/price-details', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ env, priceId }),
+            });
+            const data = await res.json();
+
+            if (data.error) throw new Error(data.error);
+
+            // Construct update
+            const displayField = interval === 'monthly' ? 'displayMonthly' : 'displayYearly';
+
+            const currentEnvObj = config[env] || {};
+            // @ts-ignore
+            const currentStrategyObj = currentEnvObj[strategy] || {};
+
+            const updatedConfig = {
+                [env]: {
+                    ...currentEnvObj,
+                    [strategy]: {
+                        ...currentStrategyObj,
+                        [displayField]: data.displayString
+                    }
+                }
+            };
+
+            await updateConfig(updatedConfig as any);
+            toast.success(`Synced: ${data.displayString}`, { id: toastId });
+        } catch (error: any) {
+            toast.error(`Sync failed: ${error.message}`, { id: toastId });
+        }
+    };
+
 
     const fetchPostsWithComments = async (cursor: QueryDocumentSnapshot<any> | null = null) => {
         setLoadingPosts(true);
@@ -511,6 +652,9 @@ export default function AdminPage() {
                         <TabsTrigger value="monetization" className="text-emerald-700 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-800">
                             Monetization
                         </TabsTrigger>
+                        <TabsTrigger value="simulation" className="text-purple-700 data-[state=active]:bg-purple-50 data-[state=active]:text-purple-800">
+                            Simulation 🕰️
+                        </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="users">
@@ -621,6 +765,60 @@ export default function AdminPage() {
                                 {loadingPosts ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                 Next <ChevronRight className="h-4 w-4 ml-2" />
                             </Button>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="simulation">
+                        <div className="max-w-xl mx-auto mt-12">
+                            <div className={`p-8 rounded-2xl border transition-all duration-500 ${simulation.isSimulated ? 'bg-purple-50 border-purple-200 shadow-lg shadow-purple-100' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                <div className="text-center mb-8">
+                                    <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors ${simulation.isSimulated ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-400'}`}>
+                                        <RefreshCw className={`h-8 w-8 ${simulation.isSimulated ? 'animate-spin-slow' : ''}`} />
+                                    </div>
+                                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Time Travel Simulation</h2>
+                                    <p className="text-slate-500">
+                                        Simulate a specific date to test timeline behaviors. <br />
+                                        <span className="text-xs font-mono bg-slate-100 px-2 py-1 rounded mt-2 inline-block">Only affects your local session</span>
+                                    </p>
+                                </div>
+
+                                <div className="space-y-8">
+                                    <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200">
+                                        <div className="space-y-1">
+                                            <Label className="text-base font-semibold">Simulation Active</Label>
+                                            <p className="text-xs text-slate-500">Override system date</p>
+                                        </div>
+                                        <Switch
+                                            checked={simulation.isSimulated}
+                                            onCheckedChange={handleSimulationToggle}
+                                        />
+                                    </div>
+
+                                    <div className={`space-y-4 transition-opacity duration-300 ${simulation.isSimulated ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                                        <div className="space-y-2">
+                                            <Label>Simulated Date</Label>
+                                            <Input
+                                                type="date"
+                                                value={simDateInput}
+                                                onChange={handleDateChange}
+                                                className="h-12 text-lg"
+                                            />
+                                        </div>
+
+                                        {simulation.isSimulated && (
+                                            <div className="flex justify-center pt-4">
+                                                <div className="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 animate-in fade-in zoom-in">
+                                                    <span className="relative flex h-3 w-3">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+                                                    </span>
+                                                    Simulating: {simulation.date.toDateString()}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </TabsContent>
 
@@ -796,123 +994,582 @@ export default function AdminPage() {
                                         <h2 className="text-2xl font-bold mb-2">Payment Environment</h2>
                                         <p className="text-slate-400 mb-6 max-w-md">
                                             Switch between Live Mode (Real Money) and Test Mode (Sandbox).
-                                            Currently active: <span className={clsx("font-bold px-2 py-0.5 rounded text-sm uppercase", config?.mode === 'live' ? "bg-red-500 text-white" : "bg-blue-500 text-white")}>{config?.mode || 'loading...'}</span>
+                                            Currently active: <span className={cn("font-bold px-2 py-0.5 rounded text-sm uppercase", config?.mode === 'live' ? "bg-red-500 text-white" : "bg-blue-500 text-white")}>{config?.mode || 'loading...'}</span>
                                         </p>
 
-                                        <div className="flex bg-slate-800/50 p-1 rounded-lg inline-flex">
+                                        <div className="bg-slate-800/50 p-1 rounded-lg inline-flex">
                                             <button
-                                                onClick={() => updateConfig({ mode: 'test' })}
-                                                className={clsx("px-4 py-2 rounded-md text-sm font-bold transition-all", config?.mode === 'test' ? "bg-blue-500 text-white shadow-lg" : "text-slate-400 hover:text-white")}
+                                                onClick={() => {
+                                                    setPendingMode('test');
+                                                    setAlertOpen(true);
+                                                }}
+                                                className={cn("px-4 py-2 rounded-md text-sm font-bold transition-all", config?.mode === 'test' ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20" : "text-slate-400 hover:text-white")}
                                             >
                                                 Test Mode
                                             </button>
                                             <button
-                                                onClick={() => updateConfig({ mode: 'live' })}
-                                                className={clsx("px-4 py-2 rounded-md text-sm font-bold transition-all", config?.mode === 'live' ? "bg-red-500 text-white shadow-lg" : "text-slate-400 hover:text-white")}
+                                                onClick={() => {
+                                                    setPendingMode('live');
+                                                    setAlertOpen(true);
+                                                }}
+                                                className={cn("px-4 py-2 rounded-md text-sm font-bold transition-all", config?.mode === 'live' ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "text-slate-400 hover:text-white")}
                                             >
                                                 Live Mode
                                             </button>
                                         </div>
                                     </div>
-
-                                    {config?.mode === 'live' && (
-                                        <div className="bg-red-900/30 border border-red-500/30 p-4 rounded-lg flex gap-3 max-w-sm">
-                                            <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
-                                            <div className="text-xs text-red-200">
-                                                <strong>Warning: Live Mode Active</strong><br />
-                                                Real transactions will be processed. Ensure your Stripe Live keys are configured in .env.local.
+                                    <div className="text-right">
+                                        {config?.mode === 'test' ? (
+                                            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 max-w-xs">
+                                                <div className="flex items-center gap-2 text-blue-400 mb-2 font-bold">
+                                                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                                                    Sandbox Environment
+                                                </div>
+                                                <div className="text-xs text-blue-200">
+                                                    <strong>Safe to Test:</strong><br />
+                                                    Payments processed here will use Stripe test cards. No real money will be charged.
+                                                </div>
                                             </div>
+                                        ) : (
+                                            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 max-w-xs">
+                                                <div className="flex items-center gap-2 text-red-400 mb-2 font-bold">
+                                                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                                    Production Environment
+                                                </div>
+                                                <div className="text-xs text-red-200">
+                                                    <strong>Warning: Live Mode Active</strong><br />
+                                                    Real transactions will be processed. Ensure your Stripe Live keys are configured in .env.local.
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                {/* Strategy Selector */}
+                                <div className="mt-6 pt-6 border-t border-slate-800/50">
+                                    <h3 className="text-sm font-bold text-slate-400 uppercase mb-3">Active Pricing Strategy</h3>
+                                    <div className="flex gap-4">
+                                        <div className="flex bg-slate-800/50 p-1 rounded-lg inline-flex">
+                                            <button
+                                                onClick={() => {
+                                                    setPendingStrategy('sale');
+                                                    setAlertOpen(true);
+                                                }}
+                                                className={cn("px-4 py-2 rounded-md text-sm font-bold transition-all", config?.strategy === 'sale' ? "bg-emerald-600 text-white shadow-lg" : "text-slate-400 hover:text-white")}
+                                            >
+                                                Sale Pricing
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setPendingStrategy('regular');
+                                                    setAlertOpen(true);
+                                                }}
+                                                className={cn("px-4 py-2 rounded-md text-sm font-bold transition-all", config?.strategy === 'regular' ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white")}
+                                            >
+                                                Regular Pricing
+                                            </button>
                                         </div>
-                                    )}
+                                        <div className="flex items-center text-xs text-slate-400">
+                                            Current: <span className="font-mono text-emerald-400 ml-2">{config?.strategy?.toUpperCase()}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Pricing Strategy */}
-                            <div className="grid md:grid-cols-2 gap-6">
-                                {/* Promo Strategy */}
-                                <div className={clsx("border-2 rounded-xl p-6 relative transition-all cursor-pointer", config?.activeTier === 'promo_jan' ? "border-emerald-500 bg-emerald-50/10 ring-4 ring-emerald-500/10" : "border-slate-200 bg-white hover:border-emerald-200")} onClick={() => updateConfig({ activeTier: 'promo_jan' })}>
-                                    {config?.activeTier === 'promo_jan' && (
-                                        <div className="absolute -top-3 left-6 px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full shadow-lg">
-                                            ACTIVE STRATEGY
-                                        </div>
-                                    )}
-                                    <h3 className="text-lg font-bold text-slate-900 mb-1">January Promo</h3>
-                                    <p className="text-sm text-slate-500 mb-4">Aggressive pricing for Q1 acquisition.</p>
+                            <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                            {pendingMode
+                                                ? `Switch to ${pendingMode === 'live' ? 'Live Mode' : 'Test Mode'}?`
+                                                : `Switch to ${pendingStrategy === 'sale' ? 'Sale' : 'Regular'} Pricing?`
+                                            }
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            {pendingMode && (pendingMode === 'live'
+                                                ? "You are about to switch to Live Mode. This means real money will be processed for any new transactions. Ensure your Stripe keys are correct."
+                                                : "You are about to switch to Test Mode. This is a sandbox environment. No real money will be processed.")}
+                                            {pendingStrategy && `This will update the active pricing strategy to ${pendingStrategy === 'sale' ? '"Sale Pricing"' : '"Regular Pricing"'} for all users immediately.`}
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel onClick={() => {
+                                            setPendingMode(null);
+                                            setPendingStrategy(null);
+                                        }}>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => {
+                                            if (pendingMode) {
+                                                updateConfig({ mode: pendingMode });
+                                                setPendingMode(null);
+                                            } else if (pendingStrategy) {
+                                                updateConfig({ strategy: pendingStrategy });
+                                                setPendingStrategy(null);
+                                            }
+                                        }} className={pendingMode === 'live' ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"}>
+                                            Confirm Switch
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
 
-                                    <div className="space-y-3">
-                                        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm font-medium text-slate-600">Monthly ($1.99)</span>
+                            <div className="grid md:grid-cols-2 gap-6">
+                                {/* Test Mode Card */}
+                                <div className={cn("border-2 rounded-xl p-6 relative transition-all", config?.mode === 'test' ? "border-emerald-500 bg-emerald-50/10 ring-4 ring-emerald-500/10" : "border-slate-200 bg-white")}>
+                                    <div className="absolute -top-3 left-6 px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full shadow-lg">
+                                        TEST MODE
+                                    </div>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <h3 className="text-lg font-bold text-slate-900 mb-1">Test Mode Configuration</h3>
+                                        {config?.mode !== 'test' && (
+                                            <button
+                                                onClick={() => {
+                                                    setPendingMode('test');
+                                                    setAlertOpen(true);
+                                                }}
+                                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors"
+                                            >
+                                                Activate Test Mode
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className={cn("bg-emerald-50/50 rounded-lg p-3 space-y-2 border", config?.strategy === 'sale' ? "border-emerald-500 shadow-sm ring-1 ring-emerald-500/20" : "border-emerald-100")}>
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-xs font-bold text-emerald-600 uppercase flex items-center gap-2">
+                                                    Sale Pricing
+                                                    {config?.strategy === 'sale' && <span className="bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded-full">ACTIVE</span>}
+                                                </h4>
+                                                {config?.strategy !== 'sale' && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPendingStrategy('sale');
+                                                            setAlertOpen(true);
+                                                        }}
+                                                        className="text-[10px] bg-white border border-emerald-200 text-emerald-600 px-2 py-0.5 rounded hover:bg-emerald-50"
+                                                    >
+                                                        ACTIVATE
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <label className="text-[10px] font-medium text-slate-500 block">Monthly Price ID</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    className="flex-1 text-xs p-1.5 border rounded bg-white font-mono text-slate-600"
+                                                    value={config?.test?.sale?.monthlyPriceId || ''}
+                                                    onChange={(e) => updateConfig({ test: { ...config?.test, sale: { ...config?.test?.sale, monthlyPriceId: e.target.value } } as any })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.test?.sale?.monthlyPriceId, 'test')}>
+                                                    <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
+                                                </Button>
                                             </div>
                                             <input
                                                 type="text"
-                                                placeholder="Stripe Monthly Price ID"
-                                                className="w-full text-xs p-1.5 border rounded bg-white font-mono"
-                                                value={config?.promo_jan?.monthlyPriceId || ''}
-                                                onChange={(e) => updateConfig({
-                                                    promo_jan: { ...config?.promo_jan, monthlyPriceId: e.target.value } as any
-                                                })}
+                                                placeholder="Crossed Out ($)"
+                                                className="w-full text-xs p-1.5 border rounded bg-slate-50 text-slate-400 mt-1"
+                                                value={config?.test?.sale?.crossoutMonthly || ''}
+                                                onChange={(e) => updateConfig({ test: { ...config?.test, sale: { ...config?.test?.sale, crossoutMonthly: e.target.value } } as any })}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+
+                                            <label className="text-[10px] font-medium text-slate-500 block mt-2">Yearly Price ID</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    className="flex-1 text-xs p-1.5 border rounded bg-white font-mono text-slate-600"
+                                                    value={config?.test?.sale?.yearlyPriceId || ''}
+                                                    onChange={(e) => updateConfig({ test: { ...config?.test, sale: { ...config?.test?.sale, yearlyPriceId: e.target.value } } as any })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.test?.sale?.yearlyPriceId, 'test')}>
+                                                    <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
+                                                </Button>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="Crossed Out ($)"
+                                                className="w-full text-xs p-1.5 border rounded bg-slate-50 text-slate-400 mt-1"
+                                                value={config?.test?.sale?.crossoutYearly || ''}
+                                                onChange={(e) => updateConfig({ test: { ...config?.test, sale: { ...config?.test?.sale, crossoutYearly: e.target.value } } as any })}
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                         </div>
-                                        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm font-medium text-slate-600">Yearly ($19.99)</span>
+
+                                        <div className={cn("bg-white rounded-lg p-3 space-y-2 border", config?.strategy === 'regular' ? "border-blue-500 shadow-sm ring-1 ring-blue-500/20" : "border-slate-200")}>
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
+                                                    Regular Pricing
+                                                    {config?.strategy === 'regular' && <span className="bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded-full">ACTIVE</span>}
+                                                </h4>
+                                                {config?.strategy !== 'regular' && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPendingStrategy('regular');
+                                                            setAlertOpen(true);
+                                                        }}
+                                                        className="text-[10px] bg-white border border-blue-200 text-blue-600 px-2 py-0.5 rounded hover:bg-blue-50"
+                                                    >
+                                                        ACTIVATE
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <label className="text-[10px] font-medium text-slate-500 block">Monthly Price ID</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    className="flex-1 text-xs p-1.5 border rounded bg-white font-mono text-slate-600"
+                                                    value={config?.test?.regular?.monthlyPriceId || ''}
+                                                    onChange={(e) => updateConfig({ test: { ...config?.test, regular: { ...config?.test?.regular, monthlyPriceId: e.target.value } } as any })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.test?.regular?.monthlyPriceId, 'test')}>
+                                                    <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
+                                                </Button>
                                             </div>
                                             <input
                                                 type="text"
-                                                placeholder="Stripe Yearly Price ID"
-                                                className="w-full text-xs p-1.5 border rounded bg-white font-mono"
-                                                value={config?.promo_jan?.yearlyPriceId || ''}
-                                                onChange={(e) => updateConfig({
-                                                    promo_jan: { ...config?.promo_jan, yearlyPriceId: e.target.value } as any
-                                                })}
+                                                placeholder="Promo Text (e.g. 20% Off)"
+                                                className="w-full text-xs p-1.5 border rounded bg-emerald-50 text-emerald-700 mt-1 placeholder:text-emerald-300/50"
+                                                value={config?.test?.regular?.promoMonthly || ''}
+                                                onChange={(e) => updateConfig({ test: { ...config?.test, regular: { ...config?.test?.regular, promoMonthly: e.target.value } } as any })}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+
+                                            <label className="text-[10px] font-medium text-slate-500 block mt-2">Yearly Price ID</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    className="flex-1 text-xs p-1.5 border rounded bg-white font-mono text-slate-600"
+                                                    value={config?.test?.regular?.yearlyPriceId || ''}
+                                                    onChange={(e) => updateConfig({ test: { ...config?.test, regular: { ...config?.test?.regular, yearlyPriceId: e.target.value } } as any })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.test?.regular?.yearlyPriceId, 'test')}>
+                                                    <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
+                                                </Button>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="Promo Text (e.g. 20% Off)"
+                                                className="w-full text-xs p-1.5 border rounded bg-emerald-50 text-emerald-700 mt-1 placeholder:text-emerald-300/50"
+                                                value={config?.test?.regular?.promoYearly || ''}
+                                                onChange={(e) => updateConfig({ test: { ...config?.test, regular: { ...config?.test?.regular, promoYearly: e.target.value } } as any })}
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                         </div>
                                     </div>
+
+                                    <div className="mt-4 pt-4 border-t border-slate-100">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h4 className="text-xs font-bold text-slate-400 uppercase">MARKETING COPY</h4>
+                                            <div className="bg-slate-100 p-0.5 rounded flex gap-1">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setMarketingTab('sale'); }}
+                                                    className={cn("px-2 py-0.5 text-[10px] font-bold rounded flex items-center gap-1", marketingTab === 'sale' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-400")}
+                                                >
+                                                    Sale
+                                                    {config?.strategy === 'sale' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setMarketingTab('regular'); }}
+                                                    className={cn("px-2 py-0.5 text-[10px] font-bold rounded flex items-center gap-1", marketingTab === 'regular' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400")}
+                                                >
+                                                    Regular
+                                                    {config?.strategy === 'regular' && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="text-xs font-medium text-slate-600 mb-1 block">Title</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full text-xs p-1.5 border rounded bg-white"
+                                                    value={config?.test?.[marketingTab]?.marketingHeader || ''}
+                                                    onChange={(e) => updateConfig({
+                                                        test: {
+                                                            ...config?.test,
+                                                            [marketingTab]: {
+                                                                ...config?.test?.[marketingTab],
+                                                                marketingHeader: e.target.value
+                                                            }
+                                                        } as any
+                                                    })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-medium text-slate-600 mb-1 block">Subtext</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full text-xs p-1.5 border rounded bg-white"
+                                                    value={config?.test?.[marketingTab]?.marketingSubtext || ''}
+                                                    onChange={(e) => updateConfig({
+                                                        test: {
+                                                            ...config?.test,
+                                                            [marketingTab]: {
+                                                                ...config?.test?.[marketingTab],
+                                                                marketingSubtext: e.target.value
+                                                            }
+                                                        } as any
+                                                    })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-medium text-slate-600 mb-1 block">Features (one per line)</label>
+                                                <Textarea
+                                                    className="w-full text-xs p-1.5 border rounded bg-white min-h-[100px]"
+                                                    value={config?.test?.[marketingTab]?.features?.join('\n') || ''}
+                                                    onChange={(e) => updateConfig({
+                                                        test: {
+                                                            ...config?.test,
+                                                            [marketingTab]: {
+                                                                ...config?.test?.[marketingTab],
+                                                                features: e.target.value.split('\n')
+                                                            }
+                                                        } as any
+                                                    })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* Standard Strategy */}
-                                <div className={clsx("border-2 rounded-xl p-6 relative transition-all cursor-pointer", config?.activeTier === 'standard' ? "border-emerald-500 bg-emerald-50/10 ring-4 ring-emerald-500/10" : "border-slate-200 bg-white hover:border-emerald-200")} onClick={() => updateConfig({ activeTier: 'standard' })}>
-                                    {config?.activeTier === 'standard' && (
-                                        <div className="absolute -top-3 left-6 px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full shadow-lg">
-                                            ACTIVE STRATEGY
-                                        </div>
-                                    )}
-                                    <h3 className="text-lg font-bold text-slate-900 mb-1">Standard Pricing</h3>
-                                    <p className="text-sm text-slate-500 mb-4">Sustainable pricing for long-term growth.</p>
+                                {/* Live Mode Card */}
+                                <div className={cn("border-2 rounded-xl p-6 relative transition-all", config?.mode === 'live' ? "border-emerald-500 bg-emerald-50/10 ring-4 ring-emerald-500/10" : "border-slate-200 bg-white")}>
+                                    <div className="absolute -top-3 left-6 px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full shadow-lg">
+                                        LIVE MODE
+                                    </div>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <h3 className="text-lg font-bold text-slate-900 mb-1">Live Mode Configuration</h3>
+                                        {config?.mode !== 'live' && (
+                                            <button
+                                                onClick={() => {
+                                                    setPendingMode('live');
+                                                    setAlertOpen(true);
+                                                }}
+                                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors"
+                                            >
+                                                Activate Live Mode
+                                            </button>
+                                        )}
+                                    </div>
 
-                                    <div className="space-y-3">
-                                        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm font-medium text-slate-600">Monthly ($4.99)</span>
+                                    <div className="space-y-4">
+                                        {/* Sale Pricing Section */}
+                                        <div className={cn("bg-emerald-50/50 rounded-lg p-3 space-y-2 border", config?.strategy === 'sale' ? "border-emerald-500 shadow-sm ring-1 ring-emerald-500/20" : "border-emerald-100")}>
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-xs font-bold text-emerald-600 uppercase flex items-center gap-2">
+                                                    Sale Pricing
+                                                    {config?.strategy === 'sale' && <span className="bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded-full">ACTIVE</span>}
+                                                </h4>
+                                                {config?.strategy !== 'sale' && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPendingStrategy('sale');
+                                                            setAlertOpen(true);
+                                                        }}
+                                                        className="text-[10px] bg-white border border-emerald-200 text-emerald-600 px-2 py-0.5 rounded hover:bg-emerald-50"
+                                                    >
+                                                        ACTIVATE
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <label className="text-[10px] font-medium text-slate-500 block">Monthly Price ID</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    className="flex-1 text-xs p-1.5 border rounded bg-white font-mono text-slate-600"
+                                                    value={config?.live?.sale?.monthlyPriceId || ''}
+                                                    onChange={(e) => updateConfig({ live: { ...config?.live, sale: { ...config?.live?.sale, monthlyPriceId: e.target.value } } as any })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.live?.sale?.monthlyPriceId, 'live')}>
+                                                    <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
+                                                </Button>
                                             </div>
                                             <input
                                                 type="text"
-                                                placeholder="Stripe Monthly Price ID"
-                                                className="w-full text-xs p-1.5 border rounded bg-white font-mono"
-                                                value={config?.standard?.monthlyPriceId || ''}
-                                                onChange={(e) => updateConfig({
-                                                    standard: { ...config?.standard, monthlyPriceId: e.target.value } as any
-                                                })}
+                                                placeholder="Crossed Out ($)"
+                                                className="w-full text-xs p-1.5 border rounded bg-slate-50 text-slate-400 mt-1"
+                                                value={config?.live?.sale?.crossoutMonthly || ''}
+                                                onChange={(e) => updateConfig({ live: { ...config?.live, sale: { ...config?.live?.sale, crossoutMonthly: e.target.value } } as any })}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+
+                                            <label className="text-[10px] font-medium text-slate-500 block mt-2">Yearly Price ID</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    className="flex-1 text-xs p-1.5 border rounded bg-white font-mono text-slate-600"
+                                                    value={config?.live?.sale?.yearlyPriceId || ''}
+                                                    onChange={(e) => updateConfig({ live: { ...config?.live, sale: { ...config?.live?.sale, yearlyPriceId: e.target.value } } as any })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.live?.sale?.yearlyPriceId, 'live')}>
+                                                    <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
+                                                </Button>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="Crossed Out ($)"
+                                                className="w-full text-xs p-1.5 border rounded bg-slate-50 text-slate-400 mt-1"
+                                                value={config?.live?.sale?.crossoutYearly || ''}
+                                                onChange={(e) => updateConfig({ live: { ...config?.live, sale: { ...config?.live?.sale, crossoutYearly: e.target.value } } as any })}
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                         </div>
-                                        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm font-medium text-slate-600">Yearly ($47.99)</span>
+
+                                        {/* Regular Pricing Section */}
+                                        <div className={cn("bg-white rounded-lg p-3 space-y-2 border", config?.strategy === 'regular' ? "border-blue-500 shadow-sm ring-1 ring-blue-500/20" : "border-slate-200")}>
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
+                                                    Regular Pricing
+                                                    {config?.strategy === 'regular' && <span className="bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded-full">ACTIVE</span>}
+                                                </h4>
+                                                {config?.strategy !== 'regular' && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPendingStrategy('regular');
+                                                            setAlertOpen(true);
+                                                        }}
+                                                        className="text-[10px] bg-white border border-blue-200 text-blue-600 px-2 py-0.5 rounded hover:bg-blue-50"
+                                                    >
+                                                        ACTIVATE
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <label className="text-[10px] font-medium text-slate-500 block">Monthly Price ID</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    className="flex-1 text-xs p-1.5 border rounded bg-white font-mono text-slate-600"
+                                                    value={config?.live?.regular?.monthlyPriceId || ''}
+                                                    onChange={(e) => updateConfig({ live: { ...config?.live, regular: { ...config?.live?.regular, monthlyPriceId: e.target.value } } as any })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.live?.regular?.monthlyPriceId, 'live')}>
+                                                    <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
+                                                </Button>
                                             </div>
                                             <input
                                                 type="text"
-                                                placeholder="Stripe Yearly Price ID"
-                                                className="w-full text-xs p-1.5 border rounded bg-white font-mono"
-                                                value={config?.standard?.yearlyPriceId || ''}
-                                                onChange={(e) => updateConfig({
-                                                    standard: { ...config?.standard, yearlyPriceId: e.target.value } as any
-                                                })}
+                                                placeholder="Promo Text (e.g. 20% Off)"
+                                                className="w-full text-xs p-1.5 border rounded bg-emerald-50 text-emerald-700 mt-1 placeholder:text-emerald-300/50"
+                                                value={config?.live?.regular?.promoMonthly || ''}
+                                                onChange={(e) => updateConfig({ live: { ...config?.live, regular: { ...config?.live?.regular, promoMonthly: e.target.value } } as any })}
                                                 onClick={(e) => e.stopPropagation()}
                                             />
+
+                                            <label className="text-[10px] font-medium text-slate-500 block mt-2">Yearly Price ID</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    className="flex-1 text-xs p-1.5 border rounded bg-white font-mono text-slate-600"
+                                                    value={config?.live?.regular?.yearlyPriceId || ''}
+                                                    onChange={(e) => updateConfig({ live: { ...config?.live, regular: { ...config?.live?.regular, yearlyPriceId: e.target.value } } as any })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.live?.regular?.yearlyPriceId, 'live')}>
+                                                    <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
+                                                </Button>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="Promo Text (e.g. 20% Off)"
+                                                className="w-full text-xs p-1.5 border rounded bg-emerald-50 text-emerald-700 mt-1 placeholder:text-emerald-300/50"
+                                                value={config?.live?.regular?.promoYearly || ''}
+                                                onChange={(e) => updateConfig({ live: { ...config?.live, regular: { ...config?.live?.regular, promoYearly: e.target.value } } as any })}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 pt-4 border-t border-slate-100">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h4 className="text-xs font-bold text-slate-400 uppercase">MARKETING COPY</h4>
+                                            <div className="bg-slate-100 p-0.5 rounded flex gap-1">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setMarketingTab('sale'); }}
+                                                    className={cn("px-2 py-0.5 text-[10px] font-bold rounded flex items-center gap-1", marketingTab === 'sale' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-400")}
+                                                >
+                                                    Sale
+                                                    {config?.strategy === 'sale' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setMarketingTab('regular'); }}
+                                                    className={cn("px-2 py-0.5 text-[10px] font-bold rounded flex items-center gap-1", marketingTab === 'regular' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400")}
+                                                >
+                                                    Regular
+                                                    {config?.strategy === 'regular' && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="text-xs font-medium text-slate-600 mb-1 block">Title</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full text-xs p-1.5 border rounded bg-white"
+                                                    value={config?.live?.[marketingTab]?.marketingHeader || ''}
+                                                    onChange={(e) => updateConfig({
+                                                        live: {
+                                                            ...config?.live,
+                                                            [marketingTab]: {
+                                                                ...config?.live?.[marketingTab],
+                                                                marketingHeader: e.target.value
+                                                            }
+                                                        } as any
+                                                    })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-medium text-slate-600 mb-1 block">Subtext</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full text-xs p-1.5 border rounded bg-white"
+                                                    value={config?.live?.[marketingTab]?.marketingSubtext || ''}
+                                                    onChange={(e) => updateConfig({
+                                                        live: {
+                                                            ...config?.live,
+                                                            [marketingTab]: {
+                                                                ...config?.live?.[marketingTab],
+                                                                marketingSubtext: e.target.value
+                                                            }
+                                                        } as any
+                                                    })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-medium text-slate-600 mb-1 block">Features (one per line)</label>
+                                                <Textarea
+                                                    className="w-full text-xs p-1.5 border rounded bg-white min-h-[100px]"
+                                                    value={config?.live?.[marketingTab]?.features?.join('\n') || ''}
+                                                    onChange={(e) => updateConfig({
+                                                        live: {
+                                                            ...config?.live,
+                                                            [marketingTab]: {
+                                                                ...config?.live?.[marketingTab],
+                                                                features: e.target.value.split('\n')
+                                                            }
+                                                        } as any
+                                                    })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -924,7 +1581,6 @@ export default function AdminPage() {
         </div>
     );
 }
-
 function UserRow({ user, onToggleHide, onDelete }: { user: any, onToggleHide: any, onDelete: any }) {
     const [expanded, setExpanded] = useState(true); // Default to expanded
     const [resolutions, setResolutions] = useState<any[]>([]);

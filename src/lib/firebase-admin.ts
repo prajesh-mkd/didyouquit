@@ -21,24 +21,45 @@ const firebaseAdminConfig = {
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
 };
 
-export function initAdmin() {
-    if (getApps().length === 0) {
-        initializeApp(firebaseAdminConfig);
-    }
-}
-
-// We lazily initialize?
-// Or just init at top level?
-// Next.js hot reloading dislikes top-level side effects sometimes.
-// But getApps().length check handles it.
-
-if (getApps().length === 0) {
+function initAdmin() {
+    // [MODIFICATION] FOR LOCAL DEV:
+    // We use a specifically named app "LOCAL_ADMIN" to avoid conflict with Next.js HMR/Default app issues.
+    // If we have a Service Account Key locally, we use it to bypass ADC completely.
     try {
-        initializeApp(firebaseAdminConfig);
+        // Use process.cwd() and fs to reliably find the file in Next.js server context without Webpack bundling issues
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const path = require("path");
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const fs = require("fs");
+
+        const serviceAccountPath = path.join(process.cwd(), "didyouquit-17e0a-firebase-adminsdk-fbsvc-7e438fe988.json");
+        const fileContent = fs.readFileSync(serviceAccountPath, "utf8");
+        const serviceAccount = JSON.parse(fileContent);
+
+        // Check if "LOCAL_ADMIN_DEBUG" is already initialized
+        const existingApp = getApps().find(app => app.name === "LOCAL_ADMIN_DEBUG");
+        if (existingApp) {
+            return existingApp;
+        }
+
+        console.log("[Firebase Admin] Initializing 'LOCAL_ADMIN_DEBUG' with explicit Service Account Key.");
+        console.log(`[Firebase Admin] Key path: ${serviceAccountPath}`);
+
+        return initializeApp({
+            credential: cert(serviceAccount),
+            projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        }, "LOCAL_ADMIN_DEBUG");
+
     } catch (error) {
-        console.error("Firebase Admin Init Error", error);
+        console.error("[Firebase Admin] FATAL: Failed to load Service Account Key:", error);
+        // Do NOT fallback. We need to know why this is failing.
+        throw error;
     }
 }
 
-export const adminDb = getFirestore();
-export const adminAuth = getAuth();
+const adminApp = initAdmin();
+
+// Export services bound to the specific app (adminApp)
+// This works even if adminApp is 'LOCAL_ADMIN' or '[DEFAULT]'
+export const adminDb = getFirestore(adminApp);
+export const adminAuth = getAuth(adminApp);

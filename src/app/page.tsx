@@ -70,6 +70,9 @@ function HomeContent() {
   const [publicResolutions, setPublicResolutions] = useState<PublicResolution[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
 
+  // Navigation State
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
   // Helper for tooltips
   const getWeekRange = (weekNum: number) => {
     const now = new Date();
@@ -95,6 +98,8 @@ function HomeContent() {
       window.history.replaceState(null, "", "/");
     }
   }, [searchParams]);
+
+
 
   // Fetch Public Feed
   useEffect(() => {
@@ -143,8 +148,10 @@ function HomeContent() {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
+      // Success! Immediately show loader to prevent flash
+      setIsRedirecting(true);
       setIsGoogleLoading(false);
-      setAuthOpen(false);
+      // setAuthOpen(false); // Keep open/mounted
 
       const details = getAdditionalUserInfo(result);
       if (details?.isNewUser) {
@@ -154,10 +161,12 @@ function HomeContent() {
         router.push("/my-resolutions");
         toast.success(authMode === "signup" ? "Welcome! Account already exists." : "Welcome back!");
       }
+      // Keep loading true and modal open until redirect happens
     } catch (error: any) {
       const msg = getFriendlyErrorMessage(error);
       if (msg) toast.error(msg);
       setIsGoogleLoading(false);
+      setIsRedirecting(false); // Reset if failed
     }
   };
 
@@ -167,20 +176,29 @@ function HomeContent() {
     try {
       if (authMode === "signup") {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // setIsRedirecting(true); // Signup flows to onboarding, maybe fine
         await sendEmailVerification(userCredential.user);
         router.push("/onboarding");
         toast.success("Account created! Verification email sent.");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
+        // Success! Immediately show loader
+        setIsRedirecting(true);
         router.push("/my-resolutions");
         toast.success("Welcome back!");
+        // Don't close modal or stop loading, wait for redirect
+      }
+    } catch (error: any) {
+      setIsRedirecting(false); // Reset
+      if (error.code === 'auth/email-already-in-use') {
+        toast.error("Account already exists. Switching to login...");
+        setAuthMode("login");
+      } else {
+        const msg = getFriendlyErrorMessage(error);
+        if (msg) toast.error(msg);
       }
       setIsEmailLoading(false);
-      setAuthOpen(false);
-    } catch (error: any) {
-      const msg = getFriendlyErrorMessage(error);
-      if (msg) toast.error(msg);
-      setIsEmailLoading(false);
+      // Only close if error was handled and we want to reset
     }
   };
 
@@ -189,7 +207,22 @@ function HomeContent() {
     setAuthOpen(true);
   };
 
-  if (loading) return null;
+  // Conditional Redirect Logic:
+  // If user is logged in AND did NOT explicitly ask for home (?home=true), redirect to dashboard.
+  // This prevents the "Flash of Landing Page" on initial load.
+  const showHome = searchParams.get('home') === 'true';
+
+  useEffect(() => {
+    if (!loading && user && !showHome) {
+      router.replace("/my-resolutions");
+    }
+  }, [user, loading, showHome, router]);
+
+  if (loading || (user && !showHome) || isRedirecting) return (
+    <div className="flex h-screen items-center justify-center bg-[#F0FDF4]">
+      <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#F0FDF4] text-slate-800">
@@ -298,7 +331,7 @@ function HomeContent() {
                     </div>
 
                     <div className="bg-slate-50/50 rounded-lg p-3 border border-slate-100">
-                      <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold">Progress (52 Weeks)</p>
+                      <p className="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Progress (52 Weeks)</p>
                       <div className="w-full">
                         <TimelinePills
                           resId={res.id}

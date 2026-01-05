@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Dialog,
     DialogContent,
@@ -15,16 +16,19 @@ interface EditResolutionProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     initialTitle: string;
-    onSave: (newTitle: string) => Promise<void>;
+    initialDescription?: string;
+    onSave: (newTitle: string, newDescription: string) => Promise<void>;
 }
 
-export function EditResolutionDialog({ open, onOpenChange, initialTitle, onSave }: EditResolutionProps) {
+export function EditResolutionDialog({ open, onOpenChange, initialTitle, initialDescription = "", onSave }: EditResolutionProps) {
     const [title, setTitle] = useState(initialTitle);
+    const [description, setDescription] = useState(initialDescription);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         setTitle(initialTitle);
-    }, [initialTitle, open]);
+        setDescription(initialDescription || "");
+    }, [initialTitle, initialDescription, open]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -32,7 +36,7 @@ export function EditResolutionDialog({ open, onOpenChange, initialTitle, onSave 
 
         setIsSubmitting(true);
         try {
-            await onSave(title);
+            await onSave(title, description);
             onOpenChange(false);
         } finally {
             setIsSubmitting(false);
@@ -45,17 +49,33 @@ export function EditResolutionDialog({ open, onOpenChange, initialTitle, onSave 
                 <DialogHeader>
                     <DialogTitle>Edit Resolution</DialogTitle>
                     <DialogDescription>
-                        Update the title of your resolution.
+                        Update the details of your resolution.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
-                        <Input
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Resolution title"
-                            required
-                        />
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                Title
+                            </label>
+                            <Input
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                placeholder="Resolution title"
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                Why is this important to you?
+                            </label>
+                            <Textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Add a description..."
+                                className="min-h-[100px]"
+                            />
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>

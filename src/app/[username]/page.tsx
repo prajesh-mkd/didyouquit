@@ -23,6 +23,9 @@ import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { TimelinePills } from "@/components/resolutions/TimelinePills";
 import { calculateStreak } from "@/lib/streak-utils";
+import { createNotification } from "@/lib/notifications";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WeeklyJournalsTab } from "@/components/forums/WeeklyJournalsTab";
 
 import { UserProfile } from "@/lib/types";
 
@@ -127,11 +130,20 @@ export default function PublicProfile() {
         if (username) fetchData();
     }, [username, user]); // Added user to dependency array for follow status check
 
+
+
     const handleFollow = async () => {
         if (!user || !profile) {
             toast.error("Please log in to follow");
             return;
         }
+
+        // Prevent following self
+        if (user.uid === profile.uid) {
+            toast.info("This is your own account");
+            return;
+        }
+
         setFollowLoading(true);
         try {
             // Add to my following
@@ -145,6 +157,14 @@ export default function PublicProfile() {
                 username: userData?.username || "Anonymous",
                 photoURL: userData?.photoURL || null,
                 timestamp: serverTimestamp()
+            });
+
+            // Send Notification
+            await createNotification(profile.uid, 'follow', {
+                senderUid: user.uid,
+                senderUsername: userData?.username || "Anonymous",
+                senderPhotoURL: userData?.photoURL,
+                refId: user.uid
             });
 
             setIsFollowing(true);
@@ -215,7 +235,7 @@ export default function PublicProfile() {
                     <div className="flex flex-col items-center gap-6">
                         <div className="relative group">
                             <Avatar className="h-32 w-32 border-4 border-white shadow-xl bg-white">
-                                <AvatarImage src={profile.photoURL} />
+                                <AvatarImage src={profile.photoURL || undefined} />
                                 <AvatarFallback className="text-3xl bg-emerald-100 text-emerald-700 font-bold">
                                     {profile.username[0].toUpperCase()}
                                 </AvatarFallback>
@@ -244,7 +264,7 @@ export default function PublicProfile() {
 
                         {/* Follow Action */}
                         <div className="flex flex-col items-center gap-4 mt-4">
-                            {user && user.uid !== profile?.uid && (
+                            {user && (
                                 <Button
                                     onClick={isFollowing ? handleUnfollow : handleFollow}
                                     disabled={followLoading}
@@ -275,105 +295,118 @@ export default function PublicProfile() {
             </section>
 
             <main className="container mx-auto px-4 py-12 max-w-5xl">
-                {resolutions.length === 0 ? (
-                    <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
-                        <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Target className="h-8 w-8 text-slate-300" />
-                        </div>
-                        <h3 className="text-lg font-medium text-slate-900 mb-1">No Public Resolutions</h3>
-                        <p className="text-slate-500">{profile.username} hasn't shared any goals yet.</p>
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                        {/* Mobile View (Cards) */}
-                        <div className="md:hidden divide-y divide-slate-100">
-                            {resolutions.map((res) => (
-                                <div key={res.id} className="p-6">
-                                    <div className="flex items-start justify-between mb-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
-                                                <Target className="h-5 w-5 text-emerald-600" />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-xl text-slate-900">{res.title}</h3>
-                                            </div>
-                                        </div>
-                                    </div>
+                <Tabs defaultValue="resolutions" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 mb-8 bg-slate-100/50 p-1 rounded-xl max-w-md mx-auto">
+                        <TabsTrigger value="resolutions">Resolutions</TabsTrigger>
+                        <TabsTrigger value="journals">Weekly Journals</TabsTrigger>
+                    </TabsList>
 
-                                    <div className="mt-6">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h4 className="text-sm font-semibold text-slate-700">Progress (52 Weeks)</h4>
-                                        </div>
-
-                                        <div className="w-full">
-                                            <TimelinePills
-                                                resId={res.id}
-                                                weeklyLog={res.weeklyLog}
-                                                currentYear={currentYear}
-                                            />
-                                        </div>
-                                    </div>
+                    <TabsContent value="resolutions">
+                        {resolutions.length === 0 ? (
+                            <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
+                                <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Target className="h-8 w-8 text-slate-300" />
                                 </div>
-                            ))}
-                        </div>
-
-                        {/* Desktop View (Table) */}
-                        <div className="hidden md:block overflow-x-auto">
-                            <table className="w-full text-left border-collapse table-fixed">
-                                <thead className="bg-emerald-50/50 text-emerald-900">
-                                    <tr>
-                                        <th className="p-4 pl-12 font-semibold border-b border-emerald-100 w-[60%]">
-                                            <div className="flex items-center gap-2">
-                                                <Target className="h-4 w-4 text-emerald-600" />
-                                                Resolution
-                                            </div>
-                                        </th>
-                                        <th className="p-4 pr-10 font-semibold border-b border-emerald-100">
-                                            <div className="flex items-center gap-2">
-                                                <Calendar className="h-4 w-4 text-emerald-600" />
-                                                Progress (52 Weeks)
-                                            </div>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
+                                <h3 className="text-lg font-medium text-slate-900 mb-1">No Public Resolutions</h3>
+                                <p className="text-slate-500">{profile.username} hasn't shared any goals yet.</p>
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                                {/* Mobile View (Cards) */}
+                                <div className="md:hidden divide-y divide-slate-100">
                                     {resolutions.map((res) => (
-                                        <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
-                                            <td className="p-4 pl-12">
-                                                <div className="flex items-center gap-2 font-medium text-slate-800 text-lg">
-                                                    {res.title}
-                                                    {calculateStreak(res.weeklyLog) > 0 && (
-                                                        <TooltipProvider delayDuration={0}>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-help">
-                                                                        <Flame className="h-3.5 w-3.5 text-orange-500 fill-orange-500" />
-                                                                        <span className="text-xs font-bold text-orange-600">{calculateStreak(res.weeklyLog)}</span>
-                                                                    </div>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p>{calculateStreak(res.weeklyLog)} Week Streak!</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    )}
-                                                </div>
-                                                {res.description && (
-                                                    <div className="text-sm text-slate-500 italic mt-0.5 max-w-[90%] line-clamp-2">
-                                                        "{res.description}"
+                                        <div key={res.id} className="p-6">
+                                            <div className="flex items-start justify-between mb-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+                                                        <Target className="h-5 w-5 text-emerald-600" />
                                                     </div>
-                                                )}
-                                            </td>
-                                            <td className="p-4 pr-10">
-                                                <TimelinePills resId={res.id} weeklyLog={res.weeklyLog} currentYear={currentYear} />
-                                            </td>
-                                        </tr>
+                                                    <div>
+                                                        <h3 className="font-bold text-xl text-slate-900">{res.title}</h3>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-6">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h4 className="text-sm font-semibold text-slate-700">Progress (52 Weeks)</h4>
+                                                </div>
+
+                                                <div className="w-full">
+                                                    <TimelinePills
+                                                        resId={res.id}
+                                                        weeklyLog={res.weeklyLog}
+                                                        currentYear={currentYear}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
+                                </div>
+
+                                {/* Desktop View (Table) */}
+                                <div className="hidden md:block overflow-x-auto">
+                                    <table className="w-full text-left border-collapse table-fixed">
+                                        <thead className="bg-emerald-50/50 text-emerald-900">
+                                            <tr>
+                                                <th className="p-4 pl-12 font-semibold border-b border-emerald-100 w-[60%]">
+                                                    <div className="flex items-center gap-2">
+                                                        <Target className="h-4 w-4 text-emerald-600" />
+                                                        Resolution
+                                                    </div>
+                                                </th>
+                                                <th className="p-4 pr-10 font-semibold border-b border-emerald-100">
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="h-4 w-4 text-emerald-600" />
+                                                        Progress (52 Weeks)
+                                                    </div>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {resolutions.map((res) => (
+                                                <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
+                                                    <td className="p-4 pl-12">
+                                                        <div className="flex items-center gap-2 font-medium text-slate-800 text-lg">
+                                                            {res.title}
+                                                            {calculateStreak(res.weeklyLog) > 0 && (
+                                                                <TooltipProvider delayDuration={0}>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-help">
+                                                                                <Flame className="h-3.5 w-3.5 text-orange-500 fill-orange-500" />
+                                                                                <span className="text-xs font-bold text-orange-600">{calculateStreak(res.weeklyLog)}</span>
+                                                                            </div>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p>{calculateStreak(res.weeklyLog)} Week Streak!</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            )}
+                                                        </div>
+                                                        {res.description && (
+                                                            <div className="text-sm text-slate-500 italic mt-0.5 max-w-[90%] line-clamp-2">
+                                                                "{res.description}"
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 pr-10">
+                                                        <TimelinePills resId={res.id} weeklyLog={res.weeklyLog} currentYear={currentYear} />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="journals">
+                        <WeeklyJournalsTab uid={profile.uid} />
+                    </TabsContent>
+                </Tabs>
             </main>
 
 

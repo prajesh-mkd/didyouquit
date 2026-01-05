@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// Force restart 2
 const nextConfig = {
     images: {
         remotePatterns: [
