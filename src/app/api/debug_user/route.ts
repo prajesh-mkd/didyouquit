@@ -44,6 +44,15 @@ export async function GET(req: NextRequest) {
             }
         }
 
+        if (searchParams.get('fix_customer_id')) {
+            const newId = searchParams.get('fix_customer_id');
+            await adminDb.collection('users').doc(uid).update({
+                'stripeIds.test': newId,
+                'stripeCustomerId': newId // Keep legacy in sync
+            });
+            return NextResponse.json({ success: true, message: `Updated Stripe ID to ${newId}` });
+        }
+
         return NextResponse.json({ uid, data: serialized });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
