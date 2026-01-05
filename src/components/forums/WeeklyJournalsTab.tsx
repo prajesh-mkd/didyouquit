@@ -91,23 +91,50 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
         <div className="space-y-6">
             {entries.map((entry) => {
                 const weekInfo = getWeekInfo(entry.weekKey);
+                // If uid prop is present, we are on a specific profile page, so don't link to it.
+                const isProfileView = !!uid;
+
+                const Wrapper = isProfileView ? "div" : Link;
+                // wrapperProps needs to match the possible props for both div and Link. 
+                // Link requires 'href'. div does not support 'href'.
+                // Easier to just conditionally render the internals.
+
                 return (
                     <div key={entry.id} className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-start gap-4">
-                            <Link href={`/${entry.username}`} className="shrink-0">
-                                <Avatar className="h-10 w-10 border border-slate-100">
-                                    <AvatarImage src={entry.photoURL} />
-                                    <AvatarFallback className="bg-emerald-50 text-emerald-600">
-                                        {entry.username[0]?.toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                            </Link>
+                            {isProfileView ? (
+                                <div className="shrink-0">
+                                    <Avatar className="h-10 w-10 border border-slate-100">
+                                        <AvatarImage src={entry.photoURL} />
+                                        <AvatarFallback className="bg-emerald-50 text-emerald-600">
+                                            {entry.username[0]?.toUpperCase()}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                </div>
+                            ) : (
+                                <Link href={`/${entry.username}`} className="shrink-0">
+                                    <Avatar className="h-10 w-10 border border-slate-100">
+                                        <AvatarImage src={entry.photoURL} />
+                                        <AvatarFallback className="bg-emerald-50 text-emerald-600">
+                                            {entry.username[0]?.toUpperCase()}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                </Link>
+                            )}
+
                             <div className="flex-1">
                                 <div className="flex items-center justify-between mb-2">
                                     <div>
-                                        <Link href={`/${entry.username}`} className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors">
-                                            {entry.username}
-                                        </Link>
+                                        {isProfileView ? (
+                                            <span className="font-semibold text-slate-900">
+                                                {entry.username}
+                                            </span>
+                                        ) : (
+                                            <Link href={`/${entry.username}`} className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors">
+                                                {entry.username}
+                                            </Link>
+                                        )}
+
                                         <div className="text-xs text-slate-500 mt-1">
                                             <div className="flex items-center gap-1 mb-1">
                                                 <span>checked in for</span>
