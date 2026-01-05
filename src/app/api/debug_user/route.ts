@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 
 export async function GET(req: NextRequest) {
-    const { searchParams } = new URL(req.url);
+    const searchParams = req.nextUrl.searchParams;
     const uid = searchParams.get('uid');
-    const secret = searchParams.get('secret');
 
     // console.log("Debug Access");
 
     if (!uid) {
-        return NextResponse.json({ error: "Missing uid" }, { status: 400 });
+        return NextResponse.json({ error: "Missing uid", received_url: req.url }, { status: 400 });
     }
 
     try {
