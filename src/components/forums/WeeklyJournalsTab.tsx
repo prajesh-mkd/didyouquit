@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, where } from "firebase/firestore";
-import { Loader2, Calendar, MessageSquare } from "lucide-react";
+import { Loader2, Calendar, MessageSquare, ChevronRight, MessageCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { formatDistanceToNow, setWeek, setYear, startOfWeek, endOfWeek, format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 interface JournalEntry {
     id: string;
@@ -48,6 +49,7 @@ function getWeekInfo(weekKey: string) {
 
 export function WeeklyJournalsTab({ uid }: { uid?: string }) {
     const { user } = useAuth();
+    const router = useRouter();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -96,28 +98,12 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                 const isProfileView = !!uid;
 
                 return (
-                    <div key={entry.id} className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-4">
-                            {isProfileView ? (
-                                <div className="shrink-0">
-                                    <Avatar className="h-10 w-10 border border-slate-100">
-                                        <AvatarImage src={entry.photoURL} />
-                                        <AvatarFallback className="bg-emerald-50 text-emerald-600">
-                                            {entry.username[0]?.toUpperCase()}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                </div>
-                            ) : (
-                                <Link href={`/${entry.username}`} className="shrink-0">
-                                    <Avatar className="h-10 w-10 border border-slate-100">
-                                        <AvatarImage src={entry.photoURL} />
-                                        <AvatarFallback className="bg-emerald-50 text-emerald-600">
-                                            {entry.username[0]?.toUpperCase()}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                </Link>
-                            )}
-
+                    <div
+                        key={entry.id}
+                        onClick={() => router.push(`/forums/journal/${entry.id}`)}
+                        className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group relative"
+                    >
+                        <div className="flex items-stretch justify-between gap-4">
                             <div className="flex-1">
                                 <div className="flex items-center justify-between mb-2">
                                     <div>
@@ -126,7 +112,11 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                                                 {entry.username}
                                             </span>
                                         ) : (
-                                            <Link href={`/${entry.username}`} className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors">
+                                            <Link
+                                                href={`/${entry.username}`}
+                                                className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
                                                 {entry.username}
                                             </Link>
                                         )}
@@ -147,25 +137,53 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                                             )}
                                         </div>
                                     </div>
-                                    <span className="text-xs text-slate-400">
-                                        {entry.createdAt?.seconds ? formatDistanceToNow(new Date(entry.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
-                                    </span>
                                 </div>
 
                                 <p className="text-slate-700 leading-relaxed whitespace-pre-wrap mb-4">
                                     {entry.content}
                                 </p>
 
-                                {/* Comment / Discuss Button */}
-                                <div className="flex items-center gap-4 pt-2 border-t border-slate-50">
-                                    <Link href={`/forums/journal/${entry.id}`} className="flex items-center gap-1.5 text-slate-400 hover:text-emerald-600 transition-colors group/btn">
-                                        <div className="p-1.5 rounded-full group-hover/btn:bg-emerald-50 text-slate-400 group-hover/btn:text-emerald-600">
-                                            <MessageSquare className="h-4 w-4" />
+                                <div className="flex items-center gap-4 text-xs text-slate-500">
+                                    {isProfileView ? (
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="h-5 w-5 border border-slate-100">
+                                                <AvatarImage src={entry.photoURL} />
+                                                <AvatarFallback className="bg-emerald-50 text-emerald-600">
+                                                    {entry.username[0]?.toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <span>{entry.username}</span>
                                         </div>
-                                        <span className="text-xs font-medium">
-                                            {entry.commentCount ? `${entry.commentCount} Comments` : "Discuss"}
-                                        </span>
-                                    </Link>
+                                    ) : (
+                                        <Link
+                                            href={`/${entry.username}`}
+                                            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <Avatar className="h-5 w-5 border border-slate-100">
+                                                <AvatarImage src={entry.photoURL} />
+                                                <AvatarFallback className="bg-emerald-50 text-emerald-600">
+                                                    {entry.username[0]?.toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <span className="hover:underline">{entry.username}</span>
+                                        </Link>
+                                    )}
+                                    <span>•</span>
+                                    <span>{entry.createdAt?.seconds ? formatDistanceToNow(new Date(entry.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col justify-between shrink-0 text-slate-400 items-end pl-4 min-h-[100px]">
+                                <div className="flex items-center gap-1.5 justify-end">
+                                    <MessageCircle className="h-4 w-4" />
+                                    <span className="text-xs font-medium">{entry.commentCount || 0}</span>
+                                </div>
+
+                                <div className="flex flex-col items-end gap-2 text-xs">
+                                    <span className="flex items-center text-slate-500 font-medium hover:text-emerald-600 transition-colors">
+                                        View Post<ChevronRight className="h-4 w-4" />
+                                    </span>
                                 </div>
                             </div>
                         </div>
