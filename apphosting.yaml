@@ -12,7 +12,6 @@ env:
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
     value: 1:353743455576:web:11c537c2363e8e3ed4912d
 
-secrets:
   - variable: STRIPE_SECRET_KEY_LIVE
     secret: STRIPE_SECRET_KEY_LIVE
   - variable: STRIPE_SECRET_KEY_TEST
