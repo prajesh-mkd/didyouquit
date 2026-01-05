@@ -105,28 +105,22 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                             <div className="flex-1">
                                 <div className="flex items-center justify-between mb-2">
                                     <div>
-                                        <div className="flex items-center gap-2">
-                                            <Link href={`/${entry.username}`} className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors">
-                                                {entry.username}
-                                            </Link>
-                                            {weekInfo && (
-                                                <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
-                                                    Week {weekInfo.weekNum}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                                            <div className="flex items-center gap-1">
+                                        <Link href={`/${entry.username}`} className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors">
+                                            {entry.username}
+                                        </Link>
+                                        <div className="text-xs text-slate-500 mt-1">
+                                            <div className="flex items-center gap-1 mb-1">
                                                 <span>checked in for</span>
                                                 <span className="font-medium text-emerald-600">
                                                     {entry.resolutionTitle}
                                                 </span>
                                             </div>
                                             {weekInfo && (
-                                                <>
+                                                <div className="flex items-center gap-2 text-slate-400 bg-slate-50 w-fit px-2 py-1 rounded-md mt-1">
+                                                    <span className="font-medium text-slate-600">Week {weekInfo.weekNum}</span>
                                                     <span className="text-slate-300">•</span>
                                                     <span>{weekInfo.range}</span>
-                                                </>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
