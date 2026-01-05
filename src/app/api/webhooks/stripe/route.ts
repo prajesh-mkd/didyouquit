@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
                         console.error(`[Webhook] Invalid current_period_end: ${periodEndRaw}`);
                     }
 
-                    cancelAtPeriodEnd = (sub as any).cancel_at_period_end;
+                    cancelAtPeriodEnd = (sub as any).cancel_at_period_end || !!((sub as any).cancel_at);
                     planInterval = (sub as any).items?.data?.[0]?.price?.recurring?.interval || 'month';
                     console.log(`[Webhook] Fetched Sub: ${subscriptionId}, End: ${currentPeriodEnd}`);
                 } catch (e: any) {
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
                 currentPeriodEnd = new Date(periodEndRaw * 1000);
             }
 
-            const cancelAtPeriodEnd = (sub as any).cancel_at_period_end;
+            const cancelAtPeriodEnd = (sub as any).cancel_at_period_end || !!((sub as any).cancel_at);
             const planInterval = (sub as any).items?.data?.[0]?.price?.recurring?.interval || 'month';
 
             // Find user by customerId (Robust Search)
