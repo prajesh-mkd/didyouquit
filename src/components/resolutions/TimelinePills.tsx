@@ -39,17 +39,20 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
             // Target the PREVIOUS week (so user sees context), unless it's week 1
             const targetWeekNum = currentWeekNum > 1 ? currentWeekNum - 1 : 1;
             const targetWeekId = `pill-${resId}-${targetWeekNum}`;
-            const element = document.getElementById(targetWeekId);
+            // Use setTimeout to ensure layout is final before scrolling
+            const timer = setTimeout(() => {
+                const element = document.getElementById(targetWeekId);
+                if (element && scrollContainerRef.current) {
+                    const container = scrollContainerRef.current;
+                    // Align the target week to the left of the container
+                    const scrollLeft = element.offsetLeft - container.offsetLeft;
 
-            if (element && scrollContainerRef.current) {
-                const container = scrollContainerRef.current;
-                // Align the target week to the left of the container
-                // We subtract the content padding (4px from px-1)
-                const scrollLeft = element.offsetLeft - container.offsetLeft;
+                    // Instant jump
+                    container.scrollTo({ left: Math.max(0, scrollLeft - 4), behavior: "auto" });
+                }
+            }, 100);
 
-                // Use 'auto' behavior for instant scrolling on load/resize
-                container.scrollTo({ left: Math.max(0, scrollLeft - 4), behavior: "auto" });
-            }
+            return () => clearTimeout(timer);
         }
     }, [currentWeekNum, resId]);
 
