@@ -17,6 +17,9 @@ export function useSimulatedDate() {
         if (storedActive === "true" && storedDate) {
             setDate(new Date(storedDate));
             setIsSimulated(true);
+        } else {
+            // Force client-side date on mount to prevent hydration mismatch with server time
+            setDate(new Date());
         }
     }, []);
 

@@ -114,7 +114,7 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
                             {isCurrentWeek && !status && (
                                 <div
                                     className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-slate-50 to-orange-400 pointer-events-none transition-all duration-1000 ease-out"
-                                    style={{ width: `${progressPercent}%` }}
+                                    style={{ width: `${Math.min(progressPercent, 95)}%` }}
                                     role="progressbar"
                                     aria-valuenow={progressPercent}
                                     aria-valuemin={0}
