@@ -146,9 +146,12 @@ export async function POST(req: NextRequest) {
                 console.log(`[Webhook] No user found for customer ${customerId}`);
             }
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error("Webhook processing logic failed", error);
-        return NextResponse.json({ error: "Processing logic failed" }, { status: 500 });
+        return NextResponse.json({
+            error: `Processing logic failed: ${error.message || error}`,
+            stack: error.stack
+        }, { status: 500 });
     }
 
     return NextResponse.json({ received: true });
