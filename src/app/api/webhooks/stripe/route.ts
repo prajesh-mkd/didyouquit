@@ -36,14 +36,38 @@ export async function POST(req: NextRequest) {
     const stripeShim = new Stripe("sk_test_placeholder", { apiVersion: "2025-12-15.clover" as any });
 
     try {
-        if (!process.env.STRIPE_WEBHOOK_SECRET) {
-            console.error("[Webhook] STRIPE_WEBHOOK_SECRET is missing.");
-            throw new Error("Missing STRIPE_WEBHOOK_SECRET");
+        const secretLive = process.env.STRIPE_WEBHOOK_SECRET_LIVE;
+        const secretTest = process.env.STRIPE_WEBHOOK_SECRET_TEST;
+
+        if (!secretLive && !secretTest) {
+            throw new Error("Missing both STRIPE_WEBHOOK_SECRET_LIVE and _TEST");
         }
-        event = stripeShim.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+
+        try {
+            // First try LIVE
+            if (secretLive) {
+                event = stripeShim.webhooks.constructEvent(body, sig, secretLive);
+            } else {
+                throw new Error("No Live Secret");
+            }
+        } catch (errLive) {
+            // If Live fails, try TEST
+            if (secretTest) {
+                try {
+                    event = stripeShim.webhooks.constructEvent(body, sig, secretTest);
+                } catch (errTest: any) {
+                    // Both failed
+                    console.error(`[Webhook] Signature Verification Failed (Live & Test). Live Error: ${(errLive as Error).message}. Test Error: ${errTest.message}`);
+                    return NextResponse.json({ error: `Webhook Error: Signature verification failed.` }, { status: 400 });
+                }
+            } else {
+                console.error(`[Webhook] Sig Verification Failed (Live) and NO Test Secret set. Error: ${(errLive as Error).message}`);
+                return NextResponse.json({ error: `Webhook Error: ${(errLive as Error).message}` }, { status: 400 });
+            }
+        }
     } catch (err: any) {
-        console.error(`[Webhook] Signature Verification Failed: ${err.message}`);
-        return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
+        console.error(`[Webhook] Config Error: ${err.message}`);
+        return NextResponse.json({ error: `Webhook Config Error: ${err.message}` }, { status: 500 });
     }
 
     // 2. Initialize Real Stripe Instance based on Mode
