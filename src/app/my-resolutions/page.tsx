@@ -51,7 +51,7 @@ import { CheckInDialog } from "@/components/resolutions/CheckInDialog";
 import { calculateStreak } from "@/lib/streak-utils";
 import { AppConfig, UserProfile } from "@/lib/types"; // Ensure UserProfile is imported
 import { getDoc } from "firebase/firestore";
-import { loadStripe } from "@stripe/stripe-js";
+
 import { useSimulatedDate } from "@/lib/hooks/use-simulated-date";
 
 interface Resolution {
