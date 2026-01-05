@@ -207,18 +207,11 @@ function HomeContent() {
     setAuthOpen(true);
   };
 
-  // Conditional Redirect Logic:
-  // If user is logged in AND did NOT explicitly ask for home (?home=true), redirect to dashboard.
-  // This prevents the "Flash of Landing Page" on initial load.
-  const showHome = searchParams.get('home') === 'true';
+  // [MODIFIED] Removed automatic redirect to /my-resolutions.
+  // Users should land on the home page even if logged in.
 
-  useEffect(() => {
-    if (!loading && user && !showHome) {
-      router.replace("/my-resolutions");
-    }
-  }, [user, loading, showHome, router]);
-
-  if (loading || (user && !showHome) || isRedirecting) return (
+  // if (loading || (user && !showHome) || isRedirecting) return ( // OLD
+  if (loading || isRedirecting) return (
     <div className="flex h-screen items-center justify-center bg-[#F0FDF4]">
       <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
     </div>
