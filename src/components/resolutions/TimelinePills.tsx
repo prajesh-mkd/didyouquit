@@ -7,6 +7,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckInDialog } from "./CheckInDialog";
+import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import Link from "next/link";
 
 interface TimelinePillsProps {
     resId: string;
@@ -33,6 +36,34 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
             setNote("");
         }
     }, [activeWeek, weeklyNotes]);
+
+
+    // State for Journal IDs map (Public View)
+    const [journalMap, setJournalMap] = useState<{ [weekKey: string]: string }>({});
+
+    // Fetch Journal Entries for Public View (when no onStatusChange provided)
+    useEffect(() => {
+        if (onStatusChange) return; // Don't fetch if we are in "My Resolutions" (Edit Mode)
+        if (!resId) return;
+
+        const q = query(
+            collection(db, "journal_entries"),
+            where("resolutionId", "==", resId)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const map: { [key: string]: string } = {};
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.weekKey) {
+                    map[data.weekKey] = doc.id;
+                }
+            });
+            setJournalMap(map);
+        });
+
+        return () => unsubscribe();
+    }, [resId, onStatusChange]);
 
     useLayoutEffect(() => {
         if (scrollContainerRef.current) {
@@ -79,6 +110,13 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
                     // Lock current week AND future weeks
                     const isLocked = week >= currentWeekNum;
 
+                    // Journal Link Logic
+                    const journalId = journalMap[weekKey];
+                    // Can only click if: Not current week, Not future, and Journal Entry exists (Success or Failure entry)
+                    // Note: User said "can not click on past weeks which have not been checked-in (meaning they are grey)".
+                    // If journalId exists, it means they checked in.
+                    const canViewJournal = !isCurrentWeek && !isLocked && !!journalId;
+
                     let bgClass = "bg-slate-50 border-slate-300 text-slate-500";
                     let icon = <Minus className="h-3 w-3" />;
 
@@ -116,7 +154,8 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
                                     rounded-lg border ${bgClass} 
                                     text-xs snap-start flex-shrink-0 relative overflow-hidden transform-gpu [backface-visibility:hidden]
                                     ${onStatusChange && !isLocked ? 'cursor-pointer hover:opacity-90 active:scale-95 transition-all' : ''}
-                                    ${isLocked ? 'cursor-default' : ''}
+                                    ${canViewJournal ? 'cursor-pointer hover:opacity-90 hover:ring-2 hover:ring-emerald-400/50 transition-all' : ''}
+                                    ${isLocked && !isCurrentWeek ? 'cursor-default' : ''}
                                 `}
                         >
                             {isCurrentWeek && !status && (
@@ -144,6 +183,7 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
                     );
 
                     // If user can change status and it's NOT locked (past weeks)
+                    // This is My Resolutions View
                     if (onStatusChange && !isLocked) {
                         return (
                             <button key={week} onClick={() => setActiveWeek(weekKey)} className="focus:outline-none">
@@ -152,7 +192,16 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
                         );
                     }
 
-                    // Default read-only view (includes locked/future weeks)
+                    // Public View: Link to Journal if possible
+                    if (canViewJournal) {
+                        return (
+                            <Link key={week} href={`/forums/journal/${journalId}`} className="focus:outline-none">
+                                {PillContent}
+                            </Link>
+                        );
+                    }
+
+                    // Default read-only view (locked, current, or no entry)
                     return PillContent;
                 })}
             </div>
