@@ -409,8 +409,8 @@ export default function TopicPage() {
         <div className="min-h-screen flex flex-col bg-[#F0FDF4]">
             <Header />
             <main className="container py-8 px-4 flex-1 max-w-4xl mx-auto">
-                <Link href="/forums" className="inline-flex items-center text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
-                    <ArrowLeft className="h-4 w-4 mr-1" /> Back to Forums
+                <Link href="/forums?tab=discussions" className="inline-flex items-center text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
+                    <ArrowLeft className="h-4 w-4 mr-1" /> Back to Discussions
                 </Link>
 
                 {/* Main Topic Card */}

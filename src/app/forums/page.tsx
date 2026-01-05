@@ -14,8 +14,33 @@ import { WeeklyJournalsTab } from "@/components/forums/WeeklyJournalsTab";
 import { NotificationsTab } from "@/components/forums/NotificationsTab";
 import { Footer } from "@/components/layout/Footer";
 
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+
+// Wrap contents in Suspense because usage of useSearchParams() causes client-side deopt
+// if not wrapped in Suspense boundary when SSG/SSR involved?
+// Actually in Next 13 App Router, page components using useSearchParams in 'use client' are fine usually?
+// But let's build the inner component to be safe or just add it.
+
+// Wait, I can't wrap 'export default function' easily without renaming.
+// I'll just add the hook inside ForumsPage. "use client" is already set.
+
 export default function ForumsPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-[#F0FDF4]" />}>
+            <ForumsContent />
+        </Suspense>
+    );
+}
+
+function ForumsContent() {
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get("tab");
+    const defaultTab = (tabParam === "journals" || tabParam === "notifications") ? tabParam : "discussions";
+
     const { user, userData, loading: authLoading } = useAuth();
+    // ... rest of logic
+
     const [config, setConfig] = useState<AppConfig | null>(null);
     const [showPaywall, setShowPaywall] = useState(false);
 
@@ -62,7 +87,7 @@ export default function ForumsPage() {
                     <p className="text-emerald-800/60 mt-1">Discuss progress, challenges, share tips, and find support.</p>
                 </div>
 
-                <Tabs defaultValue="discussions" className="w-full">
+                <Tabs defaultValue={defaultTab} className="w-full">
                     <TabsList className="grid w-full grid-cols-3 mb-8 bg-emerald-100/50 p-1 rounded-xl">
                         <TabsTrigger value="discussions" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Discussions</TabsTrigger>
                         <TabsTrigger value="journals" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Weekly Journals</TabsTrigger>
