@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, where } from "firebase/firestore";
-import { Loader2, Calendar } from "lucide-react";
+import { Loader2, Calendar, MessageSquare } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { formatDistanceToNow, setWeek, setYear, startOfWeek, endOfWeek, format } from "date-fns";
@@ -21,6 +21,7 @@ interface JournalEntry {
     weekKey: string;
     createdAt: any;
     likes: number; // Keeping interface for type safety, but ignore in UI
+    commentCount?: number;
 }
 
 function getWeekInfo(weekKey: string) {
@@ -94,11 +95,6 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                 // If uid prop is present, we are on a specific profile page, so don't link to it.
                 const isProfileView = !!uid;
 
-                const Wrapper = isProfileView ? "div" : Link;
-                // wrapperProps needs to match the possible props for both div and Link. 
-                // Link requires 'href'. div does not support 'href'.
-                // Easier to just conditionally render the internals.
-
                 return (
                     <div key={entry.id} className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-start gap-4">
@@ -156,9 +152,21 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                                     </span>
                                 </div>
 
-                                <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+                                <p className="text-slate-700 leading-relaxed whitespace-pre-wrap mb-4">
                                     {entry.content}
                                 </p>
+
+                                {/* Comment / Discuss Button */}
+                                <div className="flex items-center gap-4 pt-2 border-t border-slate-50">
+                                    <Link href={`/forums/journal/${entry.id}`} className="flex items-center gap-1.5 text-slate-400 hover:text-emerald-600 transition-colors group/btn">
+                                        <div className="p-1.5 rounded-full group-hover/btn:bg-emerald-50 text-slate-400 group-hover/btn:text-emerald-600">
+                                            <MessageSquare className="h-4 w-4" />
+                                        </div>
+                                        <span className="text-xs font-medium">
+                                            {entry.commentCount ? `${entry.commentCount} Comments` : "Discuss"}
+                                        </span>
+                                    </Link>
+                                </div>
                             </div>
                         </div>
                     </div>
