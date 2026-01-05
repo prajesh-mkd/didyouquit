@@ -29,16 +29,30 @@ export async function POST(req: NextRequest) {
     // Note: If you want to support both Test and Live webhooks at the same URL simultaneously, you'd need logic to try both secrets.
     // For now, we assume one active environment.
 
+    // 1. Verify Signature
     let event: Stripe.Event;
-    // We instantiate with a default key just to get value-added types.
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", { apiVersion: "2025-12-15.clover" as any, typescript: true });
+
+    // We only need the library for constructEvent, key doesn't matter yet
+    const stripeShim = new Stripe("sk_test_placeholder", { apiVersion: "2025-12-15.clover" as any });
 
     try {
-        event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+        if (!process.env.STRIPE_WEBHOOK_SECRET) {
+            console.error("[Webhook] STRIPE_WEBHOOK_SECRET is missing.");
+            throw new Error("Missing STRIPE_WEBHOOK_SECRET");
+        }
+        event = stripeShim.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET);
     } catch (err: any) {
-        console.error("Webhook Signature Verification Failed", err.message);
+        console.error(`[Webhook] Signature Verification Failed: ${err.message}`);
         return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
     }
+
+    // 2. Initialize Real Stripe Instance based on Mode
+    const apiKey = event.livemode ? process.env.STRIPE_SECRET_KEY_LIVE : process.env.STRIPE_SECRET_KEY_TEST;
+    if (!apiKey) {
+        console.error(`[Webhook] Missing API Key for mode: ${event.livemode ? 'live' : 'test'}`);
+        // We can still proceed if we don't need API calls, but we DO need them below.
+    }
+    const stripe = new Stripe(apiKey || "", { apiVersion: "2025-12-15.clover" as any });
 
     // Handle the event
     try {
@@ -59,8 +73,8 @@ export async function POST(req: NextRequest) {
                     currentPeriodEnd = new Date((sub as any).current_period_end * 1000);
                     cancelAtPeriodEnd = (sub as any).cancel_at_period_end;
                     planInterval = (sub as any).items.data[0].price.recurring?.interval || 'month';
-                } catch (e) {
-                    console.error("Error fetching sub details in checkout webhook:", e);
+                } catch (e: any) {
+                    console.error("[Webhook] Error fetching sub details:", e.message);
                 }
 
                 // Dual-Mode ID Logic
