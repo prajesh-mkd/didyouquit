@@ -36,16 +36,19 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
 
     useLayoutEffect(() => {
         if (scrollContainerRef.current) {
-            const currentWeekId = `pill-${resId}-${currentWeekNum}`;
-            const element = document.getElementById(currentWeekId);
-            if (element) {
+            // Target the PREVIOUS week (so user sees context), unless it's week 1
+            const targetWeekNum = currentWeekNum > 1 ? currentWeekNum - 1 : 1;
+            const targetWeekId = `pill-${resId}-${targetWeekNum}`;
+            const element = document.getElementById(targetWeekId);
+
+            if (element && scrollContainerRef.current) {
                 const container = scrollContainerRef.current;
-                const offset = element.offsetLeft - (container.clientWidth / 2) + (element.clientWidth / 2);
-                container.scrollTo({ left: offset, behavior: "smooth" });
-            } else {
-                if (currentWeekNum > 26) {
-                    scrollContainerRef.current.scrollLeft = 9999;
-                }
+                // Align the target week to the left of the container
+                // We subtract the container's left content padding (lines up nicely)
+                const scrollLeft = element.offsetLeft - container.offsetLeft;
+
+                // Allow a tiny bit of buffer for the left fade/padding
+                container.scrollTo({ left: Math.max(0, scrollLeft - 4), behavior: "smooth" });
             }
         }
     }, [currentWeekNum, resId]);
