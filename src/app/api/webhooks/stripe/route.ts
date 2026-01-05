@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
                 try {
                     const sub = await stripe.subscriptions.retrieve(subscriptionId);
                     // Safe cleanup of timestamp
-                    const periodEndRaw = (sub as any).current_period_end;
+                    const periodEndRaw = (sub as any).current_period_end ?? (sub as any).cancel_at;
                     if (typeof periodEndRaw === 'number' && !isNaN(periodEndRaw)) {
                         currentPeriodEnd = new Date(periodEndRaw * 1000);
                     } else {
@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
             const status = sub.status; // 'active', 'canceled', 'past_due'
 
             let currentPeriodEnd = null;
-            const periodEndRaw = (sub as any).current_period_end;
+            const periodEndRaw = (sub as any).current_period_end ?? (sub as any).cancel_at;
             if (typeof periodEndRaw === 'number' && !isNaN(periodEndRaw)) {
                 currentPeriodEnd = new Date(periodEndRaw * 1000);
             }
