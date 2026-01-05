@@ -29,6 +29,9 @@ export async function POST(req: NextRequest) {
             : process.env.STRIPE_SECRET_KEY_TEST;
 
         if (!apiKey) {
+            console.error(`[Checkout] Missing API Key. Mode: ${mode}, AppEnv: ${appEnv}`);
+            console.error(`[Checkout] Env Check - LIVE defined: ${!!process.env.STRIPE_SECRET_KEY_LIVE}, TEST defined: ${!!process.env.STRIPE_SECRET_KEY_TEST}`);
+            console.error(`[Checkout] All Env Keys: ${Object.keys(process.env).filter(k => k.includes('STRIPE')).join(', ')}`);
             return NextResponse.json({ error: `Missing Stripe API Key for mode: ${mode}` }, { status: 500 });
         }
 
