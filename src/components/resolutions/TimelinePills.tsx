@@ -44,11 +44,11 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
             if (element && scrollContainerRef.current) {
                 const container = scrollContainerRef.current;
                 // Align the target week to the left of the container
-                // We subtract the container's left content padding (lines up nicely)
+                // We subtract the content padding (4px from px-1)
                 const scrollLeft = element.offsetLeft - container.offsetLeft;
 
-                // Allow a tiny bit of buffer for the left fade/padding
-                container.scrollTo({ left: Math.max(0, scrollLeft - 4), behavior: "smooth" });
+                // Use 'auto' behavior for instant scrolling on load/resize
+                container.scrollTo({ left: Math.max(0, scrollLeft - 4), behavior: "auto" });
             }
         }
     }, [currentWeekNum, resId]);
@@ -66,7 +66,7 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
         <div className="relative w-full overflow-hidden group/timeline">
             <div
                 ref={scrollContainerRef}
-                className="flex overflow-x-auto pb-2 pt-1 gap-2 no-scrollbar snap-x snap-mandatory scroll-px-4 px-1"
+                className="relative flex overflow-x-auto pb-2 pt-1 gap-2 no-scrollbar snap-x snap-mandatory scroll-px-4 px-1"
             >
                 {weeks.map((week) => {
                     const weekKey = `${currentYear}-W${week.toString().padStart(2, '0')}`;
