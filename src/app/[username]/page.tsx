@@ -298,7 +298,7 @@ export default function PublicProfile() {
                 <Tabs defaultValue="resolutions" className="w-full">
                     <TabsList className="grid w-full grid-cols-2 mb-8 bg-slate-100/50 p-1 rounded-xl max-w-md mx-auto">
                         <TabsTrigger value="resolutions">Resolutions</TabsTrigger>
-                        <TabsTrigger value="journals">Weekly Journals</TabsTrigger>
+                        <TabsTrigger value="journals">Weekly Journal</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="resolutions">
