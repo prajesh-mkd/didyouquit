@@ -49,7 +49,8 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
     const [resolutions, setResolutions] = useState<{ id: string, title: string }[]>([]);
     const [selectedResId, setSelectedResId] = useState<string>("");
 
-    const isPro = userData?.subscriptionStatus === 'active' || userData?.subscriptionStatus === 'trialing';
+    // Use centralized isPro logic (handles past_due correctly)
+    const isPro = userData?.isPro || userData?.subscriptionStatus === 'active' || userData?.subscriptionStatus === 'trialing' || userData?.subscriptionStatus === 'past_due';
 
     // Fetch user resolutions
     useEffect(() => {

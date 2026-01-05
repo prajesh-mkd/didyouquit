@@ -16,7 +16,10 @@ export async function POST(req: NextRequest) {
         const configDoc = await adminDb.collection("app_config").doc("subscription_settings").get();
         const config = configDoc.data() as AppConfig;
 
-        const mode = config?.mode || 'test';
+        // Environment-Scoped Monetization
+        const appEnv = (process.env.NEXT_PUBLIC_APP_ENV || 'production') as 'development' | 'production';
+        const mode = config.modes?.[appEnv] || config.mode || 'test';
+
         const apiKey = mode === 'live' ? process.env.STRIPE_SECRET_KEY_LIVE : process.env.STRIPE_SECRET_KEY_TEST;
         if (!apiKey) return NextResponse.json({ error: "No API Key" }, { status: 500 });
 

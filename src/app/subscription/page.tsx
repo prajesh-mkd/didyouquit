@@ -52,7 +52,10 @@ export default function SubscriptionPage() {
             const res = await fetch('/api/portal_session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ stripeCustomerId: userData.stripeCustomerId })
+                body: JSON.stringify({
+                    stripeCustomerId: userData.stripeCustomerId,
+                    uid: user?.uid
+                })
             });
             const data = await res.json();
             if (data.url) {

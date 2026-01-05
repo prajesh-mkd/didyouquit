@@ -108,7 +108,7 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
                                     rounded-lg border ${bgClass} 
                                     text-xs snap-start flex-shrink-0 relative overflow-hidden transform-gpu [backface-visibility:hidden]
                                     ${onStatusChange && !isLocked ? 'cursor-pointer hover:opacity-90 active:scale-95 transition-all' : ''}
-                                    ${isLocked ? 'bg-slate-50 cursor-default' : ''}
+                                    ${isLocked ? 'cursor-default' : ''}
                                 `}
                         >
                             {isCurrentWeek && !status && (

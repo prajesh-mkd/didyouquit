@@ -19,7 +19,11 @@ export async function POST(req: NextRequest) {
         const config = configDoc.data() as AppConfig;
 
         // 2. Determine Mode & Keys
-        const mode = config.mode || 'test';
+        // Environment-Scoped Monetization
+        // We detect the environment (development or production) and read the specific mode setting.
+        const appEnv = (process.env.NEXT_PUBLIC_APP_ENV || 'production') as 'development' | 'production';
+        const mode = config.modes?.[appEnv] || config.mode || 'test';
+
         const apiKey = mode === 'live'
             ? process.env.STRIPE_SECRET_KEY_LIVE
             : process.env.STRIPE_SECRET_KEY_TEST;

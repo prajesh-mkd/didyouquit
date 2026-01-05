@@ -44,7 +44,7 @@ import { clsx } from "clsx";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DeleteConfirmDialog } from "@/components/dashboard/DeleteConfirmDialog";
 import { EditResolutionDialog } from "@/components/dashboard/EditResolutionDialog";
-import { format, setWeek, startOfWeek, endOfWeek, subWeeks, getISOWeek, getYear } from "date-fns";
+import { format, setWeek, startOfWeek, endOfWeek, subWeeks, getISOWeek, getYear, getISOWeekYear } from "date-fns";
 import { EmailVerificationBanner } from "@/components/dashboard/EmailVerificationBanner";
 import { TimelinePills } from "@/components/resolutions/TimelinePills";
 import { CheckInDialog } from "@/components/resolutions/CheckInDialog";
@@ -117,7 +117,9 @@ export default function Dashboard() {
     }, [router]);
 
     // Derived Logic for Paywall
-    const isPro = userData?.subscriptionStatus === 'active' || userData?.subscriptionStatus === 'trialing';
+    // We trust userData.isPro as the source of truth (handled by backend webhooks)
+    // Fallback manual check for safety, including past_due
+    const isPro = userData?.isPro || userData?.subscriptionStatus === 'active' || userData?.subscriptionStatus === 'trialing' || userData?.subscriptionStatus === 'past_due';
 
     // Get active pricing details
     // Get active pricing details
@@ -198,7 +200,7 @@ export default function Dashboard() {
 
     const handleCreateResolution = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newResTitle.trim() || !user) return;
+        if (!newResTitle.trim() || !newResDescription.trim() || !user) return;
         setIsSubmitting(true);
         try {
             await addDoc(collection(db, "resolutions"), {
@@ -338,7 +340,7 @@ export default function Dashboard() {
 
     let targetWeekDate = isFirstWeek ? now : subWeeks(now, 1);
     const targetWeekNum = getISOWeek(targetWeekDate);
-    const targetYear = getYear(targetWeekDate);
+    const targetYear = getISOWeekYear(targetWeekDate);
     const targetWeekKey = `${targetYear}-W${targetWeekNum.toString().padStart(2, '0')}`;
     const targetWeekEnd = endOfWeek(targetWeekDate, { weekStartsOn: 1 });
 
@@ -402,12 +404,15 @@ export default function Dashboard() {
                                             required
                                         />
                                         <div className="space-y-1">
-                                            <label className="text-sm text-slate-500 font-medium">Why is this important to you?</label>
+                                            <label className="text-sm text-slate-500 font-medium">
+                                                Why is this important to you? <span className="text-xs text-black font-normal ml-1">(Required)</span>
+                                            </label>
                                             <Textarea
                                                 placeholder="Sharing your 'why' creates a stronger commitment and helps others understand your journey."
                                                 value={newResDescription}
                                                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewResDescription(e.target.value)}
                                                 className="min-h-[100px]"
+                                                required
                                             />
                                         </div>
                                     </div>
@@ -425,7 +430,7 @@ export default function Dashboard() {
 
                 {/* Weekly Check-in Card - Show if Pending OR First Week */}
                 {
-                    resolutions.length > 0 && (pendingResolutions.length > 0 || isFirstWeek) && (
+                    resolutions.length > 0 && (
                         <div className="bg-white rounded-xl p-6 border border-emerald-100 shadow-sm mb-10">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="bg-emerald-100 p-2 rounded-full">
@@ -599,17 +604,17 @@ export default function Dashboard() {
                                                 <td className="p-4 pl-12 align-middle">
                                                     <div className="flex items-center gap-2">
                                                         <div className="font-medium text-slate-900">{res.title}</div>
-                                                        {calculateStreak(res.weeklyLog) > 0 && (
+                                                        {calculateStreak(res.weeklyLog, simulation.date) > 0 && (
                                                             <TooltipProvider delayDuration={0}>
                                                                 <Tooltip>
                                                                     <TooltipTrigger asChild>
                                                                         <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-help">
                                                                             <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
-                                                                            <span className="text-[10px] font-bold text-orange-600">{calculateStreak(res.weeklyLog)}</span>
+                                                                            <span className="text-[10px] font-bold text-orange-600">{calculateStreak(res.weeklyLog, simulation.date)}</span>
                                                                         </div>
                                                                     </TooltipTrigger>
                                                                     <TooltipContent>
-                                                                        <p>{calculateStreak(res.weeklyLog)} Week Streak!</p>
+                                                                        <p>{calculateStreak(res.weeklyLog, simulation.date)} Week Streak!</p>
                                                                     </TooltipContent>
                                                                 </Tooltip>
                                                             </TooltipProvider>

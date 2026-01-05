@@ -63,16 +63,25 @@ export async function POST(req: NextRequest) {
                     console.error("Error fetching sub details in checkout webhook:", e);
                 }
 
-                await adminDb.collection("users").doc(uid).update({
+                // Dual-Mode ID Logic
+                const modeKey = event.livemode ? 'live' : 'test';
+
+                await adminDb.collection("users").doc(uid).set({
                     subscriptionStatus: 'active',
-                    stripeCustomerId: customerId,
-                    subscriptionId: subscriptionId,
+                    stripeCustomerId: customerId, // Keep legacy for backward compat
+                    subscriptionId: subscriptionId, // Keep legacy
+                    stripeIds: {
+                        [modeKey]: customerId
+                    },
+                    subscriptionIds: {
+                        [modeKey]: subscriptionId
+                    },
                     currentPeriodEnd: currentPeriodEnd,
                     cancelAtPeriodEnd: cancelAtPeriodEnd,
                     planInterval: planInterval,
                     isPro: true
-                });
-                console.log(`[Webhook] User ${uid} upgraded to PRO.`);
+                }, { merge: true }); // Merge is critical to preserve other mode's IDs
+                console.log(`[Webhook] User ${uid} upgraded to PRO (${modeKey}).`);
             }
         }
         else if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {

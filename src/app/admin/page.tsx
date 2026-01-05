@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/Header";
-import { Loader2, Trash2, Shield, EyeOff, Eye, ChevronLeft, ChevronRight, Target, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { Loader2, Trash2, Shield, EyeOff, Eye, ChevronLeft, ChevronRight, Target, ChevronDown, ChevronUp, RefreshCw, Info } from "lucide-react";
 import { collection, query, orderBy, getDocs, getDoc, doc, deleteDoc, updateDoc, limit, startAfter, QueryDocumentSnapshot, endBefore, limitToLast, increment, where, collectionGroup } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
@@ -77,6 +77,19 @@ export default function AdminPage() {
     const [posts, setPosts] = useState<PostWithComments[]>([]);
     const [loadingPosts, setLoadingPosts] = useState(false);
 
+    // Subscription Simulation State
+    const [subSimEnabled, setSubSimEnabled] = useState(false);
+    const [simulatedStatus, setSimulatedStatus] = useState<string | null>(null);
+
+    // Persist Subscription Simulation State
+    useEffect(() => {
+        const stored = localStorage.getItem('subSimEnabled');
+        if (stored === 'true') setSubSimEnabled(true);
+
+        const storedStatus = localStorage.getItem('simulatedStatus');
+        if (storedStatus) setSimulatedStatus(storedStatus);
+    }, []);
+
     // Pagination State
     const [pageCursors, setPageCursors] = useState<QueryDocumentSnapshot<any>[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
@@ -110,6 +123,23 @@ export default function AdminPage() {
         } else {
             simulation.disableSimulation();
             toast.info("returned to Real Time");
+        }
+    };
+
+    const handleSubSimToggle = async (checked: boolean) => {
+        setSubSimEnabled(checked);
+        if (!checked) {
+            setSimulatedStatus(null);
+            localStorage.removeItem('simulatedStatus');
+        }
+        localStorage.setItem('subSimEnabled', String(checked));
+        if (!checked && user?.uid) {
+            // Logic: OFF means "Strict Mode", sync with real Stripe status
+            toast.promise(handleSetStatus(user.uid, 'sync'), {
+                loading: 'Syncing with Stripe...',
+                success: 'Status synced with Stripe',
+                error: 'Failed to sync status'
+            });
         }
     };
 
@@ -179,15 +209,36 @@ export default function AdminPage() {
         }
     };
 
+    const [appEnv, setAppEnv] = useState<'development' | 'production'>('production');
+
+    useEffect(() => {
+        const env = process.env.NEXT_PUBLIC_APP_ENV === 'development' ? 'development' : 'production';
+        setAppEnv(env);
+    }, []);
+
     const fetchConfig = async () => {
         try {
             const docSnap = await getDoc(doc(db, "app_config", "subscription_settings"));
             if (docSnap.exists()) {
                 const data = docSnap.data() as AppConfig;
-                setConfig(data);
+
+                // === Migration Logic: Ensure 'modes' exists ===
+                if (!data.modes) {
+                    const migratedConfig: AppConfig = {
+                        ...data,
+                        modes: {
+                            production: (data.mode as 'test' | 'live') || 'test',
+                            development: 'test'
+                        }
+                    };
+                    await updateDoc(doc(db, "app_config", "subscription_settings"), migratedConfig as any);
+                    setConfig(migratedConfig);
+                } else {
+                    setConfig(data);
+                }
+
                 if (data.strategy) setMarketingTab(data.strategy);
             } else {
-                // Initialize default if missing
                 // Initialize default if missing
                 const defaultTier = {
                     monthlyPriceId: '',
@@ -205,6 +256,10 @@ export default function AdminPage() {
 
                 const defaultConfig: AppConfig = {
                     mode: 'test',
+                    modes: {
+                        production: 'test',
+                        development: 'test'
+                    },
                     strategy: 'sale',
                     test: {
                         sale: { ...defaultTier, displayMonthly: '$1.99', displayYearly: '$19.99', marketingHeader: 'Sale Pricing' },
@@ -705,7 +760,6 @@ export default function AdminPage() {
                                             user={u}
                                             onToggleHide={handleToggleHideUser}
                                             onDelete={handleDeleteUser}
-                                            onSetStatus={handleSetStatus}
                                         />
                                     ))}
                                 </tbody>
@@ -846,6 +900,122 @@ export default function AdminPage() {
                                                 </div>
                                             </div>
                                         )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Subscription Simulation Section */}
+                            <div className={`mt-8 bg-white rounded-xl border transition-all duration-300 ${subSimEnabled ? 'border-purple-200 shadow-md ring-1 ring-purple-100' : 'border-slate-200 shadow-sm'}`}>
+                                <div className={`p-6 border-b transition-colors ${subSimEnabled ? 'border-purple-100 bg-purple-50/50' : 'border-slate-100 bg-slate-50/30'}`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-2 rounded-lg transition-colors ${subSimEnabled ? 'bg-purple-100' : 'bg-slate-100'}`}>
+                                                <CreditCard className={`h-6 w-6 ${subSimEnabled ? 'text-purple-600' : 'text-slate-400'}`} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-slate-800">Subscription Simulation</h3>
+                                                <p className="text-sm text-slate-500">Test recovery flows safely.</p>
+                                            </div>
+                                        </div>
+                                        <Switch
+                                            checked={subSimEnabled}
+                                            onCheckedChange={handleSubSimToggle}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="p-6 space-y-6">
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 flex items-start gap-3">
+                                        <Info className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+                                        <div>
+                                            <span className="font-bold block mb-1">Super Admin Sandbox</span>
+                                            Controls ONLY affect YOUR account (<b>{user?.email}</b>). <br />
+                                            Turning this <b>OFF</b> will <b>Sync</b> with your real Stripe status.
+                                        </div>
+                                    </div>
+
+                                    <div className={`space-y-3 transition-opacity duration-300 ${subSimEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none select-none'}`}>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Set Subscription Status</label>
+                                        <div className="grid grid-cols-1 gap-3">
+                                            <Button
+                                                variant="outline"
+                                                className={`justify-start h-auto py-3 px-4 transition-all duration-200 ${simulatedStatus === 'active' ? 'bg-emerald-100 border-emerald-400 ring-2 ring-emerald-200 text-emerald-900 shadow-sm' : 'border-emerald-200 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 bg-emerald-50/50'}`}
+                                                onClick={() => {
+                                                    if (user?.uid) {
+                                                        handleSetStatus(user.uid, 'active');
+                                                        setSimulatedStatus('active');
+                                                        localStorage.setItem('simulatedStatus', 'active');
+                                                    }
+                                                }}
+                                            >
+                                                <div className="text-left">
+                                                    <div className="font-semibold flex items-center gap-2">
+                                                        Force Active
+                                                        <span className="bg-emerald-200 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded-full">Pro</span>
+                                                    </div>
+                                                    <div className="text-xs text-emerald-600/80 font-normal mt-0.5">Use to verify standard Pro access.</div>
+                                                </div>
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className={`justify-start h-auto py-3 px-4 transition-all duration-200 ${simulatedStatus === 'past_due' ? 'bg-amber-100 border-amber-400 ring-2 ring-amber-200 text-amber-900 shadow-sm' : 'border-amber-200 text-amber-800 hover:bg-amber-50 hover:text-amber-900 bg-amber-50/50'}`}
+                                                onClick={() => {
+                                                    if (user?.uid) {
+                                                        handleSetStatus(user.uid, 'past_due');
+                                                        setSimulatedStatus('past_due');
+                                                        localStorage.setItem('simulatedStatus', 'past_due');
+                                                    }
+                                                }}
+                                            >
+                                                <div className="text-left">
+                                                    <div className="font-semibold flex items-center gap-2">
+                                                        Force Past Due
+                                                        <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded-full border border-amber-200">Grace Period</span>
+                                                    </div>
+                                                    <div className="text-xs text-amber-800/80 font-normal mt-0.5">Verifies "Grace Period" access + Warning Banner.</div>
+                                                </div>
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className={`justify-start h-auto py-3 px-4 transition-all duration-200 ${simulatedStatus === 'unpaid' ? 'bg-red-100 border-red-400 ring-2 ring-red-200 text-red-900 shadow-sm' : 'border-red-200 text-red-800 hover:bg-red-50 hover:text-red-900 bg-red-50/50'}`}
+                                                onClick={() => {
+                                                    if (user?.uid) {
+                                                        handleSetStatus(user.uid, 'unpaid');
+                                                        setSimulatedStatus('unpaid');
+                                                        localStorage.setItem('simulatedStatus', 'unpaid');
+                                                    }
+                                                }}
+                                            >
+                                                <div className="text-left">
+                                                    <div className="font-semibold flex items-center gap-2">
+                                                        Force Unpaid
+                                                        <span className="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full border border-slate-200">Not Pro</span>
+                                                    </div>
+                                                    <div className="text-xs text-red-800/80 font-normal mt-0.5">Verifies Paywall "Payment Failed" state & no access.</div>
+                                                </div>
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className={`justify-start h-auto py-3 px-4 transition-all duration-200 ${simulatedStatus === 'canceled' ? 'bg-slate-200 border-slate-400 ring-2 ring-slate-200 text-slate-900 shadow-sm' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                                                onClick={() => {
+                                                    if (user?.uid) {
+                                                        handleSetStatus(user.uid, 'canceled');
+                                                        setSimulatedStatus('canceled');
+                                                        localStorage.setItem('simulatedStatus', 'canceled');
+                                                    }
+                                                }}
+                                            >
+                                                <div className="text-left">
+                                                    <div className="font-semibold">Force Canceled</div>
+                                                    <div className="text-xs text-slate-500 font-normal mt-0.5">Standard churned user state.</div>
+                                                </div>
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-slate-100">
+                                        <p className="text-[11px] text-slate-400 text-center">
+                                            Current Target UID: <code className="bg-slate-100 px-1 py-0.5 rounded">{user?.uid}</code>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -1024,7 +1194,7 @@ export default function AdminPage() {
                                         <h2 className="text-2xl font-bold mb-2">Payment Environment</h2>
                                         <p className="text-slate-400 mb-6 max-w-md">
                                             Switch between Live Mode (Real Money) and Test Mode (Sandbox).
-                                            Currently active: <span className={cn("font-bold px-2 py-0.5 rounded text-sm uppercase", config?.mode === 'live' ? "bg-red-500 text-white" : "bg-blue-500 text-white")}>{config?.mode || 'loading...'}</span>
+                                            Currently active: <span className={cn("font-bold px-2 py-0.5 rounded text-sm uppercase", config?.modes?.[appEnv] === 'live' ? "bg-red-500 text-white" : "bg-blue-500 text-white")}>{config?.modes?.[appEnv] || 'loading...'}</span>
                                         </p>
 
                                         <div className="bg-slate-800/50 p-1 rounded-lg inline-flex">
@@ -1033,7 +1203,7 @@ export default function AdminPage() {
                                                     setPendingMode('test');
                                                     setAlertOpen(true);
                                                 }}
-                                                className={cn("px-4 py-2 rounded-md text-sm font-bold transition-all", config?.mode === 'test' ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20" : "text-slate-400 hover:text-white")}
+                                                className={cn("px-4 py-2 rounded-md text-sm font-bold transition-all", config?.modes?.[appEnv] === 'test' ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20" : "text-slate-400 hover:text-white")}
                                             >
                                                 Test Mode
                                             </button>
@@ -1042,14 +1212,14 @@ export default function AdminPage() {
                                                     setPendingMode('live');
                                                     setAlertOpen(true);
                                                 }}
-                                                className={cn("px-4 py-2 rounded-md text-sm font-bold transition-all", config?.mode === 'live' ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "text-slate-400 hover:text-white")}
+                                                className={cn("px-4 py-2 rounded-md text-sm font-bold transition-all", config?.modes?.[appEnv] === 'live' ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "text-slate-400 hover:text-white")}
                                             >
                                                 Live Mode
                                             </button>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        {config?.mode === 'test' ? (
+                                        {config?.modes?.[appEnv] === 'test' ? (
                                             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 max-w-xs">
                                                 <div className="flex items-center gap-2 text-blue-400 mb-2 font-bold">
                                                     <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
@@ -1105,19 +1275,34 @@ export default function AdminPage() {
                                 </div>
                             </div>
 
+                            <div className="mb-6 flex items-center justify-between bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <div className={cn("h-3 w-3 rounded-full animate-pulse", appEnv === 'production' ? "bg-purple-600" : "bg-amber-500")}></div>
+                                    <div>
+                                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Connected Environment</div>
+                                        <div className={cn("text-lg font-black tracking-tight", appEnv === 'production' ? "text-purple-700" : "text-amber-600")}>
+                                            {appEnv === 'production' ? "PRODUCTION" : "DEVELOPMENT LOCALHOST"}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-xs text-slate-400 text-right">
+                                    Changes here apply ONLY to<br />the <strong>{appEnv === 'production' ? "DIDYOUQUIT.COM" : "LOCAL"}</strong> environment.
+                                </div>
+                            </div>
+
                             <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>
                                             {pendingMode
-                                                ? `Switch to ${pendingMode === 'live' ? 'Live Mode' : 'Test Mode'}?`
+                                                ? `Switch ${appEnv.toUpperCase()} to ${pendingMode === 'live' ? 'Live Mode' : 'Test Mode'}?`
                                                 : `Switch to ${pendingStrategy === 'sale' ? 'Sale' : 'Regular'} Pricing?`
                                             }
                                         </AlertDialogTitle>
                                         <AlertDialogDescription>
                                             {pendingMode && (pendingMode === 'live'
-                                                ? "You are about to switch to Live Mode. This means real money will be processed for any new transactions. Ensure your Stripe keys are correct."
-                                                : "You are about to switch to Test Mode. This is a sandbox environment. No real money will be processed.")}
+                                                ? `You are about to switch ${appEnv.toUpperCase()} to Live Mode. This means real money will be processed for any new transactions.`
+                                                : `You are about to switch ${appEnv.toUpperCase()} to Test Mode. This is a sandbox environment.`)}
                                             {pendingStrategy && `This will update the active pricing strategy to ${pendingStrategy === 'sale' ? '"Sale Pricing"' : '"Regular Pricing"'} for all users immediately.`}
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
@@ -1128,7 +1313,16 @@ export default function AdminPage() {
                                         }}>Cancel</AlertDialogCancel>
                                         <AlertDialogAction onClick={() => {
                                             if (pendingMode) {
-                                                updateConfig({ mode: pendingMode });
+                                                const currentModes = config?.modes || {
+                                                    production: config?.mode || 'test',
+                                                    development: 'test'
+                                                };
+                                                updateConfig({
+                                                    modes: {
+                                                        ...currentModes,
+                                                        [appEnv]: pendingMode
+                                                    }
+                                                });
                                                 setPendingMode(null);
                                             } else if (pendingStrategy) {
                                                 updateConfig({ strategy: pendingStrategy });
@@ -1143,13 +1337,13 @@ export default function AdminPage() {
 
                             <div className="grid md:grid-cols-2 gap-6">
                                 {/* Test Mode Card */}
-                                <div className={cn("border-2 rounded-xl p-6 relative transition-all", config?.mode === 'test' ? "border-emerald-500 bg-emerald-50/10 ring-4 ring-emerald-500/10" : "border-slate-200 bg-white")}>
+                                <div className={cn("border-2 rounded-xl p-6 relative transition-all", config?.modes?.[appEnv] === 'test' ? "border-emerald-500 bg-emerald-50/10 ring-4 ring-emerald-500/10" : "border-slate-200 bg-white")}>
                                     <div className="absolute -top-3 left-6 px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full shadow-lg">
                                         TEST MODE
                                     </div>
                                     <div className="flex justify-between items-start mb-4">
                                         <h3 className="text-lg font-bold text-slate-900 mb-1">Test Mode Configuration</h3>
-                                        {config?.mode !== 'test' && (
+                                        {config?.modes?.[appEnv] !== 'test' && (
                                             <button
                                                 onClick={() => {
                                                     setPendingMode('test');
@@ -1373,13 +1567,13 @@ export default function AdminPage() {
                                 </div>
 
                                 {/* Live Mode Card */}
-                                <div className={cn("border-2 rounded-xl p-6 relative transition-all", config?.mode === 'live' ? "border-emerald-500 bg-emerald-50/10 ring-4 ring-emerald-500/10" : "border-slate-200 bg-white")}>
+                                <div className={cn("border-2 rounded-xl p-6 relative transition-all", config?.modes?.[appEnv] === 'live' ? "border-emerald-500 bg-emerald-50/10 ring-4 ring-emerald-500/10" : "border-slate-200 bg-white")}>
                                     <div className="absolute -top-3 left-6 px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full shadow-lg">
                                         LIVE MODE
                                     </div>
                                     <div className="flex justify-between items-start mb-4">
                                         <h3 className="text-lg font-bold text-slate-900 mb-1">Live Mode Configuration</h3>
-                                        {config?.mode !== 'live' && (
+                                        {config?.modes?.[appEnv] !== 'live' && (
                                             <button
                                                 onClick={() => {
                                                     setPendingMode('live');
@@ -1606,12 +1800,18 @@ export default function AdminPage() {
                             </div>
                         </div>
                     </TabsContent>
+
+
+
+
+
                 </Tabs>
             </main>
         </div>
     );
 }
-function UserRow({ user, onToggleHide, onDelete, onSetStatus }: { user: any, onToggleHide: any, onDelete: any, onSetStatus: any }) {
+
+function UserRow({ user, onToggleHide, onDelete }: { user: any, onToggleHide: any, onDelete: any }) {
     const [expanded, setExpanded] = useState(true); // Default to expanded
     const [resolutions, setResolutions] = useState<any[]>([]);
     const [loadingRes, setLoadingRes] = useState(true); // Default to loading
@@ -1718,47 +1918,6 @@ function UserRow({ user, onToggleHide, onDelete, onSetStatus }: { user: any, onT
                             ) : (
                                 <p className="text-slate-400 italic text-sm">No resolutions found.</p>
                             )}
-                        </div>
-
-                        {/* Subscription Simulator */}
-                        <div className="bg-white rounded-lg border border-slate-200 p-4 mt-4">
-                            <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-3">
-                                <CreditCard className="h-4 w-4 text-purple-600" />
-                                Subscription Simulation (Force State)
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                                <Button
-                                    size="sm" variant="outline"
-                                    className="h-7 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                                    onClick={() => onSetStatus(user.uid, 'active')}
-                                >
-                                    Force Active (Pro)
-                                </Button>
-                                <Button
-                                    size="sm" variant="outline"
-                                    className="h-7 text-xs border-amber-200 text-amber-700 hover:bg-amber-50"
-                                    onClick={() => onSetStatus(user.uid, 'past_due')}
-                                >
-                                    Force Past Due (Pro + Warning)
-                                </Button>
-                                <Button
-                                    size="sm" variant="outline"
-                                    className="h-7 text-xs border-red-200 text-red-700 hover:bg-red-50"
-                                    onClick={() => onSetStatus(user.uid, 'unpaid')}
-                                >
-                                    Force Unpaid (Not Pro)
-                                </Button>
-                                <Button
-                                    size="sm" variant="outline"
-                                    className="h-7 text-xs border-slate-200 text-slate-700 hover:bg-slate-50"
-                                    onClick={() => onSetStatus(user.uid, 'canceled')}
-                                >
-                                    Force Canceled (Not Pro)
-                                </Button>
-                            </div>
-                            <p className="text-[10px] text-slate-400 mt-2">
-                                * This directly updates Firestore. Webhooks might overwrite this if a real Stripe event comes in later.
-                            </p>
                         </div>
                     </td>
                 </tr>

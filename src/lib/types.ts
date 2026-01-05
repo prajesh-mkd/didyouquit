@@ -10,8 +10,16 @@ export interface UserProfile {
 
     // Subscription / Monetization
     subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'none' | 'trialing' | 'unpaid';
-    stripeCustomerId?: string;
-    subscriptionId?: string;
+    stripeCustomerId?: string; // Legacy/Default
+    subscriptionId?: string;   // Legacy/Default
+    stripeIds?: {
+        test?: string; // customer_...
+        live?: string; // customer_...
+    };
+    subscriptionIds?: {
+        test?: string; // sub_...
+        live?: string; // sub_...
+    };
     currentPeriodEnd?: any; // Firestore Timestamp or string
     cancelAtPeriodEnd?: boolean;
     planInterval?: 'month' | 'year';
@@ -19,7 +27,11 @@ export interface UserProfile {
 }
 
 export interface AppConfig {
-    mode: 'test' | 'live';
+    mode: 'test' | 'live'; // Deprecated, but kept for migration/fallback
+    modes?: {
+        production: 'test' | 'live';
+        development: 'test' | 'live';
+    };
     strategy: 'sale' | 'regular';
     test: EnvironmentConfig;
     live: EnvironmentConfig;
