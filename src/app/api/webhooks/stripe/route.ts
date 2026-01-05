@@ -94,15 +94,28 @@ export async function POST(req: NextRequest) {
 
                 try {
                     const sub = await stripe.subscriptions.retrieve(subscriptionId);
-                    currentPeriodEnd = new Date((sub as any).current_period_end * 1000);
+                    // Safe cleanup of timestamp
+                    const periodEndRaw = (sub as any).current_period_end;
+                    if (typeof periodEndRaw === 'number' && !isNaN(periodEndRaw)) {
+                        currentPeriodEnd = new Date(periodEndRaw * 1000);
+                    } else {
+                        console.error(`[Webhook] Invalid current_period_end: ${periodEndRaw}`);
+                    }
+
                     cancelAtPeriodEnd = (sub as any).cancel_at_period_end;
-                    planInterval = (sub as any).items.data[0].price.recurring?.interval || 'month';
+                    planInterval = (sub as any).items?.data?.[0]?.price?.recurring?.interval || 'month';
+                    console.log(`[Webhook] Fetched Sub: ${subscriptionId}, End: ${currentPeriodEnd}`);
                 } catch (e: any) {
                     console.error("[Webhook] Error fetching sub details:", e.message);
                 }
 
                 // Dual-Mode ID Logic
                 const modeKey = event.livemode ? 'live' : 'test';
+
+                // Ensure currentPeriodEnd is valid for Firestore
+                const validPeriodEnd = (currentPeriodEnd && !isNaN(currentPeriodEnd.getTime()))
+                    ? currentPeriodEnd
+                    : null;
 
                 await adminDb.collection("users").doc(uid).set({
                     subscriptionStatus: 'active',
@@ -114,7 +127,7 @@ export async function POST(req: NextRequest) {
                     subscriptionIds: {
                         [modeKey]: subscriptionId
                     },
-                    currentPeriodEnd: currentPeriodEnd,
+                    currentPeriodEnd: validPeriodEnd,
                     cancelAtPeriodEnd: cancelAtPeriodEnd,
                     planInterval: planInterval,
                     isPro: true
@@ -126,9 +139,15 @@ export async function POST(req: NextRequest) {
             const sub = event.data.object as Stripe.Subscription;
             const customerId = sub.customer as string;
             const status = sub.status; // 'active', 'canceled', 'past_due'
-            const currentPeriodEnd = new Date((sub as any).current_period_end * 1000);
+
+            let currentPeriodEnd = null;
+            const periodEndRaw = (sub as any).current_period_end;
+            if (typeof periodEndRaw === 'number' && !isNaN(periodEndRaw)) {
+                currentPeriodEnd = new Date(periodEndRaw * 1000);
+            }
+
             const cancelAtPeriodEnd = (sub as any).cancel_at_period_end;
-            const planInterval = (sub as any).items.data[0]?.price?.recurring?.interval || 'month';
+            const planInterval = (sub as any).items?.data?.[0]?.price?.recurring?.interval || 'month';
 
             // Find user by customerId
             const usersSnap = await adminDb.collection("users").where("stripeCustomerId", "==", customerId).get();
