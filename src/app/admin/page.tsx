@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { UserProfile, AppConfig } from "@/lib/types";
 import { CreditCard, ToggleLeft, ToggleRight, AlertTriangle } from "lucide-react";
 import { setDoc } from "firebase/firestore";
+import { deleteUserCascade } from "@/lib/resolutions";
 interface Comment {
     id: string;
     content: string;
@@ -608,24 +609,22 @@ export default function AdminPage() {
             return;
         }
 
-        if (!confirm("Are you sure you want to PERMANENTLY delete this user? This will also delete ALL their resolutions and forum posts.")) return;
+        if (!confirm("Are you sure you want to PERMANENTLY delete this user? This will also delete ALL their resolutions, forum posts, and notifications.")) return;
         try {
-            // 1. Delete Resolutions
-            const resQ = query(collection(db, "resolutions"), where("uid", "==", userId));
-            const resSnap = await getDocs(resQ);
-            await Promise.all(resSnap.docs.map(d => deleteDoc(d.ref)));
+            // 1. Reuse central cascade logic for data cleanup
+            await deleteUserCascade(userId);
 
-            // 2. Delete Forum Topics (and their comments)
-            // Note: We need to query by author.uid. ensure your security rules allow this query if needed, or index it.
-            const topicsQ = query(collection(db, "forum_topics"), where("author.uid", "==", userId));
-            const topicsSnap = await getDocs(topicsQ);
-            await Promise.all(topicsSnap.docs.map(d => deleteTopicFull(d.id)));
-
-            // 3. Delete User Profile
+            // 2. Delete User Profile
             await deleteDoc(doc(db, "users", userId));
 
+            // 3. (Admin cannot delete Auth user directly from client-side without Cloud Function usually, 
+            // unless we rely on 'deleteUser' which only works for the CURRENTLY logged in user.
+            // Admin panel usually flags for deletion or calls a backend API.
+            // HERE, we are only deleting Firestore data. The Auth account might remain unless we have a backend endpoint.
+            // Assuming this is existing constraint, we just clean up data.)
+
             setUsers(users.filter(u => u.uid !== userId));
-            toast.success("User and all associated data deleted.");
+            toast.success("User data deleted. (Auth account requires admin SDK).");
         } catch (error) {
             console.error(error);
             toast.error("Failed to delete user and data");

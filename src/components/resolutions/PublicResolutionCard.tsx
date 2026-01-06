@@ -16,6 +16,7 @@ interface PublicResolutionCardProps {
             photoURL?: string;
             country?: string;
         };
+        description?: string;
     };
     currentYear: number;
 }
@@ -50,7 +51,11 @@ export function PublicResolutionCard({ res, currentYear }: PublicResolutionCardP
                 <div className="flex items-center gap-2 font-medium text-slate-900 text-lg">
                     {res.title}
                 </div>
-                {/* Mobile-Only Quote/Description place could go here */}
+                {res.description && (
+                    <div className="text-sm text-slate-500 italic mt-2">
+                        "{res.description}"
+                    </div>
+                )}
             </div>
 
             {/* Horizontal Scroll Timeline */}

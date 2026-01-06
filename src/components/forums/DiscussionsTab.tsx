@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, MessageSquare, MessageCircle, Trash2, ChevronRight } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, where, getDocs, setDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -28,6 +28,8 @@ interface ForumTopic {
     };
     createdAt: any;
     commentCount: number;
+    resolutionTitle?: string;
+    resolutionId?: string;
 }
 
 interface DiscussionsTabProps {
@@ -48,6 +50,10 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [resolutions, setResolutions] = useState<{ id: string, title: string }[]>([]);
     const [selectedResId, setSelectedResId] = useState<string>("");
+
+    // Follow State
+    const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+    const [followLoading, setFollowLoading] = useState<string | null>(null);
 
     // Use centralized isPro logic (handles past_due correctly)
     const isPro = userData?.isPro || userData?.subscriptionStatus === 'active' || userData?.subscriptionStatus === 'trialing' || userData?.subscriptionStatus === 'past_due';
@@ -96,6 +102,70 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
             unsubscribeTopics();
         };
     }, []);
+
+    // Fetch following list
+    useEffect(() => {
+        if (!user) {
+            setFollowingIds(new Set());
+            return;
+        }
+
+        const q = collection(db, "users", user.uid, "following");
+        const unsubscribe = onSnapshot(q, (snap) => {
+            setFollowingIds(new Set(snap.docs.map(d => d.id)));
+        });
+        return () => unsubscribe();
+    }, [user]);
+
+    const handleFollow = async (e: React.MouseEvent, targetUid: string, targetUsername: string, targetPhotoURL?: string) => {
+        e.stopPropagation();
+        if (!user) {
+            toast.error("Please log in to follow");
+            return;
+        }
+        setFollowLoading(targetUid);
+        try {
+            // Add to my following
+            await setDoc(doc(db, "users", user.uid, "following", targetUid), {
+                username: targetUsername,
+                photoURL: targetPhotoURL || null,
+                timestamp: serverTimestamp()
+            });
+            // Add to their followers
+            await setDoc(doc(db, "users", targetUid, "followers", user.uid), {
+                username: user.displayName || "Anonymous",
+                photoURL: user.photoURL || null,
+                timestamp: serverTimestamp()
+            });
+
+            toast.success(`Following ${targetUsername}`);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to follow");
+        } finally {
+            setFollowLoading(null);
+        }
+    };
+
+    const handleUnfollow = async (e: React.MouseEvent, targetUid: string) => {
+        e.stopPropagation();
+        if (!user) {
+            toast.error("Please log in to un-follow");
+            return;
+        }
+        setFollowLoading(targetUid);
+        try {
+            await deleteDoc(doc(db, "users", user.uid, "following", targetUid));
+            await deleteDoc(doc(db, "users", targetUid, "followers", user.uid));
+            toast.success("Unfollowed");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to unfollow");
+        } finally {
+            setFollowLoading(null);
+        }
+    };
+
 
     const visibleTopics = topics.filter(t => !hiddenUserIds.has(t.author.uid));
 
@@ -233,70 +303,122 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
                     <p className="text-emerald-800/60">Be the first to start a conversation!</p>
                 </div>
             ) : (
-                <div className="space-y-4">
-                    {visibleTopics.map((topic) => (
-                        <div
-                            key={topic.id}
-                            onClick={() => router.push(`/forums/${topic.id}`)}
-                            className="block bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group relative"
-                        >
-                            <div className="flex items-stretch justify-between gap-4">
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-semibold text-slate-900 group-hover:text-emerald-700 transition-colors mb-2">
-                                        {topic.title}
-                                    </h3>
-                                    <p className="text-slate-600 line-clamp-2 text-sm leading-relaxed mb-4">
-                                        {topic.content}
-                                    </p>
+                <div className="space-y-6">
+                    {visibleTopics.map((topic) => {
+                        const isMe = user?.uid === topic.author.uid;
+                        const isFollowing = followingIds.has(topic.author.uid);
+                        const isLoading = followLoading === topic.author.uid;
 
-                                    <div className="flex items-center gap-4 text-xs text-slate-500">
-                                        <Link href={`/${topic.author.username}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                                            <Avatar className="h-5 w-5">
+                        return (
+                            <div
+                                key={topic.id}
+                                onClick={() => router.push(`/forums/${topic.id}`)}
+                                className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+                            >
+                                <div className="flex gap-4">
+                                    {/* Avatar Section */}
+                                    <div className="shrink-0">
+                                        <Link href={`/${topic.author.username}`} onClick={e => e.stopPropagation()}>
+                                            <Avatar className="h-10 w-10 border border-slate-100">
                                                 <AvatarImage src={topic.author.photoURL} />
-                                                <AvatarFallback>{topic.author.username?.[0]?.toUpperCase()}</AvatarFallback>
+                                                <AvatarFallback className="bg-emerald-50 text-emerald-600 font-medium">
+                                                    {topic.author.username?.[0]?.toUpperCase()}
+                                                </AvatarFallback>
                                             </Avatar>
-                                            <span className="hover:underline">{topic.author.username}</span>
                                         </Link>
-                                        <span>•</span>
-                                        <span>{topic.createdAt?.seconds ? formatDistanceToNow(new Date(topic.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col justify-between shrink-0 text-slate-400 items-end pl-4">
-                                    <div className="flex items-center gap-1.5 justify-end">
-                                        <MessageCircle className="h-4 w-4" />
-                                        <span className="text-xs font-medium">{topic.commentCount || 0}</span>
                                     </div>
 
-                                    <div className="flex flex-col items-end gap-2 text-xs">
-                                        {user && user.uid === topic.author.uid && (
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 -mr-2"
-                                                onClick={(e) => {
-                                                    if (!isPro) {
-                                                        e.stopPropagation();
-                                                        e.preventDefault();
-                                                        onShowPaywall();
-                                                    } else {
-                                                        handleDeleteTopic(e, topic.id);
-                                                    }
-                                                }}
-                                                title="Delete Post"
-                                                aria-label="Delete topic"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                    {/* Content Section */}
+                                    <div className="flex-1 min-w-0">
+                                        {/* Header: Name & Time */}
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <Link
+                                                    href={`/${topic.author.username}`}
+                                                    className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    {topic.author.username}
+                                                </Link>
+
+                                                {/* Follow Button */}
+                                                {!isMe && (
+                                                    <button
+                                                        onClick={(e) => isFollowing ? handleUnfollow(e, topic.author.uid) : handleFollow(e, topic.author.uid, topic.author.username, topic.author.photoURL)}
+                                                        disabled={isLoading}
+                                                        className={`h-5 px-3 text-[10px] rounded-full uppercase tracking-wider font-bold transition-all flex items-center justify-center leading-none ${isFollowing
+                                                            ? "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                                            : "bg-emerald-600 text-white hover:bg-emerald-700"
+                                                            }`}
+                                                    >
+                                                        {isLoading ? (
+                                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                                        ) : isFollowing ? (
+                                                            "Following"
+                                                        ) : (
+                                                            "Follow"
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <span className="text-xs text-slate-400">
+                                                {topic.createdAt?.seconds ? formatDistanceToNow(new Date(topic.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                                            </span>
+                                        </div>
+
+                                        {/* Metadata (Resolution) */}
+                                        {topic.resolutionTitle && (
+                                            <div className="text-xs text-slate-500 mb-4">
+                                                <span className="text-slate-500 font-bold italic">Resolution: </span>
+                                                <span className="text-slate-700 italic leading-relaxed">
+                                                    {topic.resolutionTitle}
+                                                </span>
+                                            </div>
                                         )}
-                                        <span className="flex items-center text-slate-500 font-medium hover:text-emerald-600 transition-colors">
-                                            View Post<ChevronRight className="h-4 w-4" />
-                                        </span>
+
+                                        {/* Discussion Title & Content */}
+                                        <div className="mb-4">
+                                            <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-emerald-800 transition-colors">
+                                                {topic.title}
+                                            </h3>
+                                            <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+                                                {topic.content}
+                                            </p>
+                                        </div>
+
+                                        {/* Footer Action Bar */}
+                                        <div className="flex items-center justify-between border-t border-slate-50 pt-3">
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-1.5 text-slate-400 group-hover:text-emerald-600 transition-colors">
+                                                    <MessageCircle className="h-4 w-4" />
+                                                    <span className="text-xs font-medium">{topic.commentCount || 0} {(topic.commentCount || 0) === 1 ? "Comment" : "Comments"}</span>
+                                                </div>
+
+                                                {isMe && (
+                                                    <button
+                                                        className="flex items-center gap-1.5 text-slate-400 hover:text-red-600 transition-colors text-xs font-medium"
+                                                        onClick={(e) => {
+                                                            if (!isPro) {
+                                                                e.stopPropagation();
+                                                                e.preventDefault();
+                                                                onShowPaywall();
+                                                            } else {
+                                                                handleDeleteTopic(e, topic.id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                        Delete
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-emerald-600 transition-colors" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

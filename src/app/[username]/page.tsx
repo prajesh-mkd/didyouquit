@@ -10,11 +10,10 @@ import { toast } from "sonner";
 import { clsx } from "clsx";
 import Link from "next/link";
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -323,6 +322,11 @@ export default function PublicProfile() {
                                                     </div>
                                                     <div>
                                                         <h3 className="font-bold text-xl text-slate-900">{res.title}</h3>
+                                                        {res.description && (
+                                                            <div className="text-sm text-slate-500 italic mt-2">
+                                                                "{res.description}"
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -370,23 +374,23 @@ export default function PublicProfile() {
                                                         <div className="flex items-center gap-2 font-medium text-slate-800 text-lg">
                                                             {res.title}
                                                             {calculateStreak(res.weeklyLog) > 0 && (
-                                                                <TooltipProvider delayDuration={0}>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-help">
-                                                                                <Flame className="h-3.5 w-3.5 text-orange-500 fill-orange-500" />
-                                                                                <span className="text-xs font-bold text-orange-600">{calculateStreak(res.weeklyLog)}</span>
-                                                                            </div>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent>
-                                                                            <p>{calculateStreak(res.weeklyLog)} Week Streak!</p>
-                                                                        </TooltipContent>
-                                                                    </Tooltip>
-                                                                </TooltipProvider>
+                                                                <Popover>
+                                                                    <PopoverTrigger asChild>
+                                                                        <button
+                                                                            className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-pointer hover:bg-orange-100 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-200"
+                                                                        >
+                                                                            <Flame className="h-3.5 w-3.5 text-orange-500 fill-orange-500" />
+                                                                            <span className="text-xs font-bold text-orange-600">{calculateStreak(res.weeklyLog)}</span>
+                                                                        </button>
+                                                                    </PopoverTrigger>
+                                                                    <PopoverContent className="w-auto p-2" side="top">
+                                                                        <p className="text-xs font-medium text-orange-700">{calculateStreak(res.weeklyLog)} Week Streak!</p>
+                                                                    </PopoverContent>
+                                                                </Popover>
                                                             )}
                                                         </div>
                                                         {res.description && (
-                                                            <div className="text-sm text-slate-500 italic mt-0.5 max-w-[90%] line-clamp-2">
+                                                            <div className="text-sm text-slate-500 italic mt-0.5 max-w-[90%]">
                                                                 "{res.description}"
                                                             </div>
                                                         )}

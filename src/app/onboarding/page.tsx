@@ -77,6 +77,7 @@ export default function Onboarding() {
 
     const [username, setUsername] = useState("");
     const [country, setCountry] = useState("");
+    const [countryError, setCountryError] = useState(false);
     const [isChecking, setIsChecking] = useState(false);
     const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,6 +153,7 @@ export default function Onboarding() {
             return;
         }
         if (!country) {
+            setCountryError(true);
             toast.error("Please select a country");
             return;
         }
@@ -224,8 +226,14 @@ export default function Onboarding() {
 
                         <div className="space-y-2">
                             <Label htmlFor="country">Country</Label>
-                            <Select onValueChange={setCountry} value={country}>
-                                <SelectTrigger>
+                            <Select 
+                                onValueChange={(val) => {
+                                    setCountry(val);
+                                    setCountryError(false);
+                                }} 
+                                value={country}
+                            >
+                                <SelectTrigger className={countryError ? "border-red-500 ring-offset-0 focus:ring-0" : ""}>
                                     <SelectValue placeholder="Select your country" />
                                 </SelectTrigger>
                                 <SelectContent>

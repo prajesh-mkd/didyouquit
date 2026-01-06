@@ -7,13 +7,14 @@ import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, ArrowLeft, Send, MessageSquare, Reply, Trash2, Pencil, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, ArrowLeft, Send, MessageSquare, Reply, Trash2, Pencil, CheckCircle2, XCircle, UserPlus, UserCheck } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, deleteDoc, setDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { formatDistanceToNow, setWeek, startOfWeek, endOfWeek, format } from "date-fns";
 import Link from "next/link";
 import { createNotification } from "@/lib/notifications";
+import { deleteCommentCascade } from "@/lib/forum-actions";
 
 interface Comment {
     id: string;
@@ -207,15 +208,39 @@ export default function JournalPage() {
     const [replyContent, setReplyContent] = useState("");
     const [newComment, setNewComment] = useState("");
 
+    // Follow State
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followLoading, setFollowLoading] = useState(false);
+
+    const [liveResTitle, setLiveResTitle] = useState<string>("");
+    const [liveResDescription, setLiveResDescription] = useState<string>("");
+
     // Fetch Journal Entry
     useEffect(() => {
         if (!journalId) return;
         const fetchEntry = async () => {
             try {
                 const docRef = doc(db, "journal_entries", journalId as string);
-                const unsubscribe = onSnapshot(docRef, (docSnap) => {
+                const unsubscribe = onSnapshot(docRef, async (docSnap) => {
                     if (docSnap.exists()) {
-                        setEntry({ id: docSnap.id, ...docSnap.data() } as JournalEntry);
+                        const data = docSnap.data();
+                        setEntry({ id: docSnap.id, ...data } as JournalEntry);
+
+                        // Fetch live resolution title
+                        if (data.resolutionId) {
+                            try {
+                                const resSnap = await getDoc(doc(db, "resolutions", data.resolutionId));
+                                if (resSnap.exists()) {
+                                    const data = resSnap.data();
+                                    setLiveResTitle(data.title);
+                                    if (data.description) {
+                                        setLiveResDescription(data.description);
+                                    }
+                                }
+                            } catch (e) {
+                                console.error("Error fetching live resolution title", e);
+                            }
+                        }
                     } else {
                         // Entry not found
                     }
@@ -229,6 +254,77 @@ export default function JournalPage() {
         };
         fetchEntry();
     }, [journalId]);
+
+    // Check Follow Status
+    useEffect(() => {
+        const checkFollowStatus = async () => {
+            if (!user || !entry || user.uid === entry.uid) return;
+            try {
+                const docRef = doc(db, "users", user.uid, "following", entry.uid);
+                const docSnap = await getDoc(docRef);
+                setIsFollowing(docSnap.exists());
+            } catch (error) {
+                console.error("Error checking follow status:", error);
+            }
+        };
+
+        if (entry && user) {
+            checkFollowStatus();
+        }
+    }, [user, entry]);
+
+    const handleFollow = async () => {
+        if (!user || !entry) {
+            toast.error("Please log in to follow");
+            return;
+        }
+        setFollowLoading(true);
+        try {
+            // Add to my following
+            await setDoc(doc(db, "users", user.uid, "following", entry.uid), {
+                username: entry.username,
+                photoURL: entry.photoURL,
+                timestamp: serverTimestamp()
+            });
+            // Add to their followers
+            await setDoc(doc(db, "users", entry.uid, "followers", user.uid), {
+                username: userData?.username || "Anonymous",
+                photoURL: userData?.photoURL || null,
+                timestamp: serverTimestamp()
+            });
+
+            // Send Notification
+            await createNotification(entry.uid, 'follow', {
+                senderUid: user.uid,
+                senderUsername: userData?.username || "Anonymous",
+                senderPhotoURL: userData?.photoURL,
+                refId: user.uid
+            });
+
+            setIsFollowing(true);
+            toast.success(`Following ${entry.username}`);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to follow");
+        } finally {
+            setFollowLoading(false);
+        }
+    };
+
+    const handleUnfollow = async () => {
+        if (!user || !entry) return;
+        setFollowLoading(true);
+        try {
+            await deleteDoc(doc(db, "users", user.uid, "following", entry.uid));
+            await deleteDoc(doc(db, "users", entry.uid, "followers", user.uid));
+            setIsFollowing(false);
+            toast.success(`Unfollowed ${entry.username}`);
+        } catch (error) {
+            toast.error("Failed to unfollow");
+        } finally {
+            setFollowLoading(false);
+        }
+    };
 
     // Fetch Comments Real-time
     useEffect(() => {
@@ -298,12 +394,13 @@ export default function JournalPage() {
                     if (parentSnap.exists()) {
                         const parentData = parentSnap.data();
                         if (parentData.author.uid !== user.uid && parentData.author.uid !== entry?.uid) {
-                            await createNotification(parentData.author.uid, 'reply', {
+                            await createNotification(parentData.author.uid, 'reply_journal', {
                                 senderUid: user.uid,
                                 senderUsername: userData?.username || "Anonymous",
                                 senderPhotoURL: userData?.photoURL,
                                 refId: journalId as string,
-                                refText: content
+                                refText: content,
+                                contextText: entry ? `${getWeekInfo(entry.weekKey)?.weekNum ? `Week ${getWeekInfo(entry.weekKey)?.weekNum} - ` : ''}${entry.resolutionTitle}` : undefined
                             });
                         }
                     }
@@ -317,12 +414,13 @@ export default function JournalPage() {
 
             // Notify Journal Author
             if (entry && entry.uid !== user.uid) {
-                await createNotification(entry.uid, 'reply', {
+                await createNotification(entry.uid, 'reply_journal', {
                     senderUid: user.uid,
                     senderUsername: userData?.username || "Anonymous",
                     senderPhotoURL: userData?.photoURL,
                     refId: `${journalId}`, // Note: Notification routing needs to handle this
-                    refText: content
+                    refText: content,
+                    contextText: entry ? `${getWeekInfo(entry.weekKey)?.weekNum ? `Week ${getWeekInfo(entry.weekKey)?.weekNum} - ` : ''}${entry.resolutionTitle}` : undefined
                 });
             }
 
@@ -338,9 +436,9 @@ export default function JournalPage() {
     const handleDeleteComment = async (commentId: string) => {
         if (!confirm("Are you sure?")) return;
         try {
-            await deleteDoc(doc(db, "journal_entries", journalId as string, "comments", commentId));
+            const deletedCount = await deleteCommentCascade(`journal_entries/${journalId}`, commentId);
             await updateDoc(doc(db, "journal_entries", journalId as string), {
-                commentCount: increment(-1)
+                commentCount: increment(-deletedCount!)
             });
             toast.success("Comment deleted");
         } catch (error) {
@@ -391,36 +489,72 @@ export default function JournalPage() {
                             </Avatar>
                         </Link>
                         <div className="flex-1">
-                            <div className="flex items-center justify-between mb-2">
-                                <div>
-                                    <Link href={`/${entry.username}`} className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors">
-                                        {entry.username}
-                                    </Link>
-                                    <div className="text-xs text-slate-500 mt-1">
-                                        <div className="flex items-center gap-1 mb-1">
-                                            <span>checked in for</span>
-                                            <span className="font-medium text-emerald-600">
-                                                {entry.resolutionTitle}
-                                            </span>
-                                            {entry.status !== undefined && (
-                                                <div className={`flex items-center gap-1 text-[10px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded-full border ml-2 ${entry.status ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"}`}>
-                                                    {entry.status ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                                                    {entry.status ? "Kept It" : "Missed It"}
-                                                </div>
+                            <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <Link href={`/${entry.username}`} className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors text-base" onClick={(e) => e.stopPropagation()}>
+                                                {entry.username}
+                                            </Link>
+
+                                            {user && entry.uid !== user.uid && (
+                                                <Button
+                                                    size="sm"
+                                                    className={`h-5 px-3 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all flex items-center justify-center leading-none ${isFollowing
+                                                        ? "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                                        : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+                                                        }`}
+                                                    onClick={isFollowing ? handleUnfollow : handleFollow}
+                                                    disabled={followLoading}
+                                                >
+                                                    {followLoading ? (
+                                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                                    ) : isFollowing ? (
+                                                        "Following"
+                                                    ) : (
+                                                        "Follow"
+                                                    )}
+                                                </Button>
                                             )}
                                         </div>
+                                        <span className="text-xs text-slate-400 whitespace-nowrap">
+                                            {entry.createdAt?.seconds ? formatDistanceToNow(new Date(entry.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                                        </span>
+                                    </div>
+
+                                    {/* Metadata Row: Week, Resolution, Why */}
+                                    <div className="text-xs text-slate-500 space-y-2 mb-4">
                                         {weekInfo && (
-                                            <div className="flex items-center gap-2 text-slate-400 bg-slate-50 w-fit px-2 py-1 rounded-md mt-1">
-                                                <span className="font-medium text-slate-600">Week {weekInfo.weekNum}</span>
+                                            <div className="flex items-center gap-2 text-slate-500 font-medium">
+                                                <span>Week {weekInfo.weekNum}</span>
                                                 <span className="text-slate-300">•</span>
                                                 <span>{weekInfo.range}</span>
                                             </div>
                                         )}
+                                        {entry.status !== undefined && (
+                                            <div className={`flex items-center gap-1 text-[10px] uppercase tracking-wide font-bold w-fit ${entry.status ? "text-emerald-600" : "text-red-600"}`}>
+                                                {entry.status ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                                {entry.status ? "Kept It" : "Missed It"}
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col gap-1.5">
+                                            <div>
+                                                <span className="text-slate-500 font-bold italic">Resolution: </span>
+                                                <span className="text-slate-700 italic leading-relaxed">
+                                                    {liveResTitle || entry.resolutionTitle}
+                                                </span>
+                                            </div>
+                                            {liveResDescription && (
+                                                <div>
+                                                    <span className="text-slate-500 font-bold italic">Why: </span>
+                                                    <span className="text-slate-700 italic leading-relaxed">
+                                                        {liveResDescription}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                                <span className="text-xs text-slate-400">
-                                    {entry.createdAt?.seconds ? formatDistanceToNow(new Date(entry.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
-                                </span>
                             </div>
 
                             <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
@@ -432,7 +566,7 @@ export default function JournalPage() {
                     <div className="flex items-center gap-4 pt-4 mt-6 border-t border-slate-50">
                         <div className="flex items-center gap-2 text-sm text-slate-500">
                             <MessageSquare className="h-4 w-4" />
-                            {comments.length} Comments
+                            {comments.length} {comments.length === 1 ? "Comment" : "Comments"}
                         </div>
                     </div>
                 </div>
@@ -440,6 +574,8 @@ export default function JournalPage() {
                 {/* Comments Section */}
                 <div className="space-y-6">
                     <h3 className="font-semibold text-slate-900 text-lg">Comments</h3>
+
+                    {/* ... rest of comments section ... */}
 
                     {/* Comment Form */}
                     {user ? (
@@ -490,7 +626,7 @@ export default function JournalPage() {
                         )}
                     </div>
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     );
 }

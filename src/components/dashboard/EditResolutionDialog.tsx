@@ -67,13 +67,14 @@ export function EditResolutionDialog({ open, onOpenChange, initialTitle, initial
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                Why is this important to you?
+                                Why is this important to you? <span className="text-xs text-black ml-0.5">(Required)</span>
                             </label>
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Add a description..."
                                 className="min-h-[100px]"
+                                required
                             />
                         </div>
                     </div>

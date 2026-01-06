@@ -11,9 +11,10 @@ interface PaywallModalProps {
     onOpenChange: (open: boolean) => void;
     pricing: any;
     user: User | null;
+    isGuest?: boolean;
 }
 
-export function PaywallModal({ open, onOpenChange, pricing, user }: PaywallModalProps) {
+export function PaywallModal({ open, onOpenChange, pricing, user, isGuest }: PaywallModalProps) {
     const { userData } = useAuth();
     const [loadingCheckout, setLoadingCheckout] = useState<'month' | 'year' | null>(null);
     const [loadingPortal, setLoadingPortal] = useState(false);
@@ -141,51 +142,91 @@ export function PaywallModal({ open, onOpenChange, pricing, user }: PaywallModal
                                 </ul>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    onClick={() => handleSubscribe('month')}
-                                    disabled={!!loadingCheckout}
-                                    className="relative flex flex-col items-center justify-center p-4 border border-slate-300 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/50 transition-all"
-                                >
-                                    <span className="text-sm font-medium text-slate-500">Monthly</span>
-                                    <div className="flex items-center gap-2">
-                                        {pricing.crossoutMonthly && (
-                                            <span className="text-sm text-slate-400 line-through">{pricing.crossoutMonthly}</span>
-                                        )}
-                                        {pricing.promoMonthly && (
-                                            <span className="text-sm font-bold text-emerald-700">{pricing.promoMonthly}</span>
-                                        )}
-                                        {renderPrice(pricing.displayMonthly)}
-                                    </div>
-                                    {loadingCheckout === 'month' && (
-                                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl">
-                                            <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                            {isGuest ? (
+                                <div className="border border-slate-200 rounded-xl bg-slate-50/50 p-4 grid grid-cols-2 divide-x divide-slate-200">
+                                    <div className="flex flex-col items-center justify-center px-4">
+                                        <span className="text-sm font-medium text-slate-500 mb-1">Monthly</span>
+                                        <div className="flex items-center gap-2">
+                                            {pricing.crossoutMonthly && (
+                                                <span className="text-sm text-slate-400 line-through">{pricing.crossoutMonthly}</span>
+                                            )}
+                                            {pricing.promoMonthly && (
+                                                <span className="text-sm font-bold text-emerald-700">{pricing.promoMonthly}</span>
+                                            )}
+                                            {renderPrice(pricing.displayMonthly)}
                                         </div>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => handleSubscribe('year')}
-                                    disabled={!!loadingCheckout}
-                                    className="relative flex flex-col items-center justify-center p-4 border-2 border-emerald-500 bg-emerald-50/10 hover:bg-emerald-50/50 transition-all rounded-xl overflow-hidden"
-                                >
-                                    <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] px-2 py-0.5 font-bold rounded-bl-lg">BEST VALUE</div>
-                                    <span className="text-sm font-medium text-slate-500 mt-2">Yearly</span>
-                                    <div className="flex items-center gap-2">
-                                        {pricing.crossoutYearly && (
-                                            <span className="text-sm text-slate-400 line-through font-semibold opacity-70">{pricing.crossoutYearly}</span>
-                                        )}
-                                        {pricing.promoYearly && (
-                                            <span className="text-sm font-bold text-emerald-700">{pricing.promoYearly}</span>
-                                        )}
-                                        {renderPrice(pricing.displayYearly)}
                                     </div>
-                                    {loadingCheckout === 'year' && (
-                                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl z-10">
-                                            <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                                    <div className="flex flex-col items-center justify-center px-4 relative">
+                                        <div className="absolute -top-3 right-4 bg-emerald-500 text-white text-[10px] px-2 py-0.5 font-bold rounded-full">BEST VALUE</div>
+                                        <span className="text-sm font-medium text-slate-500 mb-1 mt-2">Yearly</span>
+                                        <div className="flex items-center gap-2">
+                                            {pricing.crossoutYearly && (
+                                                <span className="text-sm text-slate-400 line-through font-semibold opacity-70">{pricing.crossoutYearly}</span>
+                                            )}
+                                            {pricing.promoYearly && (
+                                                <span className="text-sm font-bold text-emerald-700">{pricing.promoYearly}</span>
+                                            )}
+                                            {renderPrice(pricing.displayYearly)}
                                         </div>
-                                    )}
-                                </button>
-                            </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* Monthly Card */}
+                                    <div
+                                        onClick={() => handleSubscribe('month')}
+                                        className="relative flex flex-col items-center justify-center p-4 border border-slate-300 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/50 transition-all cursor-pointer"
+                                    >
+                                        <span className="text-sm font-medium text-slate-500">Monthly</span>
+                                        <div className="flex items-center gap-2">
+                                            {pricing.crossoutMonthly && (
+                                                <span className="text-sm text-slate-400 line-through">{pricing.crossoutMonthly}</span>
+                                            )}
+                                            {pricing.promoMonthly && (
+                                                <span className="text-sm font-bold text-emerald-700">{pricing.promoMonthly}</span>
+                                            )}
+                                            {renderPrice(pricing.displayMonthly)}
+                                        </div>
+                                        {loadingCheckout === 'month' && (
+                                            <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl">
+                                                <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Yearly Card */}
+                                    <div
+                                        onClick={() => handleSubscribe('year')}
+                                        className="relative flex flex-col items-center justify-center p-4 border-2 border-emerald-500 bg-emerald-50/10 hover:bg-emerald-50/50 transition-all rounded-xl overflow-hidden cursor-pointer"
+                                    >
+                                        <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] px-2 py-0.5 font-bold rounded-bl-lg">BEST VALUE</div>
+                                        <span className="text-sm font-medium text-slate-500 mt-2">Yearly</span>
+                                        <div className="flex items-center gap-2">
+                                            {pricing.crossoutYearly && (
+                                                <span className="text-sm text-slate-400 line-through font-semibold opacity-70">{pricing.crossoutYearly}</span>
+                                            )}
+                                            {pricing.promoYearly && (
+                                                <span className="text-sm font-bold text-emerald-700">{pricing.promoYearly}</span>
+                                            )}
+                                            {renderPrice(pricing.displayYearly)}
+                                        </div>
+                                        {loadingCheckout === 'year' && (
+                                            <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl z-10">
+                                                <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {isGuest && (
+                                <div className="mt-2">
+                                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 text-lg shadow-md hover:shadow-lg transition-all" asChild>
+                                        <a href="/?auth=signup">Get Started</a>
+                                    </Button>
+                                    <p className="text-xs text-center text-slate-400 mt-2">Sign up to choose your plan</p>
+                                </div>
+                            )}
                         </div>
                     </>
                 )}

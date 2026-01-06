@@ -75,12 +75,16 @@ export function TimelinePills({ resId, weeklyLog, weeklyNotes, currentYear, onSt
             const timer = setTimeout(() => {
                 // Scope selector to THIS container to avoid issues with duplicate IDs (e.g. mobile/desktop views)
                 // We use data-week-num attribute for reliable scoping
-                const element = scrollContainerRef.current?.querySelector(`[data-week-num="${targetWeekNum}"]`);
+                const element = scrollContainerRef.current?.querySelector(`[data-week-num="${targetWeekNum}"]`) as HTMLElement;
 
-                if (element) {
-                    // scrollIntoView is more robust than manual offset calculation
-                    // inline: 'start' aligns it to the left
-                    element.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'start' });
+                if (element && scrollContainerRef.current) {
+                    // Fix: Use container.scrollTo instead of element.scrollIntoView
+                    // scrollIntoView causes the whole page to scroll if the element is not in the viewport
+                    const container = scrollContainerRef.current;
+                    const offsetLeft = element.offsetLeft;
+
+                    // Subtracting 4px (padding) to make it look nicer if possible, but raw offsetLeft is fine
+                    container.scrollTo({ left: offsetLeft, behavior: 'auto' });
                 }
             }, 300);
 

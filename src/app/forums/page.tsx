@@ -14,7 +14,7 @@ import { WeeklyJournalsTab } from "@/components/forums/WeeklyJournalsTab";
 import { NotificationsTab } from "@/components/forums/NotificationsTab";
 import { Footer } from "@/components/layout/Footer";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 
 // Wrap contents in Suspense because usage of useSearchParams() causes client-side deopt
@@ -34,9 +34,10 @@ export default function ForumsPage() {
 }
 
 function ForumsContent() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const tabParam = searchParams.get("tab");
-    const defaultTab = (tabParam === "journals" || tabParam === "notifications") ? tabParam : "discussions";
+    const defaultTab = (tabParam === "general" || tabParam === "notifications") ? tabParam : "journals";
 
     const { user, userData, loading: authLoading } = useAuth();
     // ... rest of logic
@@ -87,19 +88,28 @@ function ForumsContent() {
                     <p className="text-emerald-800/60 mt-1">Discuss progress, challenges, share tips, and find support.</p>
                 </div>
 
-                <Tabs defaultValue={defaultTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 mb-8 bg-emerald-100/50 p-1 rounded-xl">
-                        <TabsTrigger value="discussions" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Discussions</TabsTrigger>
-                        <TabsTrigger value="journals" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Weekly Journals</TabsTrigger>
-                        <TabsTrigger value="notifications" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Notifications</TabsTrigger>
+                <Tabs
+                    defaultValue="journals"
+                    value={defaultTab}
+                    onValueChange={(val) => {
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set("tab", val);
+                        router.push(`/forums?${params.toString()}`);
+                    }}
+                    className="w-full"
+                >
+                    <TabsList className="grid w-full grid-cols-3 gap-1 mb-8 bg-emerald-100/50 p-1 rounded-xl">
+                        <TabsTrigger value="journals" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm hover:bg-white/60 hover:text-emerald-900 transition-all">Weekly Journals</TabsTrigger>
+                        <TabsTrigger value="general" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm hover:bg-white/60 hover:text-emerald-900 transition-all">General</TabsTrigger>
+                        <TabsTrigger value="notifications" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm hover:bg-white/60 hover:text-emerald-900 transition-all">Notifications</TabsTrigger>
                     </TabsList>
-
-                    <TabsContent value="discussions" className="outline-none">
-                        <DiscussionsTab onShowPaywall={() => setShowPaywall(true)} />
-                    </TabsContent>
 
                     <TabsContent value="journals" className="outline-none">
                         <WeeklyJournalsTab />
+                    </TabsContent>
+
+                    <TabsContent value="general" className="outline-none">
+                        <DiscussionsTab onShowPaywall={() => setShowPaywall(true)} />
                     </TabsContent>
 
                     <TabsContent value="notifications" className="outline-none">

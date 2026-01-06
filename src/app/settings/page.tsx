@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 
 import { toast } from "sonner";
 import { deleteUser } from "firebase/auth";
+import { deleteUserCascade } from "@/lib/resolutions";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { Loader2 } from "lucide-react";
@@ -33,17 +34,40 @@ export default function SettingsPage() {
 
     const handleDeleteAccount = async () => {
         if (!user) return;
+
+        // Safeguard: Prevent deletion if active subscription exists and is NOT scheduled to cancel
+        const isSubActive = userData?.subscriptionStatus === 'active' || userData?.subscriptionStatus === 'trialing';
+        const isCanceled = userData?.cancelAtPeriodEnd === true;
+
+        if (isSubActive && !isCanceled) {
+            toast.error("Cannot delete account with an active subscription.", {
+                description: "Please cancel your subscription first to avoid future billing."
+            });
+            return;
+        }
         const confirmText = prompt("Type 'DELETE' to confirm account deletion. This cannot be undone.");
         if (confirmText !== "DELETE") return;
 
         setIsDeleting(true);
         try {
-            // 1. Delete user doc
-            await deleteDoc(doc(db, "users", user.uid));
-            // 2. Delete auth user
-            await deleteUser(user);
-            // 3. Redirect
-            toast.success("Account deleted.");
+            // Call Backend API to handle privileged deletion (Resolutions, Topics, Notifications, User Data)
+            const token = await user.getIdToken();
+            const res = await fetch('/api/account/delete', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Deletion failed");
+            }
+
+            // Client-side cleanup
+            await auth.signOut();
+
+            toast.success("Account deleted successfully.");
             router.push("/");
         } catch (error: any) {
             const msg = getFriendlyErrorMessage(error);

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, where } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, where, doc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { toast } from "sonner";
 import { Loader2, Calendar, MessageSquare, ChevronRight, MessageCircle, CheckCircle2, XCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
@@ -54,6 +55,8 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const [resData, setResData] = useState<Record<string, { title: string, description?: string }>>({});
+
     useEffect(() => {
         let q;
         if (uid) {
@@ -72,6 +75,115 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
         });
         return () => unsubscribe();
     }, [uid]);
+
+    // Fetch live resolution titles
+    useEffect(() => {
+        if (entries.length === 0) return;
+
+        const fetchTitles = async () => {
+            const missingIds = Array.from(new Set(entries
+                .map(e => e.resolutionId)
+                .filter(id => id && !resData[id])
+            ));
+
+            if (missingIds.length === 0) return;
+
+            // Fetch in batches or individually (simple Promise.all for now)
+            try {
+                const newData: Record<string, { title: string, description?: string }> = {};
+                await Promise.all(missingIds.map(async (id) => {
+                    try {
+                        const snap = await import("firebase/firestore").then(mod => mod.getDoc(mod.doc(db, "resolutions", id)));
+                        if (snap.exists()) {
+                            const data = snap.data();
+                            newData[id] = { title: data.title, description: data.description };
+                        }
+                    } catch (e) {
+                        console.error(`Error fetching resolution ${id}`, e);
+                    }
+                }));
+
+                setResData(prev => ({ ...prev, ...newData }));
+            } catch (error) {
+                console.error("Error fetching resolution data", error);
+            }
+        };
+
+        fetchTitles();
+    }, [entries]);
+
+    const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+    const [followLoading, setFollowLoading] = useState<string | null>(null);
+
+    // Fetch following list
+    useEffect(() => {
+        if (!user) {
+            setFollowingIds(new Set());
+            return;
+        }
+
+        const fetchFollowing = async () => {
+            // simplified: real-time listener for "my following"
+            // or just one-time fetch. Real-time is better for UI consistency.
+            // But for now, let's do onSnapshot to keep it synced.
+            const q = collection(db, "users", user.uid, "following");
+            const unsubscribe = onSnapshot(q, (snap) => {
+                setFollowingIds(new Set(snap.docs.map(d => d.id)));
+            });
+            return () => unsubscribe();
+        };
+
+        fetchFollowing();
+    }, [user]);
+
+    const handleFollow = async (e: React.MouseEvent, targetUid: string, targetUsername: string, targetPhotoURL?: string) => {
+        e.stopPropagation();
+        if (!user) {
+            toast.error("Please log in to follow");
+            return;
+        }
+        setFollowLoading(targetUid);
+        try {
+            // Add to my following
+            await setDoc(doc(db, "users", user.uid, "following", targetUid), {
+                username: targetUsername,
+                photoURL: targetPhotoURL || null,
+                timestamp: serverTimestamp()
+            });
+            // Add to their followers
+            await setDoc(doc(db, "users", targetUid, "followers", user.uid), {
+                username: user.displayName || "Anonymous",
+                photoURL: user.photoURL || null,
+                timestamp: serverTimestamp()
+            });
+
+            toast.success(`Following ${targetUsername}`);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to follow");
+        } finally {
+            setFollowLoading(null);
+        }
+    };
+
+    const handleUnfollow = async (e: React.MouseEvent, targetUid: string) => {
+        e.stopPropagation();
+        if (!user) {
+            toast.error("Please log in to un-follow");
+            return;
+        }
+        setFollowLoading(targetUid);
+        try {
+            await deleteDoc(doc(db, "users", user.uid, "following", targetUid));
+            await deleteDoc(doc(db, "users", targetUid, "followers", user.uid));
+            toast.success("Unfollowed");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to unfollow");
+        } finally {
+            setFollowLoading(null);
+        }
+    };
 
     if (loading) {
         return (
@@ -97,17 +209,35 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                 const weekInfo = getWeekInfo(entry.weekKey);
                 // If uid prop is present, we are on a specific profile page, so don't link to it.
                 const isProfileView = !!uid;
+                const isMe = user?.uid === entry.uid;
+                const isFollowing = followingIds.has(entry.uid);
+                const isLoading = followLoading === entry.uid;
 
                 return (
+
                     <div
                         key={entry.id}
                         onClick={() => router.push(`/forums/journal/${entry.id}`)}
-                        className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group relative"
+                        className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
                     >
-                        <div className="flex items-stretch justify-between gap-4">
-                            <div className="flex-1">
+                        <div className="flex gap-4">
+                            {/* Avatar Section */}
+                            <div className="shrink-0">
+                                <Link href={isProfileView ? "#" : `/${entry.username}`} onClick={e => isProfileView && e.preventDefault()}>
+                                    <Avatar className="h-10 w-10 border border-slate-100">
+                                        <AvatarImage src={entry.photoURL} />
+                                        <AvatarFallback className="bg-emerald-50 text-emerald-600 font-medium">
+                                            {entry.username[0]?.toUpperCase()}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                </Link>
+                            </div>
+
+                            {/* Content Section */}
+                            <div className="flex-1 min-w-0">
+                                {/* Header: Name & Time */}
                                 <div className="flex items-center justify-between mb-2">
-                                    <div>
+                                    <div className="flex items-center gap-2">
                                         {isProfileView ? (
                                             <span className="font-semibold text-slate-900">
                                                 {entry.username}
@@ -122,49 +252,76 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                                             </Link>
                                         )}
 
-                                        <div className="text-xs text-slate-500 mt-1">
-                                            <div className="flex items-center gap-1 mb-1">
-                                                <span>checked in for</span>
-                                                <span className="font-medium text-emerald-600">
-                                                    {entry.resolutionTitle}
-                                                </span>
-                                                {entry.status !== undefined && (
-                                                    <div className={`flex items-center gap-1 text-[10px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded-full border ml-2 ${entry.status ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"}`}>
-                                                        {entry.status ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                                                        {entry.status ? "Kept It" : "Missed It"}
-                                                    </div>
+                                        {/* Follow Button */}
+                                        {!isMe && !isProfileView && (
+                                            <button
+                                                onClick={(e) => isFollowing ? handleUnfollow(e, entry.uid) : handleFollow(e, entry.uid, entry.username, entry.photoURL)}
+                                                disabled={isLoading}
+                                                className={`h-5 px-3 text-[10px] rounded-full uppercase tracking-wider font-bold transition-all flex items-center justify-center leading-none ${isFollowing
+                                                    ? "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                                    : "bg-emerald-600 text-white hover:bg-emerald-700"
+                                                    }`}
+                                            >
+                                                {isLoading ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                ) : isFollowing ? (
+                                                    "Following"
+                                                ) : (
+                                                    "Follow"
                                                 )}
-                                            </div>
-                                            {weekInfo && (
-                                                <div className="flex items-center gap-2 text-slate-400 bg-slate-50 w-fit px-2 py-1 rounded-md mt-1">
-                                                    <span className="font-medium text-slate-600">Week {weekInfo.weekNum}</span>
-                                                    <span className="text-slate-300">•</span>
-                                                    <span>{weekInfo.range}</span>
-                                                </div>
-                                            )}
+                                            </button>
+                                        )}
+                                    </div>
+                                    <span className="text-xs text-slate-400">
+                                        {entry.createdAt?.seconds ? formatDistanceToNow(new Date(entry.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                                    </span>
+                                </div>
+
+                                {/* Metadata Block */}
+                                <div className="text-xs text-slate-500 space-y-2 mb-4">
+                                    {weekInfo && (
+                                        <div className="flex items-center gap-2 text-slate-500 font-medium">
+                                            <span>Week {weekInfo.weekNum}</span>
+                                            <span className="text-slate-300">•</span>
+                                            <span>{weekInfo.range}</span>
                                         </div>
+                                    )}
+                                    {entry.status !== undefined && (
+                                        <div className={`flex items-center gap-1 text-[10px] uppercase tracking-wide font-bold w-fit ${entry.status ? "text-emerald-600" : "text-red-600"}`}>
+                                            {entry.status ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                            {entry.status ? "Kept It" : "Missed It"}
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col gap-1.5">
+                                        <div>
+                                            <span className="text-slate-500 font-bold italic">Resolution: </span>
+                                            <span className="text-slate-700 italic leading-relaxed">
+                                                {resData[entry.resolutionId]?.title || entry.resolutionTitle}
+                                            </span>
+                                        </div>
+                                        {resData[entry.resolutionId]?.description && (
+                                            <div>
+                                                <span className="text-slate-500 font-bold italic">Why: </span>
+                                                <span className="text-slate-700 italic leading-relaxed">
+                                                    {resData[entry.resolutionId]?.description}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
+                                {/* Journal Content */}
                                 <p className="text-slate-700 leading-relaxed whitespace-pre-wrap mb-4">
                                     {entry.content}
                                 </p>
 
-                                <div className="flex items-center gap-4 text-xs text-slate-500">
-                                    <span>{entry.createdAt?.seconds ? formatDistanceToNow(new Date(entry.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}</span>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col justify-between shrink-0 text-slate-400 items-end pl-4 min-h-[100px]">
-                                <div className="flex items-center gap-1.5 justify-end">
-                                    <MessageCircle className="h-4 w-4" />
-                                    <span className="text-xs font-medium">{entry.commentCount || 0}</span>
-                                </div>
-
-                                <div className="flex flex-col items-end gap-2 text-xs">
-                                    <span className="flex items-center text-slate-500 font-medium hover:text-emerald-600 transition-colors">
-                                        View Post<ChevronRight className="h-4 w-4" />
-                                    </span>
+                                {/* Footer Action Bar */}
+                                <div className="flex items-center justify-between border-t border-slate-50 pt-3">
+                                    <div className="flex items-center gap-1.5 text-slate-400 group-hover:text-emerald-600 transition-colors">
+                                        <MessageCircle className="h-4 w-4" />
+                                        <span className="text-xs font-medium">{entry.commentCount || 0} {(entry.commentCount || 0) === 1 ? "Comment" : "Comments"}</span>
+                                    </div>
+                                    <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-emerald-600 transition-colors" />
                                 </div>
                             </div>
                         </div>

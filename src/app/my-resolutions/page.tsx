@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
+import { deleteResolutionCascade } from "@/lib/resolutions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -233,11 +234,11 @@ export default function Dashboard() {
         if (!deleteRes) return;
         setIsDeleting(true);
         try {
-            await deleteDoc(doc(db, "resolutions", deleteRes.id));
-            toast.success("Resolution deleted");
+            await deleteResolutionCascade(deleteRes.id);
+            toast.success("Resolution and associated entries deleted");
             setDeleteRes(null);
         } catch (error: any) {
-            toast.error(error.message);
+            toast.error("Failed to delete resolution");
         } finally {
             setIsDeleting(false);
         }
@@ -274,7 +275,7 @@ export default function Dashboard() {
             // Sync to Public Journal Entries if a note exists
             if (note && note.trim().length > 0) {
                 try {
-                    await addDoc(collection(db, "journal_entries"), {
+                    const journalRef = await addDoc(collection(db, "journal_entries"), {
                         uid: user?.uid,
                         username: userData?.username || "Anonymous",
                         photoURL: userData?.photoURL || null,
@@ -293,7 +294,7 @@ export default function Dashboard() {
                             senderUid: user.uid,
                             senderUsername: userData?.username || "Anonymous",
                             senderPhotoURL: userData?.photoURL,
-                            refId: res.id, // Linking to resolution for now, ideally to the journal ID but we just created it async
+                            refId: journalRef.id, // Fixed: Using actual Journal Entry ID
                             refText: `Posted a check-in for ${res.title}`
                         });
                     }
@@ -606,19 +607,19 @@ export default function Dashboard() {
                                                     <div className="flex items-center gap-2">
                                                         <div className="font-medium text-slate-900">{res.title}</div>
                                                         {calculateStreak(res.weeklyLog, simulation.date) > 0 && (
-                                                            <TooltipProvider delayDuration={0}>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-help">
-                                                                            <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
-                                                                            <span className="text-[10px] font-bold text-orange-600">{calculateStreak(res.weeklyLog, simulation.date)}</span>
-                                                                        </div>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>{calculateStreak(res.weeklyLog, simulation.date)} Week Streak!</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
+                                                            <Popover>
+                                                                <PopoverTrigger asChild>
+                                                                    <button
+                                                                        className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-pointer hover:bg-orange-100 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-200"
+                                                                    >
+                                                                        <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
+                                                                        <span className="text-[10px] font-bold text-orange-600">{calculateStreak(res.weeklyLog, simulation.date)}</span>
+                                                                    </button>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-auto p-2" side="top">
+                                                                    <p className="text-xs font-medium text-orange-700">{calculateStreak(res.weeklyLog, simulation.date)} Week Streak!</p>
+                                                                </PopoverContent>
+                                                            </Popover>
                                                         )}
                                                     </div>
                                                     {res.description && (

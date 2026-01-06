@@ -12,7 +12,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { auth, db } from "@/lib/firebase";
 import {
@@ -321,6 +325,11 @@ function HomeContent() {
                       <div className="flex items-center gap-2 font-medium text-slate-900 mb-2">
                         {res.title}
                       </div>
+                      {res.description && (
+                        <div className="text-sm text-slate-500 italic mb-3">
+                          "{res.description}"
+                        </div>
+                      )}
                     </div>
 
                     <div className="bg-slate-50/50 rounded-lg p-3 border border-slate-100">
@@ -387,10 +396,19 @@ function HomeContent() {
                           <div className="flex items-center gap-2 font-medium text-slate-800">
                             {res.title}
                             {calculateStreak(res.weeklyLog) > 0 && (
-                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-50 rounded-full border border-orange-100" title="Current Streak">
-                                <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
-                                <span className="text-[10px] font-bold text-orange-600">{calculateStreak(res.weeklyLog)}</span>
-                              </div>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-pointer hover:bg-orange-100 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-200"
+                                  >
+                                    <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
+                                    <span className="text-[10px] font-bold text-orange-600">{calculateStreak(res.weeklyLog)}</span>
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-2" side="top">
+                                  <p className="text-xs font-medium text-orange-700">{calculateStreak(res.weeklyLog)} Week Streak!</p>
+                                </PopoverContent>
+                              </Popover>
                             )}
                           </div>
                           {res.description && (

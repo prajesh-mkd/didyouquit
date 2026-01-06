@@ -2,7 +2,7 @@
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp, getDocs } from "firebase/firestore";
 
-export type NotificationType = 'reply' | 'new_journal' | 'new_resolution' | 'follow';
+export type NotificationType = 'reply' | 'reply_journal' | 'new_journal' | 'new_resolution' | 'follow';
 
 interface BaseNotificationParams {
     senderUid: string;
@@ -10,6 +10,7 @@ interface BaseNotificationParams {
     senderPhotoURL?: string | null;
     refId: string; // ID of the post, journal, or user (for follow)
     refText?: string; // Snippet of content or context
+    contextText?: string; // Title of the post or journal being replied to
 }
 
 /**
@@ -27,6 +28,7 @@ export async function createNotification(recipientUid: string, type: Notificatio
             type,
             refId: params.refId,
             refText: params.refText ? params.refText.slice(0, 60) + (params.refText.length > 60 ? "..." : "") : "",
+            contextText: params.contextText || null,
             createdAt: serverTimestamp(),
             read: false
         });

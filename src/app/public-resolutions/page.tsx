@@ -6,7 +6,7 @@ import { collection, getDocs, query, orderBy, limit, doc, getDoc, startAt, start
 import { db } from "@/lib/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Loader2, Globe, Target, Users, Calendar, Flame } from "lucide-react";
 import Link from "next/link";
 import { startOfWeek, endOfWeek, format, setWeek, getISOWeek, getYear } from "date-fns";
@@ -50,9 +50,6 @@ export default function PublicResolutionsPage() {
     const [loadingMore, setLoadingMore] = useState(false);
     const initialLoadDone = useRef(false);
 
-    // Fallback for existing data that doesn't have randomSortKey
-    const isLegacyMode = useRef(false);
-
     // Legacy user cache to avoid refetching same users
     const userCache = useRef<Map<string, any>>(new Map());
 
@@ -65,7 +62,7 @@ export default function PublicResolutionsPage() {
             setHasMore(true);
             setLastDoc(null);
             userCache.current.clear();
-            isLegacyMode.current = false; // Reset mode
+
         } else {
             setLoadingMore(true);
         }
@@ -79,64 +76,51 @@ export default function PublicResolutionsPage() {
             const hiddenUserIds = new Set(hiddenUsersSnap.docs.map(d => d.id));
 
             // 1. Fetch User's Own Resolutions FIRST (Only on initial load)
-            if (isInitial && user) {
-                const userQ = query(collection(db, "resolutions"), where("uid", "==", user.uid));
-                const userSnapshot = await getDocs(userQ);
+            // Removed: We now rely purely on the random circular feed.
 
-                userSnapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    newResolutions.push({
-                        id: docSnap.id,
-                        uid: data.uid,
-                        title: data.title,
-                        weeklyLog: data.weeklyLog || {},
-                        user: data.user
-                    });
-                    // Add to cache so we don't re-fetch ourselves if we appear in random feed
-                    if (!data.user) userIdsToFetch.add(data.uid);
-                });
-            }
 
-            // 2. Fetch Public Feed (Random or Legacy)
+            // 2. Fetch Public Feed (Circular Random)
             const resolutionsRef = collection(db, "resolutions");
             let q;
+            const FETCH_LIMIT = 50;
 
-            const buildQuery = (legacy: boolean, last: DocumentSnapshot | null) => {
-                if (legacy) {
-                    if (last) {
-                        return query(resolutionsRef, orderBy("createdAt", "desc"), startAfter(last), limit(20));
-                    }
-                    return query(resolutionsRef, orderBy("createdAt", "desc"), limit(20));
-                }
-                if (last) {
-                    return query(resolutionsRef, orderBy("randomSortKey"), startAfter(last), limit(20));
-                }
+            if (isInitial) {
+                // Start at a random point
                 const randomStart = Math.random();
-                return query(resolutionsRef, orderBy("randomSortKey"), startAt(randomStart), limit(20));
-            };
-
-            q = buildQuery(isLegacyMode.current, isInitial ? null : lastDoc);
-            let snapshot = await getDocs(q);
-
-            // FALLBACK LOGIC: If initial random fetch is empty, try legacy fetch
-            if (isInitial && snapshot.empty && !isLegacyMode.current) {
-                console.log("No random-key resolutions found, falling back to legacy...");
-                isLegacyMode.current = true;
-                q = buildQuery(true, null);
-                snapshot = await getDocs(q);
+                q = query(resolutionsRef, orderBy("randomSortKey"), startAt(randomStart), limit(FETCH_LIMIT));
+            } else if (lastDoc) {
+                // Continue from last doc
+                q = query(resolutionsRef, orderBy("randomSortKey"), startAfter(lastDoc), limit(FETCH_LIMIT));
+            } else {
+                // Fallback (shouldn't happen often)
+                q = query(resolutionsRef, orderBy("randomSortKey"), limit(FETCH_LIMIT));
             }
 
-            // If we got fewer than requested, we might have hit the end of the random sequence (1.0)
-            // Ideally we'd wrap around, but for V1 just stopping is fine or we can re-query from 0 if needed.
-            if (snapshot.docs.length < 20) {
+            let snapshot = await getDocs(q);
+            let docs = snapshot.docs;
+
+            // WRAPAROUND LOGIC: If we got fewer than limit, wrap around to start (0.0)
+            if (docs.length < FETCH_LIMIT) {
+                console.log("Hit end of list, wrapping around...");
+                const needed = FETCH_LIMIT - docs.length;
+                const wrapQ = query(resolutionsRef, orderBy("randomSortKey"), startAt(0), limit(needed));
+                const wrapSnap = await getDocs(wrapQ);
+                docs = [...docs, ...wrapSnap.docs];
+            }
+
+            // If still fewer than limit after wrap, we probably have fewer than 50 total docs in DB
+            // In that case, we can say hasMore = false to stop infinite duplicates loops
+            // OR we just keep looping. For "Feed", infinite loop is okay, but let's avoid dupes in same view.
+            if (docs.length < FETCH_LIMIT && isInitial) {
+                // If total docs < 50, we don't need 'Load More'
                 setHasMore(false);
             }
 
-            setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+            setLastDoc(docs[docs.length - 1] || null);
 
             // Process Public Results
-            for (const docSnapshot of snapshot.docs) {
-                // Skip if we already added this (i.e. it's the user's own resolution we fetched in step 1)
+            for (const docSnapshot of docs) {
+                // Skip if we already added this
                 if (newResolutions.some(r => r.id === docSnapshot.id)) continue;
 
                 // Skip if user is hidden
@@ -149,7 +133,8 @@ export default function PublicResolutionsPage() {
                     uid: data.uid,
                     title: data.title,
                     weeklyLog: data.weeklyLog || {},
-                    user: data.user // Use denormalized data if available
+                    user: data.user, // Use denormalized data if available
+                    description: data.description
                 };
 
                 if (!res.user && res.uid) {
@@ -231,15 +216,7 @@ export default function PublicResolutionsPage() {
             <main className="flex-1 pb-20">
                 <div className="container mx-auto px-6 py-12">
                     <h1 className="text-4xl font-bold text-center text-emerald-900 mb-2">Public Resolutions 2026</h1>
-                    <p className="text-center text-slate-600 mb-4">See what the world is committing to this year.</p>
-                    {user && (
-                        <div className="flex justify-center mb-12">
-                            <p className="text-sm text-emerald-600 font-medium bg-emerald-50 px-4 py-1.5 rounded-lg border border-emerald-200">
-                                Your resolutions are pinned to the top for you.
-                            </p>
-                        </div>
-                    )}
-                    {!user && <div className="mb-12" />}
+                    <p className="text-center text-slate-600 mb-12">See what the world is committing to this year.</p>
 
 
 
@@ -279,7 +256,7 @@ export default function PublicResolutionsPage() {
                                 <tbody className="divide-y divide-slate-50">
                                     {resolutions.map((res) => (
                                         <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
-                                            <td className="p-4 pl-6">
+                                            <td className="p-4 pl-6 align-top">
                                                 <Link href={`/${res.user?.username || res.uid}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                                                     <Avatar className="h-10 w-10 border border-slate-200">
                                                         <AvatarImage src={res.user?.photoURL} />
@@ -302,23 +279,23 @@ export default function PublicResolutionsPage() {
                                                 <div className="flex items-center gap-2 font-medium text-slate-800">
                                                     {res.title}
                                                     {calculateStreak(res.weeklyLog || {}) > 0 && (
-                                                        <TooltipProvider delayDuration={0}>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-help" title="">
-                                                                        <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
-                                                                        <span className="text-[10px] font-bold text-orange-600">{calculateStreak(res.weeklyLog || {})}</span>
-                                                                    </div>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p>{calculateStreak(res.weeklyLog || {})} Week Streak!</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <button
+                                                                    className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-pointer hover:bg-orange-100 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-200"
+                                                                >
+                                                                    <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
+                                                                    <span className="text-[10px] font-bold text-orange-600">{calculateStreak(res.weeklyLog || {})}</span>
+                                                                </button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-auto p-2" side="top">
+                                                                <p className="text-xs font-medium text-orange-700">{calculateStreak(res.weeklyLog || {})} Week Streak!</p>
+                                                            </PopoverContent>
+                                                        </Popover>
                                                     )}
                                                 </div>
                                                 {res.description && (
-                                                    <div className="text-sm text-slate-500 italic mt-0.5 max-w-[90%] line-clamp-2">
+                                                    <div className="text-sm text-slate-500 italic mt-0.5">
                                                         "{res.description}"
                                                     </div>
                                                 )}

@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, ArrowLeft, Send, MessageSquare, Reply, Trash2, Pencil, MoreHorizontal } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, deleteDoc } from "firebase/firestore";
+import { deleteTopicCascade, deleteCommentCascade } from "@/lib/forum-actions";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
@@ -306,7 +307,8 @@ export default function TopicPage() {
                                 senderUsername: userData?.username || "Anonymous",
                                 senderPhotoURL: userData?.photoURL,
                                 refId: topicId as string,
-                                refText: content
+                                refText: content,
+                                contextText: topic?.title
                             });
                         }
                     }
@@ -325,7 +327,8 @@ export default function TopicPage() {
                     senderUsername: userData?.username || "Anonymous",
                     senderPhotoURL: userData?.photoURL,
                     refId: topic.id,
-                    refText: content
+                    refText: content,
+                    contextText: topic.title
                 });
             }
 
@@ -338,15 +341,12 @@ export default function TopicPage() {
     };
 
     const handleDeleteComment = async (commentId: string) => {
-        if (!confirm("Are you sure you want to delete this comment?")) return;
+        if (!confirm("Are you sure?")) return;
         try {
-            await deleteDoc(doc(db, "forum_topics", topicId as string, "comments", commentId));
-
-            // Fix: Decrement comment count on delete
+            const deletedCount = await deleteCommentCascade(`forum_topics/${topicId}`, commentId);
             await updateDoc(doc(db, "forum_topics", topicId as string), {
-                commentCount: increment(-1)
+                commentCount: increment(-deletedCount!)
             });
-
             toast.success("Comment deleted");
         } catch (error) {
             console.error(error);
@@ -368,7 +368,7 @@ export default function TopicPage() {
     const handleDeleteTopic = async () => {
         if (!confirm("Are you sure? This will delete the post and all its comments.")) return;
         try {
-            await deleteDoc(doc(db, "forum_topics", topicId as string));
+            await deleteTopicCascade(topicId as string);
             toast.success("Post deleted");
             router.push("/forums");
         } catch (error) {
@@ -403,14 +403,30 @@ export default function TopicPage() {
         );
     }
 
-    if (!topic) return null;
+    if (!topic) {
+        return (
+            <div className="min-h-screen flex flex-col bg-[#F0FDF4]">
+                <Header />
+                <main className="container flex-1 flex flex-col items-center justify-center text-center p-8">
+                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 max-w-md w-full">
+                        <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                        <h2 className="text-xl font-semibold text-slate-900 mb-2">Post not found</h2>
+                        <p className="text-slate-500 mb-6">This discussion may have been deleted or does not exist.</p>
+                        <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
+                            <Link href="/forums">Return to Forums</Link>
+                        </Button>
+                    </div>
+                </main>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex flex-col bg-[#F0FDF4]">
             <Header />
             <main className="container py-8 px-4 flex-1 max-w-4xl mx-auto">
-                <Link href="/forums?tab=discussions" className="inline-flex items-center text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
-                    <ArrowLeft className="h-4 w-4 mr-1" /> Back to Discussions
+                <Link href="/forums?tab=general" className="inline-flex items-center text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
+                    <ArrowLeft className="h-4 w-4 mr-1" /> Back to General
                 </Link>
 
                 {/* Main Topic Card */}

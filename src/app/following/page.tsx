@@ -12,6 +12,7 @@ import { Header } from "@/components/layout/Header";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { Footer } from "@/components/layout/Footer";
 
 interface FollowingUser {
     uid: string;
@@ -91,10 +92,10 @@ export default function FollowingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-emerald-100 selection:text-emerald-900">
+        <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 selection:bg-emerald-100 selection:text-emerald-900">
             <Header />
 
-            <main className="container mx-auto px-4 py-8 max-w-5xl">
+            <main className="flex-grow container mx-auto px-4 py-8 max-w-6xl">
                 <div className="flex items-center gap-3 mb-8">
                     <div className="bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
                         <LayoutGrid className="h-5 w-5 text-emerald-600" />
@@ -114,7 +115,7 @@ export default function FollowingPage() {
                         </Button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {following.map((u) => (
                             <Card key={u.uid} className="overflow-hidden hover:shadow-md transition-all border-slate-200 group">
                                 <CardContent className="p-5">
@@ -140,7 +141,7 @@ export default function FollowingPage() {
                                         </Link>
                                     </div>
 
-                                    <div className="mt-4 flex items-center gap-2">
+                                    <div className="mt-4">
                                         <Button
                                             variant="outline"
                                             size="sm"
@@ -149,21 +150,6 @@ export default function FollowingPage() {
                                         >
                                             <ExternalLink className="h-3 w-3 mr-1.5" /> View Profile
                                         </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="w-full text-xs h-8 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700"
-                                            disabled={actionLoading === u.uid}
-                                            onClick={() => handleUnfollow(u.uid, u.username)}
-                                        >
-                                            {actionLoading === u.uid ? (
-                                                <Loader2 className="h-3 w-3 animate-spin" />
-                                            ) : (
-                                                <>
-                                                    <UserMinus className="h-3 w-3 mr-1.5" /> Unfollow
-                                                </>
-                                            )}
-                                        </Button>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -171,6 +157,8 @@ export default function FollowingPage() {
                     </div>
                 )}
             </main>
+
+            <Footer />
         </div>
     );
 }
