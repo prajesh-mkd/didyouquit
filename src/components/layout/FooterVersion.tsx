@@ -5,7 +5,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export function FooterVersion() {
-    const [version, setVersion] = useState<string | null>("3.34.13");
+    const [version, setVersion] = useState<string | null>("3.34.14");
 
     useEffect(() => {
         const fetchVersion = async () => {

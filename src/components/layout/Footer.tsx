@@ -7,6 +7,7 @@ export function Footer() {
             <div className="flex justify-center gap-6 mb-4">
                 <Link href="/terms" className="hover:text-emerald-600 transition-colors">Terms of Service</Link>
                 <Link href="/privacy" className="hover:text-emerald-600 transition-colors">Privacy Policy</Link>
+                <a href="mailto:contact@didyouquit.com" className="hover:text-emerald-600 transition-colors">Contact Us</a>
             </div>
             <p>© 2026 DidYouQuit.com. All rights reserved. <FooterVersion /></p>
         </footer>
