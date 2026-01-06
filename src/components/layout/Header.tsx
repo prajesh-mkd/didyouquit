@@ -12,14 +12,17 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Target } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { LogOut, Target, Menu } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export function Header() {
     const { user, userData } = useAuth();
     const router = useRouter();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const normalizedEmail = user?.email?.toLowerCase().trim();
     const isSuperAdmin = normalizedEmail === 'contact@didyouquit.com';
@@ -124,6 +127,49 @@ export function Header() {
                             </Button>
                         </div>
                     )}
+                    {/* Mobile Menu Trigger */}
+                    <div className="md:hidden">
+                        <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                            <SheetTrigger asChild>
+                                <Button variant="ghost" size="icon" className="-mr-2">
+                                    <Menu className="h-6 w-6" />
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent side="right">
+                                <SheetHeader className="text-left mb-6">
+                                    <SheetTitle className="flex items-center gap-2 text-xl font-bold">
+                                        <Target className="h-6 w-6 text-emerald-600" />
+                                        <span>DidYouQuit<span className="text-emerald-600">?</span></span>
+                                    </SheetTitle>
+                                </SheetHeader>
+                                <div className="flex flex-col gap-6">
+                                    <Link
+                                        href="/public-resolutions"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="text-lg font-medium text-slate-600 hover:text-emerald-600 transition-colors"
+                                    >
+                                        Public Resolutions 2026
+                                    </Link>
+                                    <Link
+                                        href="/forums"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="text-lg font-medium text-slate-600 hover:text-emerald-600 transition-colors"
+                                    >
+                                        Community Forums
+                                    </Link>
+                                    {user && (
+                                        <Link
+                                            href="/my-resolutions"
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                            className="text-lg font-medium text-slate-600 hover:text-emerald-600 transition-colors"
+                                        >
+                                            My Resolutions
+                                        </Link>
+                                    )}
+                                </div>
+                            </SheetContent>
+                        </Sheet>
+                    </div>
                 </div>
             </div>
         </header>
