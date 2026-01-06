@@ -13,7 +13,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { LogOut, Target, Menu } from "lucide-react";
+import { LogOut, Target, Menu, Globe, MessageSquare, LayoutDashboard } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -135,36 +135,33 @@ export function Header() {
                                     <Menu className="h-6 w-6" />
                                 </Button>
                             </SheetTrigger>
-                            <SheetContent side="right">
-                                <SheetHeader className="text-left mb-6">
+                            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                                <SheetHeader className="text-left mb-6 px-2">
                                     <SheetTitle className="flex items-center gap-2 text-xl font-bold">
                                         <Target className="h-6 w-6 text-emerald-600" />
                                         <span>DidYouQuit<span className="text-emerald-600">?</span></span>
                                     </SheetTitle>
                                 </SheetHeader>
-                                <div className="flex flex-col gap-6">
-                                    <Link
-                                        href="/public-resolutions"
-                                        onClick={() => setIsMobileMenuOpen(false)}
-                                        className="text-lg font-medium text-slate-600 hover:text-emerald-600 transition-colors"
-                                    >
-                                        Public Resolutions 2026
-                                    </Link>
-                                    <Link
-                                        href="/forums"
-                                        onClick={() => setIsMobileMenuOpen(false)}
-                                        className="text-lg font-medium text-slate-600 hover:text-emerald-600 transition-colors"
-                                    >
-                                        Community Forums
-                                    </Link>
-                                    {user && (
-                                        <Link
-                                            href="/my-resolutions"
-                                            onClick={() => setIsMobileMenuOpen(false)}
-                                            className="text-lg font-medium text-slate-600 hover:text-emerald-600 transition-colors"
-                                        >
-                                            My Resolutions
+                                <div className="flex flex-col gap-2">
+                                    <Button variant="ghost" asChild className="justify-start h-12 text-base font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 mb-1">
+                                        <Link href="/public-resolutions" onClick={() => setIsMobileMenuOpen(false)}>
+                                            <Globe className="mr-3 h-5 w-5" />
+                                            Public Resolutions 2026
                                         </Link>
+                                    </Button>
+                                    <Button variant="ghost" asChild className="justify-start h-12 text-base font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 mb-1">
+                                        <Link href="/forums" onClick={() => setIsMobileMenuOpen(false)}>
+                                            <MessageSquare className="mr-3 h-5 w-5" />
+                                            Community Forums
+                                        </Link>
+                                    </Button>
+                                    {user && (
+                                        <Button variant="ghost" asChild className="justify-start h-12 text-base font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 mb-1">
+                                            <Link href="/my-resolutions" onClick={() => setIsMobileMenuOpen(false)}>
+                                                <LayoutDashboard className="mr-3 h-5 w-5" />
+                                                My Resolutions
+                                            </Link>
+                                        </Button>
                                     )}
                                 </div>
                             </SheetContent>
