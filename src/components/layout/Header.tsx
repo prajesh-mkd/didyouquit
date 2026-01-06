@@ -50,7 +50,7 @@ export function Header() {
                         </Button>
                         <Button variant="ghost" asChild className="text-slate-600 hover:text-emerald-600 hover:bg-emerald-50">
                             <Link href="/forums">
-                                Community Forum
+                                Community Forums
                             </Link>
                         </Button>
                         {user && (
