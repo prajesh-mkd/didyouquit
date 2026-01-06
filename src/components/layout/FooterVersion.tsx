@@ -5,7 +5,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export function FooterVersion() {
-    const [version, setVersion] = useState<string | null>(null);
+    const [version, setVersion] = useState<string | null>("3.34.13");
 
     useEffect(() => {
         const fetchVersion = async () => {
@@ -16,10 +16,6 @@ export function FooterVersion() {
 
                 if (docSnap.exists() && docSnap.data().version) {
                     setVersion(docSnap.data().version);
-                } else {
-                    // Fallback to minimal default or console log? 
-                    // Let's silently fail to default if missing, or specific value
-                    console.log("No version config found in DB");
                 }
             } catch (error) {
                 console.error("Error fetching version:", error);
@@ -29,7 +25,7 @@ export function FooterVersion() {
         fetchVersion();
     }, []);
 
-    if (!version) return null; // Or return generic loading state? Better to hide if failing.
+    if (!version) return null;
 
     return <span>(v{version})</span>;
 }
