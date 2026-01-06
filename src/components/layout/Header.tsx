@@ -13,7 +13,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { LogOut, Target, Menu, Globe, MessageSquare, LayoutDashboard } from "lucide-react";
+import { LogOut, Target, Menu, Globe, MessageSquare, LayoutDashboard, User, Settings, CreditCard } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -135,35 +135,103 @@ export function Header() {
                                     <Menu className="h-6 w-6" />
                                 </Button>
                             </SheetTrigger>
-                            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                                <SheetHeader className="text-left mb-6 px-2">
+                            <SheetContent side="right" className="w-[300px] sm:w-[400px] flex flex-col p-6">
+                                <SheetHeader className="text-left mb-6">
                                     <SheetTitle className="flex items-center gap-2 text-xl font-bold">
                                         <Target className="h-6 w-6 text-emerald-600" />
                                         <span>DidYouQuit<span className="text-emerald-600">?</span></span>
                                     </SheetTitle>
                                 </SheetHeader>
-                                <div className="flex flex-col gap-2">
-                                    <Button variant="ghost" asChild className="justify-start h-12 text-base font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 mb-1">
-                                        <Link href="/public-resolutions" onClick={() => setIsMobileMenuOpen(false)}>
-                                            <Globe className="mr-3 h-5 w-5" />
-                                            Public Resolutions 2026
-                                        </Link>
-                                    </Button>
-                                    <Button variant="ghost" asChild className="justify-start h-12 text-base font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 mb-1">
-                                        <Link href="/forums" onClick={() => setIsMobileMenuOpen(false)}>
-                                            <MessageSquare className="mr-3 h-5 w-5" />
-                                            Community Forums
-                                        </Link>
-                                    </Button>
-                                    {user && (
-                                        <Button variant="ghost" asChild className="justify-start h-12 text-base font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 mb-1">
-                                            <Link href="/my-resolutions" onClick={() => setIsMobileMenuOpen(false)}>
-                                                <LayoutDashboard className="mr-3 h-5 w-5" />
-                                                My Resolutions
+
+                                <div className="flex flex-col gap-2 flex-1">
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4 mb-2">Explore</p>
+                                        <Button variant="ghost" asChild className="w-full justify-start h-12 text-base font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50">
+                                            <Link href="/public-resolutions" onClick={() => setIsMobileMenuOpen(false)}>
+                                                <Globe className="mr-3 h-5 w-5" />
+                                                Public Resolutions 2026
                                             </Link>
                                         </Button>
+                                        <Button variant="ghost" asChild className="w-full justify-start h-12 text-base font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50">
+                                            <Link href="/forums" onClick={() => setIsMobileMenuOpen(false)}>
+                                                <MessageSquare className="mr-3 h-5 w-5" />
+                                                Community Forums
+                                            </Link>
+                                        </Button>
+                                    </div>
+
+                                    {user && (
+                                        <>
+                                            <div className="h-px bg-slate-100 my-2" />
+
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4 mb-2">Dashboard</p>
+                                                <Button variant="ghost" asChild className="w-full justify-start h-12 text-base font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50">
+                                                    <Link href="/my-resolutions" onClick={() => setIsMobileMenuOpen(false)}>
+                                                        <LayoutDashboard className="mr-3 h-5 w-5" />
+                                                        My Resolutions
+                                                    </Link>
+                                                </Button>
+                                                <Button variant="ghost" asChild className="w-full justify-start h-12 text-base font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50">
+                                                    <Link href={`/${userData?.username || user.uid}`} onClick={() => setIsMobileMenuOpen(false)}>
+                                                        <User className="mr-3 h-5 w-5" />
+                                                        Public Profile
+                                                    </Link>
+                                                </Button>
+                                            </div>
+
+                                            <div className="h-px bg-slate-100 my-2" />
+
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4 mb-2">Account</p>
+                                                <Button variant="ghost" asChild className="w-full justify-start h-12 text-base font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50">
+                                                    <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)}>
+                                                        <Settings className="mr-3 h-5 w-5" />
+                                                        Settings
+                                                    </Link>
+                                                </Button>
+                                                <Button variant="ghost" asChild className="w-full justify-start h-12 text-base font-medium text-slate-600 hover:text-emerald-600 hover:bg-emerald-50">
+                                                    <Link href="/subscription" onClick={() => setIsMobileMenuOpen(false)}>
+                                                        <CreditCard className="mr-3 h-5 w-5" />
+                                                        Subscription
+                                                    </Link>
+                                                </Button>
+                                            </div>
+                                        </>
                                     )}
                                 </div>
+
+                                {user ? (
+                                    <div className="mt-auto pt-6 border-t border-slate-100">
+                                        <div className="flex items-center gap-3 mb-4 px-2">
+                                            <Avatar className="h-10 w-10 border border-slate-100">
+                                                <AvatarImage src={userData?.photoURL ?? undefined} alt={userData?.username || "User"} />
+                                                <AvatarFallback>{userData?.username?.slice(0, 2).toUpperCase() || "U"}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex flex-col">
+                                                <span className="font-semibold text-slate-900">{userData?.username || "User"}</span>
+                                                <span className="text-xs text-slate-500 truncate max-w-[180px]">{user.email}</span>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            onClick={handleSignOut}
+                                            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                            <LogOut className="mr-3 h-5 w-5" />
+                                            Log out
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="mt-auto pt-6 border-t border-slate-100 flex flex-col gap-3">
+                                        <Button variant="outline" asChild className="w-full justify-center h-11 border-slate-200 text-slate-700 font-medium">
+                                            <Link href="/?auth=login" onClick={() => setIsMobileMenuOpen(false)}>Log In</Link>
+                                        </Button>
+                                        <Button className="w-full justify-center h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-emerald-200/50 shadow-lg" asChild>
+                                            <Link href="/?auth=signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link>
+                                        </Button>
+                                    </div>
+                                )}
                             </SheetContent>
                         </Sheet>
                     </div>
