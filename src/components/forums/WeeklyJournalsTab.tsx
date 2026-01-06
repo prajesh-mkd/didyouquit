@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, where } from "firebase/firestore";
-import { Loader2, Calendar, MessageSquare, ChevronRight, MessageCircle } from "lucide-react";
+import { Loader2, Calendar, MessageSquare, ChevronRight, MessageCircle, CheckCircle2, XCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { formatDistanceToNow, setWeek, setYear, startOfWeek, endOfWeek, format } from "date-fns";
@@ -23,6 +23,7 @@ interface JournalEntry {
     createdAt: any;
     likes: number; // Keeping interface for type safety, but ignore in UI
     commentCount?: number;
+    status?: boolean;
 }
 
 function getWeekInfo(weekKey: string) {
@@ -127,6 +128,12 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                                                 <span className="font-medium text-emerald-600">
                                                     {entry.resolutionTitle}
                                                 </span>
+                                                {entry.status !== undefined && (
+                                                    <div className={`flex items-center gap-1 text-[10px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded-full border ml-2 ${entry.status ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"}`}>
+                                                        {entry.status ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                                        {entry.status ? "Kept It" : "Missed It"}
+                                                    </div>
+                                                )}
                                             </div>
                                             {weekInfo && (
                                                 <div className="flex items-center gap-2 text-slate-400 bg-slate-50 w-fit px-2 py-1 rounded-md mt-1">
