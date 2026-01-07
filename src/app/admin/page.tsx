@@ -578,6 +578,7 @@ export default function AdminPage() {
     const [orphanReport, setOrphanReport] = useState<{
         resolutions: QueryDocumentSnapshot[];
         topics: QueryDocumentSnapshot[];
+        journals: QueryDocumentSnapshot[];
         comments: QueryDocumentSnapshot[];
         notifications: QueryDocumentSnapshot[];
     } | null>(null);
@@ -606,6 +607,18 @@ export default function AdminPage() {
             const resSnap = await getDocs(collection(db, "resolutions"));
             const orphanedResolutions = resSnap.docs.filter(doc => !validUserIds.has(doc.data().uid));
 
+            // 2b. Scan Journal Entries (orphan users)
+            const journalsSnap = await getDocs(collection(db, "journal_entries"));
+            // We need validJournalIds for comment parent check
+            const validJournalIds = new Set(journalsSnap.docs.map(d => d.id));
+            const orphanedJournals = journalsSnap.docs.filter(doc => {
+                const data = doc.data();
+                if (data.uid && !validUserIds.has(data.uid)) return true; // Standard field 'uid'
+                if (data.userId && !validUserIds.has(data.userId)) return true; // Legacy check
+                return false;
+            });
+            orphanedJournals.forEach(j => validJournalIds.delete(j.id));
+
             // 3. Scan Topics (orphan users)
             const topicsSnap = await getDocs(collection(db, "forum_topics"));
             const validTopicIds = new Set(topicsSnap.docs.map(d => d.id));
@@ -623,10 +636,15 @@ export default function AdminPage() {
             const commentsGroupSnap = await getDocs(collectionGroup(db, "comments"));
             const orphanedComments = commentsGroupSnap.docs.filter(doc => {
                 const data = doc.data();
-                const parentTopicId = doc.ref.parent.parent?.id;
+                const parentDoc = doc.ref.parent.parent;
+                const parentTopicId = parentDoc?.id;
+                const parentColName = parentDoc?.parent?.id;
 
-                // Check 1: Orphan Parent (Topic deleted)
-                if (parentTopicId && !validTopicIds.has(parentTopicId)) return true;
+                // Check 1: Orphan Parent (Topic/Journal deleted)
+                if (parentTopicId) {
+                    if (parentColName === 'forum_topics' && !validTopicIds.has(parentTopicId)) return true;
+                    if (parentColName === 'journal_entries' && !validJournalIds.has(parentTopicId)) return true;
+                }
 
                 // Check 2: Ghost Author (User deleted)
                 // We check both 'author.uid' (standard) and 'authorUid' (legacy/sim)
@@ -643,6 +661,7 @@ export default function AdminPage() {
             setOrphanReport({
                 resolutions: orphanedResolutions,
                 topics: orphanedTopics,
+                journals: orphanedJournals,
                 comments: orphanedComments,
                 notifications: orphanedNotifications
             });
@@ -678,6 +697,13 @@ export default function AdminPage() {
             await Promise.all(orphanReport.topics.map(d => deleteTopicFull(d.id)));
 
             // 3. Clean Ghost Comments & Fix Counts
+            if (orphanReport.journals.length > 0) {
+                // Deleting orphaned journals...
+                const batch = writeBatch(db);
+                orphanReport.journals.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+            }
+
             if (orphanReport.comments.length > 0) {
                 const batch = writeBatch(db);
                 const topicDecrements: Record<string, number> = {};
