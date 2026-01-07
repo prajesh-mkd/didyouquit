@@ -666,7 +666,7 @@ export default function AdminPage() {
                 notifications: orphanedNotifications
             });
 
-            if (orphanedResolutions.length === 0 && orphanedTopics.length === 0 && orphanedComments.length === 0 && orphanedNotifications.length === 0) {
+            if (orphanedResolutions.length === 0 && orphanedTopics.length === 0 && orphanedJournals.length === 0 && orphanedComments.length === 0 && orphanedNotifications.length === 0) {
                 toast.success("Great news! No orphans found.");
             } else {
                 toast.info(`Found: ${orphanedResolutions.length} Res, ${orphanedTopics.length} Topics, ${orphanedJournals.length} Journals, ${orphanedComments.length} Comments.`);
