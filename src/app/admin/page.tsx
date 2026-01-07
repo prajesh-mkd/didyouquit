@@ -669,7 +669,7 @@ export default function AdminPage() {
             if (orphanedResolutions.length === 0 && orphanedTopics.length === 0 && orphanedComments.length === 0 && orphanedNotifications.length === 0) {
                 toast.success("Great news! No orphans found.");
             } else {
-                toast.info(`Found orphans: ${orphanedResolutions.length} Res, ${orphanedTopics.length} Topics, ${orphanedComments.length} Comments, ${orphanedNotifications.length} Notifs.`);
+                toast.info(`Found: ${orphanedResolutions.length} Res, ${orphanedTopics.length} Topics, ${orphanedJournals.length} Journals, ${orphanedComments.length} Comments.`);
             }
 
         } catch (error) {
@@ -685,6 +685,7 @@ export default function AdminPage() {
         if (!confirm(`Are you sure? This will PERMANENTLY DELETE:
 - ${orphanReport.resolutions.length} Resolutions
 - ${orphanReport.topics.length} Topics
+- ${orphanReport.journals.length} Journals
 - ${orphanReport.comments.length} Comments/Replies
 - ${orphanReport.notifications.length} Notifications`)) return;
 
@@ -1425,7 +1426,37 @@ export default function AdminPage() {
                                             )}
                                         </div>
 
-                                        {/* Ghost Replies List */}
+                                        {/* Journals List */}
+                                        <div className="bg-white rounded-lg border border-amber-100 overflow-hidden flex flex-col max-h-96">
+                                            <div className="p-3 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="text-xs font-semibold text-amber-900 uppercase tracking-wide">Journals</div>
+                                                    <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{orphanReport.journals.length}</span>
+                                                </div>
+                                            </div>
+                                            {orphanReport.journals.length > 0 ? (
+                                                <div className="overflow-y-auto p-0">
+                                                    <table className="w-full text-left text-xs">
+                                                        <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
+                                                            <tr>
+                                                                <th className="p-2 font-medium text-slate-500 w-24">ID</th>
+                                                                <th className="p-2 font-medium text-slate-500">Week</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-50">
+                                                            {orphanReport.journals.map(doc => (
+                                                                <tr key={doc.id} className="hover:bg-slate-50">
+                                                                    <td className="p-2 font-mono text-slate-400 align-top select-all">{doc.id}</td>
+                                                                    <td className="p-2 text-slate-700 font-medium">{doc.data().weekLabel || "Unknown Week"}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center text-slate-400 text-xs py-8 bg-slate-50/50">No orphaned journals found.</div>
+                                            )}
+                                        </div>
                                         <div className="bg-white rounded-lg border border-amber-100 overflow-hidden flex flex-col max-h-96">
                                             <div className="p-3 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
                                                 <div className="flex items-center gap-2">
