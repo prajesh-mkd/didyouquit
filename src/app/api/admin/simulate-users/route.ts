@@ -31,10 +31,19 @@ export async function POST(req: Request) {
 
         for (let i = 0; i < count; i++) {
             // 2. Generate Identity
-            // Username: Random Name + 2-4 digits (High Fidelity)
-            const randomBase = IMAGINATIVE_USERNAMES[Math.floor(Math.random() * IMAGINATIVE_USERNAMES.length)];
-            const suffix = Math.floor(Math.random() * 9900) + 100; // 100-9999
-            const username = `${randomBase}${suffix}`;
+            let username = body.username;
+            if (!username) {
+                // Username: Random Name + 2-4 digits (High Fidelity)
+                const randomBase = IMAGINATIVE_USERNAMES[Math.floor(Math.random() * IMAGINATIVE_USERNAMES.length)];
+                const suffix = Math.floor(Math.random() * 9900) + 100; // 100-9999
+                username = `${randomBase}${suffix}`;
+            } else {
+                // Safety: Check if username already exists to prevent dupes (e.g. Nomad1033)
+                const existingCheck = await adminDb.collection('users').where('username', '==', username).get();
+                if (!existingCheck.empty) {
+                    throw new Error(`Username '${username}' is already taken. Please choose another.`);
+                }
+            }
 
             // Email: Internal Bot Format
             const randomId = Math.random().toString(36).substring(2, 8);

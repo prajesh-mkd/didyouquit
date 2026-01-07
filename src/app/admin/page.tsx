@@ -150,8 +150,13 @@ export default function AdminPage() {
     // --- Simulated User Factory Logic ---
     const [spawnCount, setSpawnCount] = useState(5);
     const [selectedCountry, setSelectedCountry] = useState<string>("");
+    const [specificUsername, setSpecificUsername] = useState("");
     const [spawning, setSpawning] = useState(false);
     const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
+
+    // Scenario Injection
+    const [scenarioJson, setScenarioJson] = useState("");
+    const [injecting, setInjecting] = useState(false);
 
     const handleSpawnUsers = async () => {
         setSpawning(true);
@@ -165,7 +170,8 @@ export default function AdminPage() {
                 },
                 body: JSON.stringify({
                     count: spawnCount,
-                    country: selectedCountry === "random" || selectedCountry === "" ? undefined : selectedCountry
+                    country: selectedCountry === "random" || selectedCountry === "" ? undefined : selectedCountry,
+                    username: specificUsername || undefined
                 })
             });
             const data = await res.json();
@@ -179,6 +185,46 @@ export default function AdminPage() {
             toast.error("Spawn failed");
         } finally {
             setSpawning(false);
+        }
+    };
+
+    const handleInjectScenario = async () => {
+        if (!scenarioJson) return;
+        setInjecting(true);
+        try {
+            const token = await user?.getIdToken();
+            let payload;
+            try {
+                payload = JSON.parse(scenarioJson);
+            } catch (e) {
+                toast.error("Invalid JSON format");
+                setInjecting(false);
+                return;
+            }
+
+            const res = await fetch('/api/admin/inject-scenario', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                toast.success("Scenario Injected Successfully!");
+                setScenarioJson(""); // Clear
+                fetchUsers();
+                loadPage(null);
+            } else {
+                toast.error(data.error || "Injection failed");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Network error during injection");
+        } finally {
+            setInjecting(false);
         }
     };
 
@@ -970,9 +1016,23 @@ export default function AdminPage() {
                                                 type="number"
                                                 className="w-24 bg-white border-indigo-200 text-indigo-900 font-bold"
                                                 value={spawnCount}
-                                                onChange={(e) => setSpawnCount(Number(e.target.value))}
+                                                onChange={(e) => {
+                                                    const val = Number(e.target.value);
+                                                    setSpawnCount(val);
+                                                    if (val > 1) setSpecificUsername("");
+                                                }}
                                                 min={1}
-                                                max={50}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs font-bold text-indigo-800 uppercase mb-1.5 block">Specific Username (Opt)</Label>
+                                            <Input
+                                                type="text"
+                                                className="w-40 bg-white border-indigo-200 text-indigo-900 font-bold placeholder:text-indigo-200"
+                                                placeholder="e.g. Nomad1033"
+                                                value={specificUsername}
+                                                onChange={(e) => setSpecificUsername(e.target.value)}
+                                                disabled={spawnCount > 1}
                                             />
                                         </div>
                                         <Button
@@ -984,6 +1044,37 @@ export default function AdminPage() {
                                             Spawn Users
                                         </Button>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+                                <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="p-2 bg-purple-100 rounded-lg">
+                                            <Target className="w-5 h-5 text-purple-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-slate-800">Scenario Injection (JSON)</h3>
+                                            <p className="text-sm text-slate-500">Inject complex storylines via JSON payload</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-6">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Paste Scenario JSON Payload</Label>
+                                    <Textarea
+                                        className="font-mono text-xs min-h-[150px] mb-4"
+                                        placeholder='{ "users": [...], "resolutions": [...], ... }'
+                                        value={scenarioJson}
+                                        onChange={e => setScenarioJson(e.target.value)}
+                                    />
+                                    <Button
+                                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold"
+                                        onClick={handleInjectScenario}
+                                        disabled={injecting || !scenarioJson}
+                                    >
+                                        {injecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Target className="mr-2 h-4 w-4" />}
+                                        Run Scenario Injection
+                                    </Button>
                                 </div>
                             </div>
 
