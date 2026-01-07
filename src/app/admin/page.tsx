@@ -723,14 +723,22 @@ export default function AdminPage() {
                     batch.delete(d.ref);
                 });
 
-                // Apply decrements to Topics
+                // Apply decrements to Topics (Check existence first to prevent batch crash)
                 for (const [id, count] of Object.entries(topicDecrements)) {
-                    batch.update(doc(db, 'forum_topics', id), { commentCount: increment(-count) });
+                    const ref = doc(db, 'forum_topics', id);
+                    const snap = await getDoc(ref);
+                    if (snap.exists()) {
+                        batch.update(ref, { commentCount: increment(-count) });
+                    }
                 }
 
-                // Apply decrements to Journals
+                // Apply decrements to Journals (Check existence first)
                 for (const [id, count] of Object.entries(journalDecrements)) {
-                    batch.update(doc(db, 'journal_entries', id), { commentCount: increment(-count) });
+                    const ref = doc(db, 'journal_entries', id);
+                    const snap = await getDoc(ref);
+                    if (snap.exists()) {
+                        batch.update(ref, { commentCount: increment(-count) });
+                    }
                 }
 
                 await batch.commit();

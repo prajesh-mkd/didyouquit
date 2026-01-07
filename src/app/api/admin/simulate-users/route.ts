@@ -55,7 +55,9 @@ export async function POST(req: Request) {
                 email,
                 password,
                 displayName: username,
-                photoURL: `https://ui-avatars.com/api/?name=${username}&background=random`,
+                // photoURL: `https://ui-avatars.com/api/?name=${username}&background=random`, <--- VIOLATION REMOVED
+                // Use a safe static placeholder for Auth (App reads from Firestore anyway)
+                photoURL: `https://didyouquit.com/images/default-avatar.png`,
                 emailVerified: true
             });
 

@@ -231,14 +231,32 @@ export default function Dashboard() {
     };
 
     const handleDelete = async () => {
-        if (!deleteRes) return;
+        if (!deleteRes || !user) return;
         setIsDeleting(true);
         try {
-            await deleteResolutionCascade(deleteRes.id);
+            // New Server-Side Delete
+            const token = await user.getIdToken();
+            const res = await fetch(`/api/resolutions/${deleteRes.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Delete failed");
+            }
+
             toast.success("Resolution and associated entries deleted");
             setDeleteRes(null);
+            // Optimization: Remove from local state immediately? 
+            // The snapshot listener in useEffect will handle it automatically, 
+            // but for UI responsiveness we could filter it out. 
+            // However, snapshot is fast enough usually.
         } catch (error: any) {
-            toast.error("Failed to delete resolution");
+            console.error("Delete UI Error:", error);
+            toast.error(error.message || "Failed to delete resolution");
         } finally {
             setIsDeleting(false);
         }
@@ -354,7 +372,7 @@ export default function Dashboard() {
     // If Normal: Show only MISSING resolutions for *Last Week*.
     const pendingResolutions = resolutions.filter(res => {
         // 1. Is the check-in missing?
-        if (res.weeklyLog[targetWeekKey] !== undefined) return false;
+        if (res.weeklyLog?.[targetWeekKey] !== undefined) return false;
 
         // 2. Did the resolution exist during that week?
         // We allow "Backfilling" for the immediate past week, so we comment this out.

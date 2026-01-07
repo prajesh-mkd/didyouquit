@@ -56,6 +56,7 @@ interface ForumTopic {
     };
     createdAt: any;
     commentCount: number;
+    resolutionId?: string;
 }
 
 // Helper for Relative Time
@@ -204,13 +205,14 @@ function CommentItem({
 
 export default function TopicPage() {
     const { topicId } = useParams();
-    const { user, userData } = useAuth();
     const router = useRouter();
+    const { user, userData } = useAuth();
 
     // Simulation
     const { date: simulatedDate, isSimulated } = useSimulatedDate();
 
     const [topic, setTopic] = useState<ForumTopic | null>(null);
+    const [resolutionData, setResolutionData] = useState<{ title: string, description?: string } | null>(null);
     const [comments, setComments] = useState<Comment[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -232,15 +234,30 @@ export default function TopicPage() {
         const fetchTopic = async () => {
             try {
                 const docRef = doc(db, "forum_topics", topicId as string);
-                const unsubscribe = onSnapshot(docRef, (docSnap) => {
+                const unsubscribe = onSnapshot(docRef, async (docSnap) => {
                     if (docSnap.exists()) {
-                        setTopic({ id: docSnap.id, ...docSnap.data() } as ForumTopic);
-                        setEditTopicTitle(docSnap.data().title);
-                        setEditTopicContent(docSnap.data().content);
+                        const data = docSnap.data();
+                        setTopic({ id: docSnap.id, ...data } as ForumTopic);
+                        setEditTopicTitle(data.title);
+                        setEditTopicContent(data.content);
+
+                        // Fetch Resolution Details if ID exists
+                        if (data.resolutionId) {
+                            try {
+                                const resSnap = await getDoc(doc(db, "resolutions", data.resolutionId));
+                                if (resSnap.exists()) {
+                                    const resData = resSnap.data();
+                                    setResolutionData({
+                                        title: resData.title,
+                                        description: resData.why || resData.description
+                                    });
+                                }
+                            } catch (e) {
+                                console.error("Error fetching resolution details", e);
+                            }
+                        }
                     } else {
-                        // Only redirect if we know it really doesn't exist AND we aren't just loading
-                        // onSnapshot might fire with !exists if deleted
-                        // But we handle delete redirect manually
+                        // Handle deletion
                     }
                     setLoading(false);
                 });
@@ -542,6 +559,21 @@ export default function TopicPage() {
                         </DropdownMenu>
                     )}
                 </div>
+
+                {resolutionData && (
+                    <div className="mb-6 text-sm">
+                        <div className="text-slate-600 mb-1">
+                            <span className="font-semibold italic text-slate-900">Resolution:</span>{" "}
+                            <span className="italic">{resolutionData.title}</span>
+                        </div>
+                        {resolutionData.description && (
+                            <div className="text-slate-600">
+                                <span className="font-semibold italic text-slate-900">Why:</span>{" "}
+                                <span className="italic">{resolutionData.description}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <h1 className="text-2xl font-bold text-slate-900 mb-4">{topic.title}</h1>
                 <div className="prose prose-emerald max-w-none text-slate-700 mb-6 whitespace-pre-wrap">

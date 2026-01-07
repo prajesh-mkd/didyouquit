@@ -55,9 +55,10 @@ export async function deleteResolutionCascade(resolutionId: string) {
         await batch.commit();
         console.log(`Successfully deleted resolution ${resolutionId} and associated data.`);
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in cascade delete:", error);
-        throw error; // Re-throw to let UI handle error display
+        console.error("Failed Delete Stack:", error.code, error.message);
+        throw new Error(`Cascade Delete Failed: ${error.code || 'Unknown'} - ${error.message}`);
     }
 }
 

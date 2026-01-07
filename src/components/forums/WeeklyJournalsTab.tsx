@@ -255,7 +255,7 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                                     <Avatar className="h-10 w-10 border border-slate-100">
                                         <AvatarImage src={entry.photoURL} />
                                         <AvatarFallback className="bg-emerald-50 text-emerald-600 font-medium">
-                                            {entry.username[0]?.toUpperCase()}
+                                            {entry.username?.[0]?.toUpperCase() || "?"}
                                         </AvatarFallback>
                                     </Avatar>
                                 </Link>
