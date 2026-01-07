@@ -1533,7 +1533,7 @@ export default function AdminPage() {
                                     </div>
 
                                     <div className="flex justify-center">
-                                        {orphanReport.resolutions.length === 0 && orphanReport.topics.length === 0 && orphanReport.comments.length === 0 && orphanReport.notifications.length === 0 ? (
+                                        {orphanReport.resolutions.length === 0 && orphanReport.topics.length === 0 && orphanReport.journals.length === 0 && orphanReport.comments.length === 0 && orphanReport.notifications.length === 0 ? (
                                             <div className="text-green-600 font-medium flex items-center gap-2">
                                                 <Target className="h-5 w-5" /> Database is clean! No action needed.
                                             </div>
