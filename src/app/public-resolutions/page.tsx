@@ -99,20 +99,8 @@ export default function PublicResolutionsPage() {
             let snapshot = await getDocs(q);
             let docs = snapshot.docs;
 
-            // WRAPAROUND LOGIC: If we got fewer than limit, wrap around to start (0.0)
+            // FINITE LIST LOGIC: If we got fewer than limit, we reached the end.
             if (docs.length < FETCH_LIMIT) {
-                console.log("Hit end of list, wrapping around...");
-                const needed = FETCH_LIMIT - docs.length;
-                const wrapQ = query(resolutionsRef, orderBy("randomSortKey"), startAt(0), limit(needed));
-                const wrapSnap = await getDocs(wrapQ);
-                docs = [...docs, ...wrapSnap.docs];
-            }
-
-            // If still fewer than limit after wrap, we probably have fewer than 50 total docs in DB
-            // In that case, we can say hasMore = false to stop infinite duplicates loops
-            // OR we just keep looping. For "Feed", infinite loop is okay, but let's avoid dupes in same view.
-            if (docs.length < FETCH_LIMIT && isInitial) {
-                // If total docs < 50, we don't need 'Load More'
                 setHasMore(false);
             }
 
