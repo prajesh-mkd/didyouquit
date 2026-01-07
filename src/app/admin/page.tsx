@@ -607,14 +607,20 @@ export default function AdminPage() {
             const resSnap = await getDocs(collection(db, "resolutions"));
             const orphanedResolutions = resSnap.docs.filter(doc => !validUserIds.has(doc.data().uid));
 
-            // 2b. Scan Journal Entries (orphan users)
+            // 2b. Scan Journal Entries (orphan users OR orphan resolution parents)
             const journalsSnap = await getDocs(collection(db, "journal_entries"));
             // We need validJournalIds for comment parent check
             const validJournalIds = new Set(journalsSnap.docs.map(d => d.id));
+            const validResolutionIds = new Set(resSnap.docs.map(d => d.id)); // Create lookup set
+
             const orphanedJournals = journalsSnap.docs.filter(doc => {
                 const data = doc.data();
-                if (data.uid && !validUserIds.has(data.uid)) return true; // Standard field 'uid'
-                if (data.userId && !validUserIds.has(data.userId)) return true; // Legacy check
+                if (data.uid && !validUserIds.has(data.uid)) return true; // Orphan User
+                if (data.userId && !validUserIds.has(data.userId)) return true; // Legacy User
+
+                // NEW: Check if parent Resolution exists
+                if (data.resolutionId && !validResolutionIds.has(data.resolutionId)) return true;
+
                 return false;
             });
             orphanedJournals.forEach(j => validJournalIds.delete(j.id));
