@@ -357,8 +357,10 @@ export default function Dashboard() {
         if (res.weeklyLog[targetWeekKey] !== undefined) return false;
 
         // 2. Did the resolution exist during that week?
-        const createdAtMs = res.createdAt?.seconds * 1000 || Date.now();
-        if (createdAtMs > targetWeekEnd.getTime()) return false;
+        // We allow "Backfilling" for the immediate past week, so we comment this out.
+        // User asked: "Why does it not go into Weekly checkin?" -> They want to be able to add a resolution on Monday and check-in for the prev week.
+        // const createdAtMs = res.createdAt?.seconds * 1000 || Date.now();
+        // if (createdAtMs > targetWeekEnd.getTime()) return false;
 
         return true;
     });
@@ -462,7 +464,7 @@ export default function Dashboard() {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <p className="text-xs text-muted-foreground/60 italic text-center mb-2">
+                                    <p className="text-sm font-medium text-muted-foreground/80 italic text-center mb-2">
                                         {isFirstWeek
                                             ? `You can check-in starting ${checkinStartDate}.`
                                             : "Did you keep your resolutions last week?"
@@ -669,6 +671,40 @@ export default function Dashboard() {
                         </div>
                     )
                 }
+                {/* Invite Friend CTA - Always Visible */}
+                {resolutions.length > 0 && (
+                    <div className="mt-12 text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        <div className="inline-flex flex-col items-center gap-2 max-w-sm mx-auto p-6 rounded-2xl bg-white/40 border border-emerald-100/50 backdrop-blur-sm">
+                            <div className="h-8 w-8 rounded-full bg-emerald-50 flex items-center justify-center mb-1">
+                                <span className="text-lg">🌱</span>
+                            </div>
+                            <h3 className="text-sm font-semibold text-emerald-900">Enjoying the experience?</h3>
+                            <p className="text-sm text-emerald-800/70 mb-3 leading-relaxed">
+                                Growth is better together. Invite a friend who could also benefit from tracking their resolutions.
+                            </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    const text = "I'm tracking my 2026 resolutions on DidYouQuit. Join me!";
+                                    if (navigator.share) {
+                                        navigator.share({
+                                            title: 'DidYouQuit?',
+                                            text: text,
+                                            url: window.location.origin
+                                        }).catch(() => { });
+                                    } else {
+                                        navigator.clipboard.writeText(`${text} ${window.location.origin}`);
+                                        toast.success("Link copied to clipboard!");
+                                    }
+                                }}
+                                className="h-8 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 rounded-full px-6"
+                            >
+                                Invite a Friend
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </main >
 
             <Footer />

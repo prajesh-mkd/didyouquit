@@ -37,6 +37,10 @@ yarn-error.log*
 .vercel
 
 # typescript
+# Firebase Admin SDK Keys
+*-firebase-adminsdk-*.json
+service-account.json
 *.tsbuildinfo
 next-env.d.ts
-*.json
+# *.json - Removed blanket ignore to allow config files like firestore.indexes.json
+

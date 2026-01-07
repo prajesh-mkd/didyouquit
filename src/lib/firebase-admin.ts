@@ -32,44 +32,55 @@ function initAdmin() {
         return existingApp;
     }
 
-try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const path = require("path");
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const fs = require("fs");
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const path = require("path");
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const fs = require("fs");
 
-    const serviceAccountPath = path.join(process.cwd(), "didyouquit-17e0a-firebase-adminsdk-fbsvc-7e438fe988.json");
+        // [MODIFICATION] Look for the generic 'service-account.json' (Dev) or specific prod key
+        // Priority: 1. service-account.json (Dev/New), 2. Old Hardcoded Prod Key (Legacy)
 
-    // Check if file exists synchronously before reading
-    if (fs.existsSync(serviceAccountPath)) {
-        const fileContent = fs.readFileSync(serviceAccountPath, "utf8");
-        const serviceAccount = JSON.parse(fileContent);
+        const devKeyPath = path.join(process.cwd(), "service-account.json");
+        const prodKeyPath = path.join(process.cwd(), "didyouquit-17e0a-firebase-adminsdk-fbsvc-7e438fe988.json");
 
-        console.log("[Firebase Admin] Initializing 'LOCAL_ADMIN_DEBUG' with explicit Service Account Key.");
+        let serviceAccountPath = "";
+        if (fs.existsSync(devKeyPath)) {
+            serviceAccountPath = devKeyPath;
+        } else if (fs.existsSync(prodKeyPath)) {
+            serviceAccountPath = prodKeyPath;
+        }
+
+        // Check if file exists synchronously before reading
+        if (serviceAccountPath) {
+            const fileContent = fs.readFileSync(serviceAccountPath, "utf8");
+            const serviceAccount = JSON.parse(fileContent);
+
+            console.log(`[Firebase Admin] Initializing 'LOCAL_ADMIN_DEBUG' with Service Account: ${path.basename(serviceAccountPath)}`);
+            return initializeApp({
+                credential: cert(serviceAccount),
+                projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+            }, "LOCAL_ADMIN_DEBUG");
+        } else {
+            // File doesn't exist, throw to catch block (or just proceed to default)
+            throw new Error("Local service account file not found");
+        }
+
+    } catch (error) {
+        console.warn("[Firebase Admin] Local Service Account not found. Falling back to Application Default Credentials (ADC). This is expected in Cloud environments.");
+
+        // Fallback: Default Init (ADC or Environment Variable credentials)
+        // We use a different app name (or default) if we want, but sticking to one is cleaner. 
+        // Let's use getApps() again to check for default app, or init a new named one if needed.
+        // Usually, in Cloud Functions, just `initializeApp()` works.
+
+        const defaultApp = getApps().find(app => app.name === "[DEFAULT]");
+        if (defaultApp) return defaultApp;
+
         return initializeApp({
-            credential: cert(serviceAccount),
             projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-        }, "LOCAL_ADMIN_DEBUG");
-    } else {
-        // File doesn't exist, throw to catch block (or just proceed to default)
-        throw new Error("Local service account file not found");
+        });
     }
-
-} catch (error) {
-    console.warn("[Firebase Admin] Local Service Account not found. Falling back to Application Default Credentials (ADC). This is expected in Cloud environments.");
-
-    // Fallback: Default Init (ADC or Environment Variable credentials)
-    // We use a different app name (or default) if we want, but sticking to one is cleaner. 
-    // Let's use getApps() again to check for default app, or init a new named one if needed.
-    // Usually, in Cloud Functions, just `initializeApp()` works.
-
-    const defaultApp = getApps().find(app => app.name === "[DEFAULT]");
-    if (defaultApp) return defaultApp;
-
-    return initializeApp({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    });
-}
 }
 
 const adminApp = initAdmin();

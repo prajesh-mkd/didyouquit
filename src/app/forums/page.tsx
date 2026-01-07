@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Header } from "@/components/layout/Header";
 import { Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -12,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DiscussionsTab } from "@/components/forums/DiscussionsTab";
 import { WeeklyJournalsTab } from "@/components/forums/WeeklyJournalsTab";
 import { NotificationsTab } from "@/components/forums/NotificationsTab";
-import { Footer } from "@/components/layout/Footer";
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
@@ -80,45 +78,40 @@ function ForumsContent() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-[#F0FDF4]">
-            <Header />
-            <main className="container py-8 px-4 flex-1 max-w-4xl mx-auto">
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-emerald-950">Community Forum</h1>
-                    <p className="text-emerald-800/60 mt-1">Discuss progress, challenges, share tips, and find support.</p>
-                </div>
+        <>
+            <div className="mb-6">
+                <h1 className="text-3xl font-bold text-emerald-950">Community Forum</h1>
+                <p className="text-emerald-800/60 mt-1">Discuss progress, challenges, share tips, and find support.</p>
+            </div>
 
-                <Tabs
-                    defaultValue="journals"
-                    value={defaultTab}
-                    onValueChange={(val) => {
-                        const params = new URLSearchParams(searchParams.toString());
-                        params.set("tab", val);
-                        router.push(`/forums?${params.toString()}`);
-                    }}
-                    className="w-full"
-                >
-                    <TabsList className="grid w-full grid-cols-3 gap-1 mb-8 bg-emerald-100/50 p-1 rounded-xl">
-                        <TabsTrigger value="journals" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm hover:bg-white/60 hover:text-emerald-900 transition-all">Weekly Journals</TabsTrigger>
-                        <TabsTrigger value="general" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm hover:bg-white/60 hover:text-emerald-900 transition-all">General</TabsTrigger>
-                        <TabsTrigger value="notifications" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm hover:bg-white/60 hover:text-emerald-900 transition-all">Notifications</TabsTrigger>
-                    </TabsList>
+            <Tabs
+                defaultValue="journals"
+                value={defaultTab}
+                onValueChange={(val) => {
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set("tab", val);
+                    router.push(`/forums?${params.toString()}`);
+                }}
+                className="w-full"
+            >
+                <TabsList className="grid w-full grid-cols-3 gap-1 mb-8 bg-emerald-100/50 p-1 rounded-xl">
+                    <TabsTrigger value="journals" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm hover:bg-white/60 hover:text-emerald-900 transition-all">Weekly Journals</TabsTrigger>
+                    <TabsTrigger value="general" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm hover:bg-white/60 hover:text-emerald-900 transition-all">General</TabsTrigger>
+                    <TabsTrigger value="notifications" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm hover:bg-white/60 hover:text-emerald-900 transition-all">Notifications</TabsTrigger>
+                </TabsList>
 
-                    <TabsContent value="journals" className="outline-none">
-                        <WeeklyJournalsTab />
-                    </TabsContent>
+                <TabsContent value="journals" className="outline-none">
+                    <WeeklyJournalsTab />
+                </TabsContent>
 
-                    <TabsContent value="general" className="outline-none">
-                        <DiscussionsTab onShowPaywall={() => setShowPaywall(true)} />
-                    </TabsContent>
+                <TabsContent value="general" className="outline-none">
+                    <DiscussionsTab onShowPaywall={() => setShowPaywall(true)} />
+                </TabsContent>
 
-                    <TabsContent value="notifications" className="outline-none">
-                        <NotificationsTab />
-                    </TabsContent>
-                </Tabs>
-            </main>
-
-            <Footer />
+                <TabsContent value="notifications" className="outline-none">
+                    <NotificationsTab />
+                </TabsContent>
+            </Tabs>
 
             <PaywallModal
                 open={showPaywall}
@@ -126,6 +119,6 @@ function ForumsContent() {
                 pricing={pricing}
                 user={user}
             />
-        </div>
+        </>
     );
 }

@@ -37,3 +37,18 @@ git add .
 git commit -m "Deploy v3.35.0: [Description]"
 git push
 ```
+
+## 5. Security Rules Sync (Mandatory)
+Since `firestore.rules` are not automatically deployed by the git push (unless configured in CI), you **MUST** manually sync them to ensuring logic consistency.
+
+**For Production:**
+```bash
+npx firebase use didyouquit-17e0a
+npx firebase deploy --only firestore:rules
+```
+
+**For Test/Dev (if applicable):**
+```bash
+npx firebase use didyouquit-dev
+npx firebase deploy --only firestore:rules
+```

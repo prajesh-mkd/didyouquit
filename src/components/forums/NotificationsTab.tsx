@@ -9,8 +9,23 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, formatDistance } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useSimulatedDate } from "@/lib/hooks/use-simulated-date";
+
+
+// Helper for Relative Time
+function getRelativeTime(timestamp: any, simulatedDate: Date | null) {
+    if (!timestamp?.seconds) return 'Just now';
+    const date = new Date(timestamp.seconds * 1000);
+
+    // If we are simulating, compare relative to the simulated date
+    if (simulatedDate) {
+        return formatDistance(date, simulatedDate, { addSuffix: true });
+    }
+
+    return formatDistanceToNow(date, { addSuffix: true });
+}
 
 interface Notification {
     id: string;
@@ -31,6 +46,9 @@ export function NotificationsTab() {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
     const [limitCount, setLimitCount] = useState(50);
+
+    // Simulation Hook
+    const { date: simDate, isSimulated } = useSimulatedDate();
 
     useEffect(() => {
         if (!user) return;
@@ -209,7 +227,7 @@ export function NotificationsTab() {
                                         </p>
                                     )}
                                     <span className="text-xs text-slate-400 mt-1.5 block">
-                                        {notif.createdAt?.seconds ? formatDistanceToNow(new Date(notif.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                                        {getRelativeTime(notif.createdAt, isSimulated ? simDate : null)}
                                     </span>
                                 </div>
                             </Link>

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Loader2, Trash2, Shield, EyeOff, Eye, ChevronLeft, ChevronRight, Target, ChevronDown, ChevronUp, RefreshCw, Info } from "lucide-react";
-import { collection, query, orderBy, getDocs, getDoc, doc, deleteDoc, updateDoc, limit, startAfter, QueryDocumentSnapshot, endBefore, limitToLast, increment, where, collectionGroup } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { collection, query, orderBy, getDocs, getDoc, doc, deleteDoc, updateDoc, limit, startAfter, QueryDocumentSnapshot, endBefore, limitToLast, increment, where, collectionGroup, writeBatch } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase"; // Added auth
+import { signInWithCustomToken } from "firebase/auth"; // Added signInWithCustomToken
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,8 @@ import { useSimulatedDate } from "@/lib/hooks/use-simulated-date";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { COUNTRIES } from "@/lib/constants/countries";
 
 // Types
 import { UserProfile, AppConfig } from "@/lib/types";
@@ -141,6 +144,79 @@ export default function AdminPage() {
                 success: 'Status synced with Stripe',
                 error: 'Failed to sync status'
             });
+        }
+    };
+
+    // --- Simulated User Factory Logic ---
+    const [spawnCount, setSpawnCount] = useState(5);
+    const [selectedCountry, setSelectedCountry] = useState<string>("");
+    const [spawning, setSpawning] = useState(false);
+    const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
+
+    const handleSpawnUsers = async () => {
+        setSpawning(true);
+        try {
+            const token = await user?.getIdToken();
+            const res = await fetch('/api/admin/simulate-users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    count: spawnCount,
+                    country: selectedCountry === "random" || selectedCountry === "" ? undefined : selectedCountry
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success(data.message);
+                fetchUsers(); // Refresh list
+            } else {
+                toast.error(data.error);
+            }
+        } catch (error) {
+            toast.error("Spawn failed");
+        } finally {
+            setSpawning(false);
+        }
+    };
+
+    const handleImpersonate = async (targetUid: string) => {
+        if (!confirm("Confirm Impersonation? You will be logged out as Admin and logged in as this user.")) return;
+        setImpersonatingId(targetUid);
+        const loadingId = toast.loading("Switching identity...");
+
+        try {
+            const token = await user?.getIdToken();
+            // 1. Get Tokens
+            const res = await fetch('/api/admin/impersonate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ targetUid })
+            });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error);
+
+            // 2. Stash Admin Token
+            sessionStorage.setItem('didyouquit_admin_token', data.adminToken);
+
+            // 3. Login as Target
+            await signInWithCustomToken(auth, data.targetToken);
+
+            toast.success("Identity Switched! Redirecting...", { id: loadingId });
+
+            // 4. Redirect to Dashboard (Client side will auto-redirect due to auth state change, but force it)
+            window.location.href = '/my-resolutions';
+
+        } catch (error: any) {
+            console.error(error);
+            toast.error(`Impersonation Failed: ${error.message}`, { id: loadingId });
+            setImpersonatingId(null);
         }
     };
 
@@ -503,6 +579,7 @@ export default function AdminPage() {
         resolutions: QueryDocumentSnapshot[];
         topics: QueryDocumentSnapshot[];
         comments: QueryDocumentSnapshot[];
+        notifications: QueryDocumentSnapshot[];
     } | null>(null);
 
     const deleteTopicFull = async (topicId: string) => {
@@ -549,16 +626,21 @@ export default function AdminPage() {
                 return parentTopicId && !validTopicIds.has(parentTopicId);
             });
 
+            // 5. Scan Notifications (orphan senders)
+            const notifsSnap = await getDocs(collection(db, "notifications"));
+            const orphanedNotifications = notifsSnap.docs.filter(doc => !validUserIds.has(doc.data().senderUid));
+
             setOrphanReport({
                 resolutions: orphanedResolutions,
                 topics: orphanedTopics,
-                comments: orphanedComments
+                comments: orphanedComments,
+                notifications: orphanedNotifications
             });
 
-            if (orphanedResolutions.length === 0 && orphanedTopics.length === 0 && orphanedComments.length === 0) {
+            if (orphanedResolutions.length === 0 && orphanedTopics.length === 0 && orphanedComments.length === 0 && orphanedNotifications.length === 0) {
                 toast.success("Great news! No orphans found.");
             } else {
-                toast.info(`Found orphans: ${orphanedResolutions.length} Res, ${orphanedTopics.length} Topics, ${orphanedComments.length} Comments.`);
+                toast.info(`Found orphans: ${orphanedResolutions.length} Res, ${orphanedTopics.length} Topics, ${orphanedComments.length} Comments, ${orphanedNotifications.length} Notifs.`);
             }
 
         } catch (error) {
@@ -574,7 +656,8 @@ export default function AdminPage() {
         if (!confirm(`Are you sure? This will PERMANENTLY DELETE:
 - ${orphanReport.resolutions.length} Resolutions
 - ${orphanReport.topics.length} Topics
-- ${orphanReport.comments.length} Comments/Replies`)) return;
+- ${orphanReport.comments.length} Comments/Replies
+- ${orphanReport.notifications.length} Notifications`)) return;
 
         setCleaningOrphans(true);
         try {
@@ -584,8 +667,40 @@ export default function AdminPage() {
             // 2. Clean Topics
             await Promise.all(orphanReport.topics.map(d => deleteTopicFull(d.id)));
 
-            // 3. Clean Ghost Comments
-            await Promise.all(orphanReport.comments.map(d => deleteDoc(d.ref)));
+            // 3. Clean Ghost Comments & Fix Counts
+            if (orphanReport.comments.length > 0) {
+                const batch = writeBatch(db);
+                const topicDecrements: Record<string, number> = {};
+                const journalDecrements: Record<string, number> = {};
+
+                orphanReport.comments.forEach(d => {
+                    const parentDocRef = d.ref.parent.parent;
+                    if (parentDocRef) {
+                        const parentCollection = parentDocRef.parent.id;
+                        if (parentCollection === 'forum_topics') {
+                            topicDecrements[parentDocRef.id] = (topicDecrements[parentDocRef.id] || 0) + 1;
+                        } else if (parentCollection === 'journal_entries') {
+                            journalDecrements[parentDocRef.id] = (journalDecrements[parentDocRef.id] || 0) + 1;
+                        }
+                    }
+                    batch.delete(d.ref);
+                });
+
+                // Apply decrements to Topics
+                for (const [id, count] of Object.entries(topicDecrements)) {
+                    batch.update(doc(db, 'forum_topics', id), { commentCount: increment(-count) });
+                }
+
+                // Apply decrements to Journals
+                for (const [id, count] of Object.entries(journalDecrements)) {
+                    batch.update(doc(db, 'journal_entries', id), { commentCount: increment(-count) });
+                }
+
+                await batch.commit();
+            }
+
+            // 4. Clean Notifications
+            await Promise.all(orphanReport.notifications.map(d => deleteDoc(d.ref)));
 
             toast.success("Cleanup execution complete!");
             setOrphanReport(null);
@@ -604,6 +719,33 @@ export default function AdminPage() {
 
     const handleDeleteUser = async (userId: string) => {
         const userToDelete = users.find(u => u.uid === userId);
+
+        // Special Path for Simulated Users
+        if (userToDelete?.isSimulated) {
+            if (!confirm(`Delete simulated bot "${userToDelete.username}"? This will remove their Auth account and Data.`)) return;
+            try {
+                const token = await user?.getIdToken();
+                const res = await fetch('/api/admin/simulate-users', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ uid: userId })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    toast.success(data.message);
+                    setUsers(users.filter(u => u.uid !== userId));
+                } else {
+                    toast.error(data.error);
+                }
+            } catch (error) {
+                toast.error("Bot deletion failed");
+            }
+            return;
+        }
+
         if (userToDelete?.subscriptionStatus === 'active') {
             alert("CANNOT DELETE: This user has an ACTIVE subscription. They must cancel it first to avoid being billed for a deleted account.");
             return;
@@ -734,10 +876,139 @@ export default function AdminPage() {
                         <TabsTrigger value="monetization" className="text-emerald-700 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-800">
                             Monetization
                         </TabsTrigger>
+                        <TabsTrigger value="simulation_users" className="text-indigo-700 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-800">
+                            Factory 🏭
+                        </TabsTrigger>
                         <TabsTrigger value="simulation" className="text-purple-700 data-[state=active]:bg-purple-50 data-[state=active]:text-purple-800">
-                            Simulation 🕰️
+                            Time Travel 🕰️
                         </TabsTrigger>
                     </TabsList>
+
+                    <TabsContent value="simulation_users">
+                        <div className="space-y-8">
+                            {/* Factory Panel */}
+                            <div className="bg-white rounded-xl border border-indigo-100 shadow-lg shadow-indigo-100/50 p-8">
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Simulated User Factory</h2>
+                                        <p className="text-slate-500 max-w-lg">
+                                            Spawn high-fidelity simulated users with empty profiles.
+                                            Use "Login As" to manually populate their content.
+                                        </p>
+                                    </div>
+                                    <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex items-end gap-3">
+                                        <div>
+                                            <Label className="text-xs font-bold text-indigo-800 uppercase mb-1.5 block">Target Country</Label>
+                                            <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                                                <SelectTrigger className="w-40 bg-white border-indigo-200 text-indigo-900 font-bold">
+                                                    <SelectValue placeholder="Random" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="random">Random (Default)</SelectItem>
+                                                    {COUNTRIES.map((c) => (
+                                                        <SelectItem key={c} value={c}>
+                                                            {c}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs font-bold text-indigo-800 uppercase mb-1.5 block">Users to Spawn</Label>
+                                            <Input
+                                                type="number"
+                                                className="w-24 bg-white border-indigo-200 text-indigo-900 font-bold"
+                                                value={spawnCount}
+                                                onChange={(e) => setSpawnCount(Number(e.target.value))}
+                                                min={1}
+                                                max={50}
+                                            />
+                                        </div>
+                                        <Button
+                                            onClick={handleSpawnUsers}
+                                            disabled={spawning}
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                                        >
+                                            {spawning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                                            Spawn Users
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Simulated Users List */}
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                                    <h3 className="font-bold text-slate-700">Simulated Users</h3>
+                                    <span className="text-xs font-mono bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
+                                        {users.filter(u => u.isSimulated).length} Active Bots
+                                    </span>
+                                </div>
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                            <th className="p-4 font-medium text-slate-500">Identity</th>
+                                            <th className="p-4 font-medium text-slate-500">Internal Email</th>
+                                            <th className="p-4 font-medium text-slate-500">Content Stats</th>
+                                            <th className="p-4 font-medium text-slate-500 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {users.filter(u => u.isSimulated).map(u => (
+                                            <tr key={u.uid} className="hover:bg-indigo-50/30 transition-colors">
+                                                <td className="p-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+                                                            <AvatarImage src={u.photoURL || undefined} />
+                                                            <AvatarFallback>{u.username?.[0]}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <div className="font-bold text-slate-900 flex items-center gap-2">
+                                                                {u.username}
+                                                                <span className="bg-gradient-to-r from-amber-200 to-yellow-400 text-amber-900 text-[9px] px-1.5 py-0.5 rounded-full font-bold shadow-sm">PRO</span>
+                                                            </div>
+                                                            <div className="text-xs text-slate-400">{u.country}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <code className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-500 font-mono">{u.email || 'N/A'}</code>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="text-xs text-slate-500">Manual Check Required</div>
+                                                </td>
+                                                <td className="p-4 text-right flex justify-end gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        className="bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-900/10 border border-slate-700"
+                                                        onClick={() => handleImpersonate(u.uid)}
+                                                        disabled={!!impersonatingId}
+                                                    >
+                                                        {impersonatingId === u.uid ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : "🔑 Log in as"}
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                                        onClick={() => handleDeleteUser(u.uid)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {users.filter(u => u.isSimulated).length === 0 && (
+                                            <tr>
+                                                <td colSpan={4} className="p-12 text-center text-slate-400 italic">
+                                                    No simulated users yet. Use the factory above to spawn some!
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </TabsContent>
 
                     <TabsContent value="users">
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1155,10 +1426,47 @@ export default function AdminPage() {
                                                 <div className="text-center text-slate-400 text-xs py-8 bg-slate-50/50">No ghost replies found.</div>
                                             )}
                                         </div>
+
+                                        {/* Notifications List */}
+                                        <div className="bg-white rounded-lg border border-amber-100 overflow-hidden flex flex-col max-h-96">
+                                            <div className="p-3 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="text-xs font-semibold text-amber-900 uppercase tracking-wide">Notifications</div>
+                                                    <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{orphanReport.notifications.length}</span>
+                                                </div>
+                                            </div>
+                                            {orphanReport.notifications.length > 0 ? (
+                                                <div className="overflow-y-auto p-0">
+                                                    <table className="w-full text-left text-xs">
+                                                        <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
+                                                            <tr>
+                                                                <th className="p-2 font-medium text-slate-500 w-24">ID</th>
+                                                                <th className="p-2 font-medium text-slate-500">Sender UID</th>
+                                                                <th className="p-2 font-medium text-slate-500">Type</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-50">
+                                                            {orphanReport.notifications.map(doc => {
+                                                                const d = doc.data();
+                                                                return (
+                                                                    <tr key={doc.id} className="hover:bg-slate-50">
+                                                                        <td className="p-2 font-mono text-slate-400 align-top select-all">{doc.id}</td>
+                                                                        <td className="p-2 font-mono text-amber-600/80 align-top select-all font-medium">{d.senderUid || "Unknown"}</td>
+                                                                        <td className="p-2 text-slate-700">{d.type}</td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center text-slate-400 text-xs py-8 bg-slate-50/50">No orphaned notifications found.</div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="flex justify-center">
-                                        {orphanReport.resolutions.length === 0 && orphanReport.topics.length === 0 && orphanReport.comments.length === 0 ? (
+                                        {orphanReport.resolutions.length === 0 && orphanReport.topics.length === 0 && orphanReport.comments.length === 0 && orphanReport.notifications.length === 0 ? (
                                             <div className="text-green-600 font-medium flex items-center gap-2">
                                                 <Target className="h-5 w-5" /> Database is clean! No action needed.
                                             </div>

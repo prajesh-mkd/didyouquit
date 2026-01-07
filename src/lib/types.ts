@@ -5,6 +5,7 @@ export interface UserProfile {
     displayName: string | null;
     photoURL: string | null;
     email: string | null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     createdAt: any; // Firestore Timestamp
     country?: string; // e.g. "US", "IN"
 
@@ -20,10 +21,12 @@ export interface UserProfile {
         test?: string; // sub_...
         live?: string; // sub_...
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     currentPeriodEnd?: any; // Firestore Timestamp or string
     cancelAtPeriodEnd?: boolean;
     planInterval?: 'month' | 'year';
     isPro?: boolean; // Convenience flag
+    isSimulated?: boolean;
 }
 
 export interface AppConfig {

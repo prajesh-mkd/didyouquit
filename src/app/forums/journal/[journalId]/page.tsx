@@ -3,18 +3,18 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, ArrowLeft, Send, MessageSquare, Reply, Trash2, Pencil, CheckCircle2, XCircle, UserPlus, UserCheck } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, deleteDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, deleteDoc, setDoc, where, getDocs, Timestamp } from "firebase/firestore";
 import { toast } from "sonner";
-import { formatDistanceToNow, setWeek, startOfWeek, endOfWeek, format } from "date-fns";
+import { formatDistanceToNow, formatDistance, setWeek, startOfWeek, endOfWeek, format } from "date-fns";
 import Link from "next/link";
 import { createNotification } from "@/lib/notifications";
 import { deleteCommentCascade } from "@/lib/forum-actions";
+import { useSimulatedDate } from "@/lib/hooks/use-simulated-date";
 
 interface Comment {
     id: string;
@@ -64,6 +64,19 @@ function getWeekInfo(weekKey: string) {
     }
 }
 
+// Helper for Relative Time
+function getRelativeTime(timestamp: any, simulatedDate: Date | null) {
+    if (!timestamp?.seconds) return 'Just now';
+    const date = new Date(timestamp.seconds * 1000);
+
+    // If we are simulating, compare relative to the simulated date
+    if (simulatedDate) {
+        return formatDistance(date, simulatedDate, { addSuffix: true });
+    }
+
+    return formatDistanceToNow(date, { addSuffix: true });
+}
+
 function CommentItem({
     comment,
     onReply,
@@ -74,7 +87,8 @@ function CommentItem({
     submitting,
     user,
     onDelete,
-    onEdit
+    onEdit,
+    simulatedDate
 }: any) {
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
@@ -101,7 +115,7 @@ function CommentItem({
                             {comment.author.username}
                         </Link>
                         <span className="text-xs text-slate-400">
-                            {comment.createdAt?.seconds ? formatDistanceToNow(new Date(comment.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                            {getRelativeTime(comment.createdAt, simulatedDate)}
                         </span>
                     </div>
 
@@ -184,6 +198,7 @@ function CommentItem({
                                 user={user}
                                 onDelete={onDelete}
                                 onEdit={onEdit}
+                                simulatedDate={simulatedDate}
                             />
                         ))}
                     </div>
@@ -197,6 +212,9 @@ export default function JournalPage() {
     const { journalId } = useParams();
     const { user, userData } = useAuth();
     const router = useRouter();
+
+    // Simulation
+    const { date: simulatedDate, isSimulated } = useSimulatedDate();
 
     const [entry, setEntry] = useState<JournalEntry | null>(null);
     const [comments, setComments] = useState<Comment[]>([]);
@@ -317,6 +335,17 @@ export default function JournalPage() {
         try {
             await deleteDoc(doc(db, "users", user.uid, "following", entry.uid));
             await deleteDoc(doc(db, "users", entry.uid, "followers", user.uid));
+
+            // Cleanup Notification
+            const q = query(
+                collection(db, "notifications"),
+                where("senderUid", "==", user.uid),
+                where("recipientUid", "==", entry.uid),
+                where("type", "==", "follow")
+            );
+            const snap = await getDocs(q);
+            snap.forEach(d => deleteDoc(d.ref));
+
             setIsFollowing(false);
             toast.success(`Unfollowed ${entry.username}`);
         } catch (error) {
@@ -368,6 +397,11 @@ export default function JournalPage() {
 
         setSubmitting(true);
         try {
+            // Use simulated date if active, otherwise server timestamp
+            // Note: If simulated, we use a Javascript Date (client-generated) but pass it as a Firestore Timestamp
+            // to maintain consistency with serverTimestamp format
+            const timestamp = isSimulated ? Timestamp.fromDate(simulatedDate) : serverTimestamp();
+
             await addDoc(collection(db, "journal_entries", journalId as string, "comments"), {
                 content: content,
                 parentId: parentId,
@@ -376,7 +410,7 @@ export default function JournalPage() {
                     username: userData?.username || "Anonymous",
                     photoURL: userData?.photoURL || null
                 },
-                createdAt: serverTimestamp()
+                createdAt: timestamp
             });
 
             // Increment comment count
@@ -400,7 +434,8 @@ export default function JournalPage() {
                                 senderPhotoURL: userData?.photoURL,
                                 refId: journalId as string,
                                 refText: content,
-                                contextText: entry ? `${getWeekInfo(entry.weekKey)?.weekNum ? `Week ${getWeekInfo(entry.weekKey)?.weekNum} - ` : ''}${entry.resolutionTitle}` : undefined
+                                contextText: entry ? `${getWeekInfo(entry.weekKey)?.weekNum ? `Week ${getWeekInfo(entry.weekKey)?.weekNum} - ` : ''}${entry.resolutionTitle}` : undefined,
+                                createdAt: timestamp
                             });
                         }
                     }
@@ -420,7 +455,8 @@ export default function JournalPage() {
                     senderPhotoURL: userData?.photoURL,
                     refId: `${journalId}`, // Note: Notification routing needs to handle this
                     refText: content,
-                    contextText: entry ? `${getWeekInfo(entry.weekKey)?.weekNum ? `Week ${getWeekInfo(entry.weekKey)?.weekNum} - ` : ''}${entry.resolutionTitle}` : undefined
+                    contextText: entry ? `${getWeekInfo(entry.weekKey)?.weekNum ? `Week ${getWeekInfo(entry.weekKey)?.weekNum} - ` : ''}${entry.resolutionTitle}` : undefined,
+                    createdAt: timestamp
                 });
             }
 
@@ -435,13 +471,38 @@ export default function JournalPage() {
 
     const handleDeleteComment = async (commentId: string) => {
         if (!confirm("Are you sure?")) return;
+        const commentToDelete = comments.find(c => c.id === commentId);
+
         try {
             const deletedCount = await deleteCommentCascade(`journal_entries/${journalId}`, commentId);
             await updateDoc(doc(db, "journal_entries", journalId as string), {
                 commentCount: increment(-deletedCount!)
             });
+
+            // Cleanup Notification
+            if (commentToDelete && user) {
+                try {
+                    const rawText = commentToDelete.content;
+                    const refText = rawText.slice(0, 60) + (rawText.length > 60 ? "..." : "");
+
+                    const q = query(
+                        collection(db, "notifications"),
+                        where("senderUid", "==", user.uid),
+                        where("type", "==", "reply_journal"),
+                        where("refId", "==", journalId),
+                        where("refText", "==", refText)
+                    );
+
+                    const snap = await getDocs(q);
+                    snap.forEach((d) => deleteDoc(d.ref));
+                } catch (notiError) {
+                    console.error("NOTIFICATION CLEANUP FAILED:", notiError);
+                }
+            }
+
             toast.success("Comment deleted");
         } catch (error) {
+            console.error(error);
             toast.error("Failed to delete comment");
         }
     };
@@ -470,163 +531,161 @@ export default function JournalPage() {
     const weekInfo = getWeekInfo(entry.weekKey);
 
     return (
-        <div className="min-h-screen flex flex-col bg-[#F0FDF4]">
-            <Header />
-            <main className="container py-8 px-4 flex-1 max-w-4xl mx-auto">
-                <Link href="/forums?tab=journals" className="inline-flex items-center text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
-                    <ArrowLeft className="h-4 w-4 mr-1" /> Back to Weekly Journals
-                </Link>
+        <>
+            <Link href="/forums?tab=journals" className="inline-flex items-center text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
+                <ArrowLeft className="h-4 w-4 mr-1" /> Back to Weekly Journals
+            </Link>
 
-                {/* Main Journal Card */}
-                <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-8 relative">
-                    <div className="flex items-start gap-4">
-                        <Link href={`/${entry.username}`} className="shrink-0">
-                            <Avatar className="h-10 w-10 border border-slate-100">
-                                <AvatarImage src={entry.photoURL} />
-                                <AvatarFallback className="bg-emerald-50 text-emerald-600">
-                                    {entry.username[0]?.toUpperCase()}
-                                </AvatarFallback>
-                            </Avatar>
-                        </Link>
-                        <div className="flex-1">
-                            <div className="flex items-start justify-between mb-2">
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-2">
-                                            <Link href={`/${entry.username}`} className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors text-base" onClick={(e) => e.stopPropagation()}>
-                                                {entry.username}
-                                            </Link>
+            {/* Main Journal Card */}
+            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-8 relative">
+                <div className="flex items-start gap-4">
+                    <Link href={`/${entry.username}`} className="shrink-0">
+                        <Avatar className="h-10 w-10 border border-slate-100">
+                            <AvatarImage src={entry.photoURL} />
+                            <AvatarFallback className="bg-emerald-50 text-emerald-600">
+                                {entry.username[0]?.toUpperCase()}
+                            </AvatarFallback>
+                        </Avatar>
+                    </Link>
+                    <div className="flex-1">
+                        <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Link href={`/${entry.username}`} className="font-semibold text-slate-900 hover:text-emerald-700 transition-colors text-base" onClick={(e) => e.stopPropagation()}>
+                                            {entry.username}
+                                        </Link>
 
-                                            {user && entry.uid !== user.uid && (
-                                                <Button
-                                                    size="sm"
-                                                    className={`h-5 px-3 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all flex items-center justify-center leading-none ${isFollowing
-                                                        ? "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                                                        : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
-                                                        }`}
-                                                    onClick={isFollowing ? handleUnfollow : handleFollow}
-                                                    disabled={followLoading}
-                                                >
-                                                    {followLoading ? (
-                                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                                    ) : isFollowing ? (
-                                                        "Following"
-                                                    ) : (
-                                                        "Follow"
-                                                    )}
-                                                </Button>
-                                            )}
-                                        </div>
-                                        <span className="text-xs text-slate-400 whitespace-nowrap">
-                                            {entry.createdAt?.seconds ? formatDistanceToNow(new Date(entry.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
-                                        </span>
+                                        {user && entry.uid !== user.uid && (
+                                            <Button
+                                                size="sm"
+                                                className={`h-5 px-3 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all flex items-center justify-center leading-none ${isFollowing
+                                                    ? "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                                    : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+                                                    }`}
+                                                onClick={isFollowing ? handleUnfollow : handleFollow}
+                                                disabled={followLoading}
+                                            >
+                                                {followLoading ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                ) : isFollowing ? (
+                                                    "Following"
+                                                ) : (
+                                                    "Follow"
+                                                )}
+                                            </Button>
+                                        )}
                                     </div>
+                                    <span className="text-xs text-slate-400 whitespace-nowrap">
+                                        {getRelativeTime(entry.createdAt, isSimulated ? simulatedDate : null)}
+                                    </span>
+                                </div>
 
-                                    {/* Metadata Row: Week, Resolution, Why */}
-                                    <div className="text-xs text-slate-500 space-y-2 mb-4">
-                                        {weekInfo && (
-                                            <div className="flex items-center gap-2 text-slate-500 font-medium">
-                                                <span>Week {weekInfo.weekNum}</span>
-                                                <span className="text-slate-300">•</span>
-                                                <span>{weekInfo.range}</span>
-                                            </div>
-                                        )}
-                                        {entry.status !== undefined && (
-                                            <div className={`flex items-center gap-1 text-[10px] uppercase tracking-wide font-bold w-fit ${entry.status ? "text-emerald-600" : "text-red-600"}`}>
-                                                {entry.status ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                                                {entry.status ? "Kept It" : "Missed It"}
-                                            </div>
-                                        )}
-                                        <div className="flex flex-col gap-1.5">
+                                {/* Metadata Row: Week, Resolution, Why */}
+                                <div className="text-xs text-slate-500 space-y-2 mb-4">
+                                    {weekInfo && (
+                                        <div className="flex items-center gap-2 text-slate-500 font-medium">
+                                            <span>Week {weekInfo.weekNum}</span>
+                                            <span className="text-slate-300">•</span>
+                                            <span>{weekInfo.range}</span>
+                                        </div>
+                                    )}
+                                    {entry.status !== undefined && (
+                                        <div className={`flex items-center gap-1 text-[10px] uppercase tracking-wide font-bold w-fit ${entry.status ? "text-emerald-600" : "text-red-600"}`}>
+                                            {entry.status ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                            {entry.status ? "Kept It" : "Missed It"}
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col gap-1.5">
+                                        <div>
+                                            <span className="text-slate-500 font-bold italic">Resolution: </span>
+                                            <span className="text-slate-700 italic leading-relaxed">
+                                                {liveResTitle || entry.resolutionTitle}
+                                            </span>
+                                        </div>
+                                        {liveResDescription && (
                                             <div>
-                                                <span className="text-slate-500 font-bold italic">Resolution: </span>
+                                                <span className="text-slate-500 font-bold italic">Why: </span>
                                                 <span className="text-slate-700 italic leading-relaxed">
-                                                    {liveResTitle || entry.resolutionTitle}
+                                                    {liveResDescription}
                                                 </span>
                                             </div>
-                                            {liveResDescription && (
-                                                <div>
-                                                    <span className="text-slate-500 font-bold italic">Why: </span>
-                                                    <span className="text-slate-700 italic leading-relaxed">
-                                                        {liveResDescription}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
-
-                            <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-                                {entry.content}
-                            </p>
                         </div>
-                    </div>
 
-                    <div className="flex items-center gap-4 pt-4 mt-6 border-t border-slate-50">
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                            <MessageSquare className="h-4 w-4" />
-                            {comments.length} {comments.length === 1 ? "Comment" : "Comments"}
-                        </div>
+                        <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+                            {entry.content}
+                        </p>
                     </div>
                 </div>
 
-                {/* Comments Section */}
-                <div className="space-y-6">
-                    <h3 className="font-semibold text-slate-900 text-lg">Comments</h3>
+                <div className="flex items-center gap-4 pt-4 mt-6 border-t border-slate-50">
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                        <MessageSquare className="h-4 w-4" />
+                        {comments.length} {comments.length === 1 ? "Comment" : "Comments"}
+                    </div>
+                </div>
+            </div>
 
-                    {/* ... rest of comments section ... */}
+            {/* Comments Section */}
+            <div className="space-y-6">
+                <h3 className="font-semibold text-slate-900 text-lg">Comments</h3>
 
-                    {/* Comment Form */}
-                    {user ? (
-                        <form onSubmit={(e) => handlePostComment(e, null)} className="flex gap-4 items-start">
-                            <Avatar className="h-8 w-8 mt-1">
-                                <AvatarImage src={userData?.photoURL || undefined} />
-                                <AvatarFallback>{userData?.username?.[0]?.toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 space-y-2">
-                                <Textarea
-                                    placeholder="Write a comment..."
-                                    value={newComment}
-                                    onChange={(e) => setNewComment(e.target.value)}
-                                    className="min-h-[80px] bg-white"
-                                />
-                                <Button type="submit" disabled={submitting || !newComment.trim()} size="sm" className="bg-emerald-600">
-                                    {submitting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Send className="h-3 w-3 mr-2" />}
-                                    Post Comment
-                                </Button>
-                            </div>
-                        </form>
+                {/* ... rest of comments section ... */}
+
+                {/* Comment Form */}
+                {user ? (
+                    <form onSubmit={(e) => handlePostComment(e, null)} className="flex gap-4 items-start">
+                        <Avatar className="h-8 w-8 mt-1">
+                            <AvatarImage src={userData?.photoURL || undefined} />
+                            <AvatarFallback>{userData?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 space-y-2">
+                            <Textarea
+                                placeholder="Write a comment..."
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                className="min-h-[80px] bg-white"
+                            />
+                            <Button type="submit" disabled={submitting || !newComment.trim()} size="sm" className="bg-emerald-600">
+                                {submitting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Send className="h-3 w-3 mr-2" />}
+                                Post Comment
+                            </Button>
+                        </div>
+                    </form>
+                ) : (
+                    <div className="p-4 bg-slate-50 rounded-lg text-center text-sm text-slate-500">
+                        Please log in to leave a comment.
+                    </div>
+                )}
+
+                {/* Comments List */}
+                <div className="space-y-4">
+                    {comments.length === 0 ? (
+                        <p className="text-slate-400 italic text-center py-8">No comments yet.</p>
                     ) : (
-                        <div className="p-4 bg-slate-50 rounded-lg text-center text-sm text-slate-500">
-                            Please log in to leave a comment.
-                        </div>
+                        comments.map((comment) => (
+                            <CommentItem
+                                key={comment.id}
+                                comment={comment}
+                                onReply={(id: string | null) => setReplyingTo(id === replyingTo ? null : id)}
+                                replyingTo={replyingTo}
+                                replyContent={replyContent}
+                                setReplyContent={setReplyContent}
+                                onSubmitReply={handlePostComment}
+                                submitting={submitting}
+                                user={user}
+                                onDelete={handleDeleteComment}
+                                onEdit={handleEditComment}
+                                simulatedDate={isSimulated ? simulatedDate : null}
+                            />
+                        ))
                     )}
-
-                    {/* Comments List */}
-                    <div className="space-y-4">
-                        {comments.length === 0 ? (
-                            <p className="text-slate-400 italic text-center py-8">No comments yet.</p>
-                        ) : (
-                            comments.map((comment) => (
-                                <CommentItem
-                                    key={comment.id}
-                                    comment={comment}
-                                    onReply={(id: string | null) => setReplyingTo(id === replyingTo ? null : id)}
-                                    replyingTo={replyingTo}
-                                    replyContent={replyContent}
-                                    setReplyContent={setReplyContent}
-                                    onSubmitReply={handlePostComment}
-                                    submitting={submitting}
-                                    user={user}
-                                    onDelete={handleDeleteComment}
-                                    onEdit={handleEditComment}
-                                />
-                            ))
-                        )}
-                    </div>
                 </div>
-            </main >
-        </div >
+            </div>
+        </>
     );
 }

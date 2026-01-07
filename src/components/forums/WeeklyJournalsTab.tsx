@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, where, doc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, where, doc, setDoc, deleteDoc, serverTimestamp, getDocs } from "firebase/firestore";
 import { toast } from "sonner";
 import { Loader2, Calendar, MessageSquare, ChevronRight, MessageCircle, CheckCircle2, XCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
-import { formatDistanceToNow, setWeek, setYear, startOfWeek, endOfWeek, format } from "date-fns";
+import { formatDistanceToNow, formatDistance, setWeek, setYear, startOfWeek, endOfWeek, format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { useSimulatedDate } from "@/lib/hooks/use-simulated-date";
 
 interface JournalEntry {
     id: string;
@@ -49,11 +50,27 @@ function getWeekInfo(weekKey: string) {
     }
 }
 
+// Helper for Relative Time
+function getRelativeTime(timestamp: any, simulatedDate: Date | null) {
+    if (!timestamp?.seconds) return 'Just now';
+    const date = new Date(timestamp.seconds * 1000);
+
+    // If we are simulating, compare relative to the simulated date
+    if (simulatedDate) {
+        return formatDistance(date, simulatedDate, { addSuffix: true });
+    }
+
+    return formatDistanceToNow(date, { addSuffix: true });
+}
+
 export function WeeklyJournalsTab({ uid }: { uid?: string }) {
     const { user } = useAuth();
     const router = useRouter();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Simulation Hook
+    const { date: simDate, isSimulated } = useSimulatedDate();
 
     const [resData, setResData] = useState<Record<string, { title: string, description?: string }>>({});
 
@@ -176,6 +193,17 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
         try {
             await deleteDoc(doc(db, "users", user.uid, "following", targetUid));
             await deleteDoc(doc(db, "users", targetUid, "followers", user.uid));
+
+            // Cleanup Notification
+            const q = query(
+                collection(db, "notifications"),
+                where("senderUid", "==", user.uid),
+                where("recipientUid", "==", targetUid),
+                where("type", "==", "follow")
+            );
+            const snap = await getDocs(q);
+            snap.forEach(d => deleteDoc(d.ref));
+
             toast.success("Unfollowed");
         } catch (error) {
             console.error(error);
@@ -273,7 +301,7 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                                         )}
                                     </div>
                                     <span className="text-xs text-slate-400">
-                                        {entry.createdAt?.seconds ? formatDistanceToNow(new Date(entry.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                                        {getRelativeTime(entry.createdAt, isSimulated ? simDate : null)}
                                     </span>
                                 </div>
 

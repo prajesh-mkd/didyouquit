@@ -3,16 +3,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, ArrowLeft, Send, MessageSquare, Reply, Trash2, Pencil, MoreHorizontal } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, increment, deleteDoc, where, getDocs, Timestamp } from "firebase/firestore";
 import { deleteTopicCascade, deleteCommentCascade } from "@/lib/forum-actions";
 import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, formatDistance } from "date-fns";
 import Link from "next/link";
 import {
     DropdownMenu,
@@ -31,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { createNotification } from "@/lib/notifications";
+import { useSimulatedDate } from "@/lib/hooks/use-simulated-date";
 
 interface Comment {
     id: string;
@@ -58,6 +58,19 @@ interface ForumTopic {
     commentCount: number;
 }
 
+// Helper for Relative Time
+function getRelativeTime(timestamp: any, simulatedDate: Date | null) {
+    if (!timestamp?.seconds) return 'Just now';
+    const date = new Date(timestamp.seconds * 1000);
+
+    // If we are simulating, compare relative to the simulated date
+    if (simulatedDate) {
+        return formatDistance(date, simulatedDate, { addSuffix: true });
+    }
+
+    return formatDistanceToNow(date, { addSuffix: true });
+}
+
 function CommentItem({
     comment,
     onReply,
@@ -68,7 +81,8 @@ function CommentItem({
     submitting,
     user,
     onDelete,
-    onEdit
+    onEdit,
+    simulatedDate
 }: any) {
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
@@ -95,7 +109,7 @@ function CommentItem({
                             {comment.author.username}
                         </Link>
                         <span className="text-xs text-slate-400">
-                            {comment.createdAt?.seconds ? formatDistanceToNow(new Date(comment.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                            {getRelativeTime(comment.createdAt, simulatedDate)}
                         </span>
                     </div>
 
@@ -178,6 +192,7 @@ function CommentItem({
                                 user={user}
                                 onDelete={onDelete}
                                 onEdit={onEdit}
+                                simulatedDate={simulatedDate}
                             />
                         ))}
                     </div>
@@ -191,6 +206,9 @@ export default function TopicPage() {
     const { topicId } = useParams();
     const { user, userData } = useAuth();
     const router = useRouter();
+
+    // Simulation
+    const { date: simulatedDate, isSimulated } = useSimulatedDate();
 
     const [topic, setTopic] = useState<ForumTopic | null>(null);
     const [comments, setComments] = useState<Comment[]>([]);
@@ -277,6 +295,9 @@ export default function TopicPage() {
 
         setSubmitting(true);
         try {
+            // Use simulated date if active, otherwise server timestamp
+            const timestamp = isSimulated ? Timestamp.fromDate(simulatedDate) : serverTimestamp();
+
             await addDoc(collection(db, "forum_topics", topicId as string, "comments"), {
                 content: content,
                 parentId: parentId,
@@ -285,7 +306,7 @@ export default function TopicPage() {
                     username: userData?.username || "Anonymous",
                     photoURL: userData?.photoURL || null
                 },
-                createdAt: serverTimestamp()
+                createdAt: timestamp
             });
 
             await updateDoc(doc(db, "forum_topics", topicId as string), {
@@ -308,7 +329,8 @@ export default function TopicPage() {
                                 senderPhotoURL: userData?.photoURL,
                                 refId: topicId as string,
                                 refText: content,
-                                contextText: topic?.title
+                                contextText: topic?.title,
+                                createdAt: timestamp
                             });
                         }
                     }
@@ -328,7 +350,8 @@ export default function TopicPage() {
                     senderPhotoURL: userData?.photoURL,
                     refId: topic.id,
                     refText: content,
-                    contextText: topic.title
+                    contextText: topic.title,
+                    createdAt: timestamp
                 });
             }
 
@@ -342,11 +365,37 @@ export default function TopicPage() {
 
     const handleDeleteComment = async (commentId: string) => {
         if (!confirm("Are you sure?")) return;
+        const commentToDelete = comments.find(c => c.id === commentId);
+
         try {
             const deletedCount = await deleteCommentCascade(`forum_topics/${topicId}`, commentId);
             await updateDoc(doc(db, "forum_topics", topicId as string), {
                 commentCount: increment(-deletedCount!)
             });
+
+            // Cleanup Notification (Best Effort)
+            if (commentToDelete && user) {
+                try {
+                    // Replicate truncation logic from createNotification
+                    const rawText = commentToDelete.content;
+                    const refText = rawText.slice(0, 60) + (rawText.length > 60 ? "..." : "");
+
+                    const q = query(
+                        collection(db, "notifications"),
+                        where("senderUid", "==", user.uid),
+                        where("type", "==", "reply"),
+                        where("refId", "==", topicId),
+                        where("refText", "==", refText)
+                    );
+
+                    const snap = await getDocs(q);
+                    snap.forEach((d) => deleteDoc(d.ref));
+                } catch (notiError) {
+                    console.error("NOTIFICATION CLEANUP FAILED - CHECK CONSOLE FOR INDEX LINK:", notiError);
+                    // Do not throw, allow function to return success
+                }
+            }
+
             toast.success("Comment deleted");
         } catch (error) {
             console.error(error);
@@ -405,167 +454,162 @@ export default function TopicPage() {
 
     if (!topic) {
         return (
-            <div className="min-h-screen flex flex-col bg-[#F0FDF4]">
-                <Header />
-                <main className="container flex-1 flex flex-col items-center justify-center text-center p-8">
-                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 max-w-md w-full">
-                        <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                        <h2 className="text-xl font-semibold text-slate-900 mb-2">Post not found</h2>
-                        <p className="text-slate-500 mb-6">This discussion may have been deleted or does not exist.</p>
-                        <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
-                            <Link href="/forums">Return to Forums</Link>
-                        </Button>
-                    </div>
-                </main>
+            <div className="flex flex-col items-center justify-center text-center p-8 h-full">
+                <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 max-w-md w-full">
+                    <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                    <h2 className="text-xl font-semibold text-slate-900 mb-2">Post not found</h2>
+                    <p className="text-slate-500 mb-6">This discussion may have been deleted or does not exist.</p>
+                    <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
+                        <Link href="/forums">Return to Forums</Link>
+                    </Button>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-[#F0FDF4]">
-            <Header />
-            <main className="container py-8 px-4 flex-1 max-w-4xl mx-auto">
-                <Link href="/forums?tab=general" className="inline-flex items-center text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
-                    <ArrowLeft className="h-4 w-4 mr-1" /> Back to General
-                </Link>
+        <>
+            <Link href="/forums?tab=general" className="inline-flex items-center text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
+                <ArrowLeft className="h-4 w-4 mr-1" /> Back to General
+            </Link>
 
-                {/* Main Topic Card */}
-                <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-8 group relative">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10 border border-slate-100">
-                                <AvatarImage src={topic.author.photoURL} />
-                                <AvatarFallback>{topic.author.username?.[0]?.toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <Link href={`/${topic.author.username}`} className="font-semibold text-slate-900 hover:text-emerald-600 hover:underline transition-colors">
-                                    {topic.author.username}
-                                </Link>
-                                <div className="text-xs text-slate-500">
-                                    {topic.createdAt?.seconds ? formatDistanceToNow(new Date(topic.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
-                                </div>
+            {/* Main Topic Card */}
+            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-8 group relative">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10 border border-slate-100">
+                            <AvatarImage src={topic.author.photoURL} />
+                            <AvatarFallback>{topic.author.username?.[0]?.toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <Link href={`/${topic.author.username}`} className="font-semibold text-slate-900 hover:text-emerald-600 hover:underline transition-colors">
+                                {topic.author.username}
+                            </Link>
+                            <div className="text-xs text-slate-500">
+                                {getRelativeTime(topic.createdAt, isSimulated ? simulatedDate : null)}
                             </div>
                         </div>
-
-                        {user && user.uid === topic.author.uid && (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-800">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <Dialog open={isEditTopicOpen} onOpenChange={setIsEditTopicOpen}>
-                                        <DialogTrigger asChild>
-                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                                <Pencil className="mr-2 h-4 w-4" /> Edit Post
-                                            </DropdownMenuItem>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogHeader>
-                                                <DialogTitle>Edit Post</DialogTitle>
-                                            </DialogHeader>
-                                            <form onSubmit={handleUpdateTopic} className="space-y-4 py-4">
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium">Title</label>
-                                                    <Input
-                                                        value={editTopicTitle}
-                                                        onChange={e => setEditTopicTitle(e.target.value)}
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium">Content</label>
-                                                    <Textarea
-                                                        value={editTopicContent}
-                                                        onChange={e => setEditTopicContent(e.target.value)}
-                                                        className="min-h-[150px]"
-                                                        required
-                                                    />
-                                                </div>
-                                                <DialogFooter>
-                                                    <Button type="submit" disabled={isEditingTopic} className="bg-emerald-600">
-                                                        {isEditingTopic ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
-                                                    </Button>
-                                                </DialogFooter>
-                                            </form>
-                                        </DialogContent>
-                                    </Dialog>
-                                    <DropdownMenuItem className="text-red-600 focus:text-red-700 focus:bg-red-50" onClick={handleDeleteTopic}>
-                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Post
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        )}
                     </div>
 
-                    <h1 className="text-2xl font-bold text-slate-900 mb-4">{topic.title}</h1>
-                    <div className="prose prose-emerald max-w-none text-slate-700 mb-6 whitespace-pre-wrap">
-                        {topic.content}
-                    </div>
-
-                    <div className="flex items-center gap-4 pt-4 border-t border-slate-50">
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                            <MessageSquare className="h-4 w-4" />
-                            {comments.length} Comments
-                        </div>
-                    </div>
-                </div>
-
-                {/* Comments Section */}
-                <div className="space-y-6">
-                    <h3 className="font-semibold text-slate-900 text-lg">Comments</h3>
-
-                    {/* Comment Form */}
-                    {user ? (
-                        <form onSubmit={(e) => handlePostComment(e, null)} className="flex gap-4 items-start">
-                            <Avatar className="h-8 w-8 mt-1">
-                                <AvatarImage src={userData?.photoURL || undefined} />
-                                <AvatarFallback>{userData?.username?.[0]?.toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 space-y-2">
-                                <Textarea
-                                    placeholder="Write a comment..."
-                                    value={newComment}
-                                    onChange={(e) => setNewComment(e.target.value)}
-                                    className="min-h-[80px] bg-white"
-                                />
-                                <Button type="submit" disabled={submitting || !newComment.trim()} size="sm" className="bg-emerald-600">
-                                    {submitting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Send className="h-3 w-3 mr-2" />}
-                                    Post Comment
+                    {user && user.uid === topic.author.uid && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-800">
+                                    <MoreHorizontal className="h-4 w-4" />
                                 </Button>
-                            </div>
-                        </form>
-                    ) : (
-                        <div className="p-4 bg-slate-50 rounded-lg text-center text-sm text-slate-500">
-                            Please log in to leave a comment.
-                        </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <Dialog open={isEditTopicOpen} onOpenChange={setIsEditTopicOpen}>
+                                    <DialogTrigger asChild>
+                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                            <Pencil className="mr-2 h-4 w-4" /> Edit Post
+                                        </DropdownMenuItem>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Edit Post</DialogTitle>
+                                        </DialogHeader>
+                                        <form onSubmit={handleUpdateTopic} className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Title</label>
+                                                <Input
+                                                    value={editTopicTitle}
+                                                    onChange={e => setEditTopicTitle(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Content</label>
+                                                <Textarea
+                                                    value={editTopicContent}
+                                                    onChange={e => setEditTopicContent(e.target.value)}
+                                                    className="min-h-[150px]"
+                                                    required
+                                                />
+                                            </div>
+                                            <DialogFooter>
+                                                <Button type="submit" disabled={isEditingTopic} className="bg-emerald-600">
+                                                    {isEditingTopic ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+                                <DropdownMenuItem className="text-red-600 focus:text-red-700 focus:bg-red-50" onClick={handleDeleteTopic}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Post
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     )}
+                </div>
 
-                    {/* Comments List */}
-                    <div className="space-y-4">
-                        {comments.length === 0 ? (
-                            <p className="text-slate-400 italic text-center py-8">No comments yet.</p>
-                        ) : (
-                            comments.map((comment) => (
-                                <CommentItem
-                                    key={comment.id}
-                                    comment={comment}
-                                    onReply={(id: string | null) => setReplyingTo(id === replyingTo ? null : id)}
-                                    replyingTo={replyingTo}
-                                    replyContent={replyContent}
-                                    setReplyContent={setReplyContent}
-                                    onSubmitReply={handlePostComment}
-                                    submitting={submitting}
-                                    user={user}
-                                    onDelete={handleDeleteComment}
-                                    onEdit={handleEditComment}
-                                />
-                            ))
-                        )}
+                <h1 className="text-2xl font-bold text-slate-900 mb-4">{topic.title}</h1>
+                <div className="prose prose-emerald max-w-none text-slate-700 mb-6 whitespace-pre-wrap">
+                    {topic.content}
+                </div>
+
+                <div className="flex items-center gap-4 pt-4 border-t border-slate-50">
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                        <MessageSquare className="h-4 w-4" />
+                        {comments.length} Comments
                     </div>
                 </div>
-            </main>
-        </div>
+            </div>
+
+            {/* Comments Section */}
+            <div className="space-y-6">
+                <h3 className="font-semibold text-slate-900 text-lg">Comments</h3>
+
+                {/* Comment Form */}
+                {user ? (
+                    <form onSubmit={(e) => handlePostComment(e, null)} className="flex gap-4 items-start">
+                        <Avatar className="h-8 w-8 mt-1">
+                            <AvatarImage src={userData?.photoURL || undefined} />
+                            <AvatarFallback>{userData?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 space-y-2">
+                            <Textarea
+                                placeholder="Write a comment..."
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                className="min-h-[80px] bg-white"
+                            />
+                            <Button type="submit" disabled={submitting || !newComment.trim()} size="sm" className="bg-emerald-600">
+                                {submitting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Send className="h-3 w-3 mr-2" />}
+                                Post Comment
+                            </Button>
+                        </div>
+                    </form>
+                ) : (
+                    <div className="p-4 bg-slate-50 rounded-lg text-center text-sm text-slate-500">
+                        Please log in to leave a comment.
+                    </div>
+                )}
+
+                {/* Comments List */}
+                <div className="space-y-4">
+                    {comments.length === 0 ? (
+                        <p className="text-slate-400 italic text-center py-8">No comments yet.</p>
+                    ) : (
+                        comments.map((comment) => (
+                            <CommentItem
+                                key={comment.id}
+                                comment={comment}
+                                onReply={(id: string | null) => setReplyingTo(id === replyingTo ? null : id)}
+                                replyingTo={replyingTo}
+                                replyContent={replyContent}
+                                setReplyContent={setReplyContent}
+                                onSubmitReply={handlePostComment}
+                                submitting={submitting}
+                                user={user}
+                                onDelete={handleDeleteComment}
+                                onEdit={handleEditComment}
+                                simulatedDate={isSimulated ? simulatedDate : null}
+                            />
+                        ))
+                    )}
+                </div>
+            </div>
+        </>
     );
 }

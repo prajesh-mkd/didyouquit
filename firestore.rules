@@ -88,13 +88,19 @@ service cloud.firestore {
     // Notifications
     match /notifications/{notificationId} {
         // Recipient can read their own notifications
-        allow read: if request.auth != null && resource.data.recipientUid == request.auth.uid;
+        allow read: if request.auth != null && (
+          resource.data.recipientUid == request.auth.uid || 
+          resource.data.senderUid == request.auth.uid
+        );
         // Any authenticated user can create a notification (sender)
         allow create: if request.auth != null; 
         // Recipient can update (mark as read)
         allow update: if request.auth != null && resource.data.recipientUid == request.auth.uid;
         // Recipient can delete
-        allow delete: if request.auth != null && resource.data.recipientUid == request.auth.uid;
+        allow delete: if request.auth != null && (
+          resource.data.recipientUid == request.auth.uid || 
+          resource.data.senderUid == request.auth.uid
+        );
     }
   }
 }

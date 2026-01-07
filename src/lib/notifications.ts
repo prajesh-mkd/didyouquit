@@ -11,6 +11,8 @@ interface BaseNotificationParams {
     refId: string; // ID of the post, journal, or user (for follow)
     refText?: string; // Snippet of content or context
     contextText?: string; // Title of the post or journal being replied to
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createdAt?: any; // Optional custom timestamp (e.g. for simulated dates)
 }
 
 /**
@@ -29,7 +31,7 @@ export async function createNotification(recipientUid: string, type: Notificatio
             refId: params.refId,
             refText: params.refText ? params.refText.slice(0, 60) + (params.refText.length > 60 ? "..." : "") : "",
             contextText: params.contextText || null,
-            createdAt: serverTimestamp(),
+            createdAt: params.createdAt || serverTimestamp(),
             read: false
         });
     } catch (error) {

@@ -91,7 +91,7 @@ export function CheckInDialog({ open, onOpenChange, title, onSave, initialStatus
                                     setNote(e.target.value);
                                     if (e.target.value.trim()) setShowError(false);
                                 }}
-                                placeholder="How did it go? Share your wins or struggles..."
+                                placeholder="How did it go last week? Share your wins or struggles with the community..."
                                 className={`min-h-[100px] ${showError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                             />
                         </div>

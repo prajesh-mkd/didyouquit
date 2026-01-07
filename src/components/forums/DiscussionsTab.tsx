@@ -10,11 +10,12 @@ import { Loader2, Plus, MessageSquare, MessageCircle, Trash2, ChevronRight } fro
 import { db } from "@/lib/firebase";
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, where, getDocs, setDoc } from "firebase/firestore";
 import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, formatDistance } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSimulatedDate } from "@/lib/hooks/use-simulated-date";
 // import { PaywallModal } from "@/components/subscription/PaywallModal"; // handled by parent
 
 interface ForumTopic {
@@ -34,6 +35,20 @@ interface ForumTopic {
 
 interface DiscussionsTabProps {
     onShowPaywall: () => void;
+}
+
+
+// Helper for Relative Time
+function getRelativeTime(timestamp: any, simulatedDate: Date | null) {
+    if (!timestamp?.seconds) return 'Just now';
+    const date = new Date(timestamp.seconds * 1000);
+
+    // If we are simulating, compare relative to the simulated date
+    if (simulatedDate) {
+        return formatDistance(date, simulatedDate, { addSuffix: true });
+    }
+
+    return formatDistanceToNow(date, { addSuffix: true });
 }
 
 export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
@@ -57,6 +72,9 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
 
     // Use centralized isPro logic (handles past_due correctly)
     const isPro = userData?.isPro || userData?.subscriptionStatus === 'active' || userData?.subscriptionStatus === 'trialing' || userData?.subscriptionStatus === 'past_due';
+
+    // Simulation Hook
+    const { date: simDate, isSimulated } = useSimulatedDate();
 
     // Fetch user resolutions
     useEffect(() => {
@@ -157,6 +175,17 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
         try {
             await deleteDoc(doc(db, "users", user.uid, "following", targetUid));
             await deleteDoc(doc(db, "users", targetUid, "followers", user.uid));
+
+            // Cleanup Notification
+            const q = query(
+                collection(db, "notifications"),
+                where("senderUid", "==", user.uid),
+                where("recipientUid", "==", targetUid),
+                where("type", "==", "follow")
+            );
+            const snap = await getDocs(q);
+            snap.forEach(d => deleteDoc(d.ref));
+
             toast.success("Unfollowed");
         } catch (error) {
             console.error(error);
@@ -167,7 +196,50 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
     };
 
 
+    // Fetch live resolution details (description/Why)
+    const [resData, setResData] = useState<Record<string, { title: string, description?: string }>>({});
+
+    useEffect(() => {
+        if (topics.length === 0) return;
+
+        const fetchDetails = async () => {
+            const missingIds = Array.from(new Set(topics
+                .map(t => t.resolutionId)
+                .filter(id => id && !resData[id])
+            ));
+
+            if (missingIds.length === 0) return;
+
+            try {
+                const newData: Record<string, { title: string, description?: string }> = {};
+                // Simple Promise.all for now - could be batched if needed
+                await Promise.all(missingIds.map(async (id) => {
+                    if (!id) return;
+                    try {
+                        const snap = await import("firebase/firestore").then(mod => mod.getDoc(mod.doc(db, "resolutions", id)));
+                        if (snap.exists()) {
+                            const data = snap.data();
+                            newData[id] = { title: data.title, description: data.description };
+                        }
+                    } catch (e) {
+                        console.error(`Error fetching resolution ${id}`, e);
+                    }
+                }));
+
+                setResData(prev => ({ ...prev, ...newData }));
+            } catch (error) {
+                console.error("Error fetching resolution data", error);
+            }
+        };
+
+        fetchDetails();
+    }, [topics, resData]); // Added resData to dep array to prevent loop if strictly implementing, but check logic. 
+    // Actually, checking !resData[id] inside handles simple loops, but sticking to standard pattern.
+
     const visibleTopics = topics.filter(t => !hiddenUserIds.has(t.author.uid));
+
+    // ... (rest of component)
+
 
     const handleCreateTopic = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -190,7 +262,7 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
                 },
                 resolutionId: selectedResId,
                 resolutionTitle: resolutions.find(r => r.id === selectedResId)?.title || null,
-                createdAt: serverTimestamp(),
+                createdAt: isSimulated ? simDate : serverTimestamp(),
                 likes: 0,
                 commentCount: 0
             });
@@ -198,7 +270,8 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
             setNewContent("");
             setSelectedResId(resolutions.length === 1 ? resolutions[0].id : "");
             setIsDialogOpen(false);
-            toast.success("Post created!");
+            const successMsg = isSimulated ? `Post backdated to ${simDate.toLocaleDateString()}` : "Post created!";
+            toast.success(successMsg);
         } catch (error: any) {
             console.error("Error creating topic:", error);
             toast.error(error.message || "Failed to create topic");
@@ -362,17 +435,27 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
                                                 )}
                                             </div>
                                             <span className="text-xs text-slate-400">
-                                                {topic.createdAt?.seconds ? formatDistanceToNow(new Date(topic.createdAt.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                                                {getRelativeTime(topic.createdAt, isSimulated ? simDate : null)}
                                             </span>
                                         </div>
 
                                         {/* Metadata (Resolution) */}
                                         {topic.resolutionTitle && (
-                                            <div className="text-xs text-slate-500 mb-4">
-                                                <span className="text-slate-500 font-bold italic">Resolution: </span>
-                                                <span className="text-slate-700 italic leading-relaxed">
-                                                    {topic.resolutionTitle}
-                                                </span>
+                                            <div className="text-xs text-slate-500 mb-4 space-y-1">
+                                                <div>
+                                                    <span className="text-slate-500 font-bold italic">Resolution: </span>
+                                                    <span className="text-slate-700 italic leading-relaxed">
+                                                        {resData[topic.resolutionId!]?.title || topic.resolutionTitle}
+                                                    </span>
+                                                </div>
+                                                {resData[topic.resolutionId!]?.description && (
+                                                    <div>
+                                                        <span className="text-slate-500 font-bold italic">Why: </span>
+                                                        <span className="text-slate-700 italic leading-relaxed">
+                                                            {resData[topic.resolutionId!]?.description}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
 
