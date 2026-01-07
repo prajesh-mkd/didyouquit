@@ -583,7 +583,7 @@ export default function TopicPage() {
                 <div className="flex items-center gap-4 pt-4 border-t border-slate-50">
                     <div className="flex items-center gap-2 text-sm text-slate-500">
                         <MessageSquare className="h-4 w-4" />
-                        {comments.length} Comments
+                        {topic.commentCount} {topic.commentCount === 1 ? 'Comment' : 'Comments'}
                     </div>
                 </div>
             </div>
