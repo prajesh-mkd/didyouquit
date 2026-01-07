@@ -80,7 +80,7 @@ function ForumsContent() {
     return (
         <>
             <div className="mb-6">
-                <h1 className="text-3xl font-bold text-emerald-950">Community Forum</h1>
+                <h1 className="text-3xl font-bold text-emerald-950">Community Forums</h1>
                 <p className="text-emerald-800/60 mt-1">Discuss progress, challenges, share tips, and find support.</p>
             </div>
 
