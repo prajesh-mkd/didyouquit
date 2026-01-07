@@ -123,71 +123,54 @@ export async function POST(req: NextRequest) {
 
         // E. Delete Ghost Comments (Replies on others' threads)
         // using Collection Group to find subcollection documents
-        const ghostCommentsQ = await adminDb.collectionGroup("comments").where("author.uid", "==", userId).get();
-        // Fallback for simulation data
-        const ghostCommentsQ2 = await adminDb.collectionGroup("comments").where("authorUid", "==", userId).get();
+        // WRAPPED in try/catch to ensure account deletion proceeds even if this cleanup fails (e.g. index issues)
+        try {
+            const ghostCommentsQ = await adminDb.collectionGroup("comments").where("author.uid", "==", userId).get();
+            // Fallback for simulation data
+            const ghostCommentsQ2 = await adminDb.collectionGroup("comments").where("authorUid", "==", userId).get();
 
-        const allGhostComments = new Map();
-        ghostCommentsQ.forEach(d => allGhostComments.set(d.id, d));
-        ghostCommentsQ2.forEach(d => allGhostComments.set(d.id, d));
+            const allGhostComments = new Map();
+            ghostCommentsQ.forEach(d => allGhostComments.set(d.id, d));
+            ghostCommentsQ2.forEach(d => allGhostComments.set(d.id, d));
 
-        if (allGhostComments.size > 0) {
-            const batch = adminDb.batch();
-            const topicDecrements: Record<string, number> = {};
-            const journalDecrements: Record<string, number> = {};
+            if (allGhostComments.size > 0) {
+                const batch = adminDb.batch();
+                const topicDecrements: Record<string, number> = {};
+                const journalDecrements: Record<string, number> = {};
 
-            for (const doc of allGhostComments.values()) {
-                const parentDoc = doc.ref.parent.parent;
-                if (parentDoc) {
-                    const parentColName = parentDoc.parent.id;
-                    if (parentColName === 'forum_topics') {
-                        topicDecrements[parentDoc.id] = (topicDecrements[parentDoc.id] || 0) + 1;
-                    } else if (parentColName === 'journal_entries') {
-                        journalDecrements[parentDoc.id] = (journalDecrements[parentDoc.id] || 0) + 1;
+                for (const doc of allGhostComments.values()) {
+                    const parentDoc = doc.ref.parent.parent;
+                    if (parentDoc) {
+                        const parentColName = parentDoc.parent.id;
+                        if (parentColName === 'forum_topics') {
+                            topicDecrements[parentDoc.id] = (topicDecrements[parentDoc.id] || 0) + 1;
+                        } else if (parentColName === 'journal_entries') {
+                            journalDecrements[parentDoc.id] = (journalDecrements[parentDoc.id] || 0) + 1;
+                        }
                     }
+                    batch.delete(doc.ref);
                 }
-                batch.delete(doc.ref);
-            }
 
-            // Apply decrements to Topics
-            for (const [id, count] of Object.entries(topicDecrements)) {
-                const ref = adminDb.collection('forum_topics').doc(id);
-                // We use update with ignore check? Or standard update.
-                // If the topic was ALREADY deleted (e.g. self-reply on self-topic), this update might fail.
-                // However, Step C deleted MY topics.
-                // If I replied to MY OWN topic, Step C deleted the topic.
-                // Does updating a deleted doc create it? No. It fails.
-                // So we should verify existence OR use set with merge? No, increment requires update.
-                // Simple fix: Only update if we didn't just delete the topic in Step C.
-                // But Step C logic is separate.
-                // Robust fix: We can try catch the update, or check existence. 
-                // Given this is an administrative cleanup, a try/catch per decrement is safest to avoid crashing the whole chain.
-                // BUT batch doesn't support try/catch per op.
-                // So we should execute these decrements as separate independent promises.
-            }
+                // To be safe against batch failure, let's run decrements independently.
+                const decrementPromises = [];
+                for (const [id, count] of Object.entries(topicDecrements)) {
+                    decrementPromises.push(
+                        adminDb.collection('forum_topics').doc(id).update({ commentCount: FieldValue.increment(-count) }).catch(() => { })
+                    );
+                }
+                for (const [id, count] of Object.entries(journalDecrements)) {
+                    decrementPromises.push(
+                        adminDb.collection('journal_entries').doc(id).update({ commentCount: FieldValue.increment(-count) }).catch(() => { })
+                    );
+                }
 
-            // Refined Logic: 
-            // We only care about decrementing counts on threads that SURVIVE.
-            // If we deleted the thread, who cares about the count?
-            // "Ghost Comments" usually implies comments on EXISTING threads owned by OTHERS.
-            // So we should proceed. If update fails, it means thread is gone.
-
-            // To be safe against batch failure, let's run decrements independently.
-            const decrementPromises = [];
-            for (const [id, count] of Object.entries(topicDecrements)) {
-                decrementPromises.push(
-                    adminDb.collection('forum_topics').doc(id).update({ commentCount: FieldValue.increment(-count) }).catch(() => { })
-                );
+                await batch.commit(); // Delete comments
+                await Promise.all(decrementPromises); // Update counts (best effort)
+                console.log(`[API] Deleted ${allGhostComments.size} ghost comments.`);
             }
-            for (const [id, count] of Object.entries(journalDecrements)) {
-                decrementPromises.push(
-                    adminDb.collection('journal_entries').doc(id).update({ commentCount: FieldValue.increment(-count) }).catch(() => { })
-                );
-            }
-
-            await batch.commit(); // Delete comments
-            await Promise.all(decrementPromises); // Update counts (best effort)
-            console.log(`[API] Deleted ${allGhostComments.size} ghost comments.`);
+        } catch (error) {
+            console.error("[API] Ghost comment cleanup failed (non-fatal):", error);
+            // Non-blocking: Proceed to delete user account
         }
 
         // E. Delete User Profile
