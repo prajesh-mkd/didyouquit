@@ -292,7 +292,7 @@ function HomeContent() {
             </div>
           ) : publicResolutions.length === 0 ? (
             <div className="text-center bg-slate-50 py-12 rounded-lg border border-dashed border-slate-200">
-              <p className="text-slate-500">No public resolutions yet. Be the first to share your goal!</p>
+              <p className="text-slate-500">No public resolutions yet. Be the first to share your goals!</p>
             </div>
           ) : (
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
