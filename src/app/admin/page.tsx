@@ -622,8 +622,18 @@ export default function AdminPage() {
             // 4. Scan "Ghost" Comments
             const commentsGroupSnap = await getDocs(collectionGroup(db, "comments"));
             const orphanedComments = commentsGroupSnap.docs.filter(doc => {
+                const data = doc.data();
                 const parentTopicId = doc.ref.parent.parent?.id;
-                return parentTopicId && !validTopicIds.has(parentTopicId);
+
+                // Check 1: Orphan Parent (Topic deleted)
+                if (parentTopicId && !validTopicIds.has(parentTopicId)) return true;
+
+                // Check 2: Ghost Author (User deleted)
+                // We check both 'author.uid' (standard) and 'authorUid' (legacy/sim)
+                const authorId = data.author?.uid || data.authorUid;
+                if (authorId && !validUserIds.has(authorId)) return true;
+
+                return false;
             });
 
             // 5. Scan Notifications (orphan senders)

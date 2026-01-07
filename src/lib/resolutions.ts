@@ -1,6 +1,6 @@
 
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, writeBatch, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, doc, collectionGroup, increment } from "firebase/firestore";
 
 /**
  * Deletes a resolution and all its associated data (journal entries, comments).
@@ -122,6 +122,58 @@ export async function deleteUserCascade(userId: string) {
         if (batchCount > 0) {
             await batch.commit();
         }
+        // 4. Delete Ghost Comments (Replies on others' threads)
+        // Note: Requires "comments" Collection Group Index on 'author.uid'
+        try {
+            const commentsQ = query(collectionGroup(db, "comments"), where("author.uid", "==", userId));
+            const commentsSnap = await getDocs(commentsQ);
+
+            if (!commentsSnap.empty) {
+                // We use a new batch or continue with previous if space. 
+                // Since this might be large, we'll try to batch safely.
+                // Re-instantiate batch if we think we are near limit, but for now reuse 'batch' variable logic 
+                // (though 'batch' variable from step 2 is technically closed/committed? 
+                // Wait, Step 2 commit was NOT CALLED.
+                // Step 2 loop ends at line 96.
+                // Step 3 (Topics) has `await batch.commit()` at line 123.
+                // So 'batch' is committed. We need a new batch.
+
+                const ghostBatch = writeBatch(db);
+                // Track decrements
+                const topicDecrements: Record<string, number> = {};
+                const journalDecrements: Record<string, number> = {};
+
+                commentsSnap.docs.forEach(doc => {
+                    const parentDoc = doc.ref.parent.parent;
+                    if (parentDoc) {
+                        const parentColName = parentDoc.parent.id;
+                        if (parentColName === 'forum_topics') {
+                            topicDecrements[parentDoc.id] = (topicDecrements[parentDoc.id] || 0) + 1;
+                        } else if (parentColName === 'journal_entries') {
+                            journalDecrements[parentDoc.id] = (journalDecrements[parentDoc.id] || 0) + 1;
+                        }
+                    }
+                    ghostBatch.delete(doc.ref);
+                });
+
+                // Apply decrements (Client SDK doesn't support ignore errors easily in batch, so we trust update works for existing docs)
+                for (const [id, count] of Object.entries(topicDecrements)) {
+                    const ref = doc(db, 'forum_topics', id);
+                    ghostBatch.update(ref, { commentCount: increment(-count) });
+                }
+                for (const [id, count] of Object.entries(journalDecrements)) {
+                    const ref = doc(db, 'journal_entries', id);
+                    ghostBatch.update(ref, { commentCount: increment(-count) });
+                }
+
+                await ghostBatch.commit();
+                console.log(`Deleted ${commentsSnap.size} ghost comments.`);
+            }
+        } catch (e) {
+            console.warn("Ghost comment delete failed (possibly missing index or permission):", e);
+            // Don't throw here, as we want to succeed on partial delete if possible
+        }
+
         console.log(`Deleted notifications and topics for user ${userId}.`);
 
     } catch (error) {

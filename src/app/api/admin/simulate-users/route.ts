@@ -132,23 +132,24 @@ export async function DELETE(req: Request) {
 
         for (const col of collectionsToClean) {
             try {
-                const q = await adminDb.collection(col.name).where(col.field, '==', uid).get();
-                if (!q.empty) {
-                    const batch = adminDb.batch();
+                let q;
+                if (col.name === 'comments') {
+                    // Use Collection Group for subcollections
+                    q = await adminDb.collectionGroup(col.name).where(col.field, '==', uid).get();
 
-                    // Special Logic for Comments: Decrement parent 'forum_topics' OR 'journal_entries' commentCount
-                    if (col.name === 'comments') {
-                        // Map of topicId -> count to subtract
+                    // Safety: Also check 'author.uid' just in case data structure varied
+                    const q2 = await adminDb.collectionGroup(col.name).where('author.uid', '==', uid).get();
+                    // Merge results
+                    const docs = new Map();
+                    q.docs.forEach(d => docs.set(d.id, d));
+                    q2.docs.forEach(d => docs.set(d.id, d));
+
+                    if (docs.size > 0) {
+                        const batch = adminDb.batch();
                         const topicDecrements: Record<string, number> = {};
                         const journalDecrements: Record<string, number> = {};
 
-                        for (const doc of q.docs) {
-                            // Valid Parents: forum_topics/{id}/comments OR journal_entries/{id}/comments
-                            const parentCollection = doc.ref.parent.parent?.parent.id; // Wait...
-                            // doc.ref.parent is 'comments' collection
-                            // doc.ref.parent.parent is the Document Reference (Topic or Journal)
-                            // doc.ref.parent.parent.parent is the Root Collection ('forum_topics' or 'journal_entries')
-
+                        for (const doc of docs.values()) {
                             const parentDoc = doc.ref.parent.parent;
                             if (parentDoc) {
                                 const parentColName = parentDoc.parent.id;
@@ -161,29 +162,32 @@ export async function DELETE(req: Request) {
                             batch.delete(doc.ref);
                         }
 
-                        // Apply decrements to Topics
                         for (const [id, count] of Object.entries(topicDecrements)) {
                             const ref = adminDb.collection('forum_topics').doc(id);
                             batch.update(ref, { commentCount: FieldValue.increment(-count) });
                         }
-
-                        // Apply decrements to Journals
                         for (const [id, count] of Object.entries(journalDecrements)) {
                             const ref = adminDb.collection('journal_entries').doc(id);
                             batch.update(ref, { commentCount: FieldValue.increment(-count) });
                         }
 
-                    } else {
-                        // Standard delete for others
-                        q.docs.forEach(doc => batch.delete(doc.ref));
+                        await batch.commit();
+                        console.log(`Cleanup: Deleted ${docs.size} comments (ghost replies) for ${uid}`);
                     }
+                    continue; // Skip standard processing
+                } else {
+                    // Standard Top-Level Collection Query
+                    q = await adminDb.collection(col.name).where(col.field, '==', uid).get();
+                }
 
+                if (!q.empty) {
+                    const batch = adminDb.batch();
+                    q.docs.forEach(doc => batch.delete(doc.ref));
                     await batch.commit();
                     console.log(`Cleanup: Deleted ${q.size} ${col.name} from ${uid}`);
                 }
             } catch (err) {
                 console.error(`Failed to clean ${col.name} for ${uid}`, err);
-                // Continue to next collection even if one fails
             }
         }
 
