@@ -243,7 +243,16 @@ async function nukeUserContent(uid: string) {
 
                 if (docs.size > 0) {
                     const batch = adminDb.batch();
-                    docs.forEach(d => batch.delete(d.ref));
+
+                    // RECURSIVE DELETE: Delete comments sub-collection for each topic first
+                    for (const topicDoc of docs.values()) {
+                        const commentsSnap = await topicDoc.ref.collection('comments').get();
+                        commentsSnap.docs.forEach(c => batch.delete(c.ref));
+
+                        // Delete the topic itself
+                        batch.delete(topicDoc.ref);
+                    }
+
                     await batch.commit();
                 }
                 continue;
