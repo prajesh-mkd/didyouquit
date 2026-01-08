@@ -247,7 +247,7 @@ async function nukeUserContent(uid: string) {
                     // RECURSIVE DELETE: Delete comments sub-collection for each topic first
                     for (const topicDoc of docs.values()) {
                         const commentsSnap = await topicDoc.ref.collection('comments').get();
-                        commentsSnap.docs.forEach(c => batch.delete(c.ref));
+                        commentsSnap.docs.forEach((c: any) => batch.delete(c.ref));
 
                         // Delete the topic itself
                         batch.delete(topicDoc.ref);
