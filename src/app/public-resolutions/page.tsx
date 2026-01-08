@@ -82,7 +82,7 @@ export default function PublicResolutionsPage() {
             // 2. Fetch Public Feed (Circular Random)
             const resolutionsRef = collection(db, "resolutions");
             let q;
-            const FETCH_LIMIT = 50;
+            const FETCH_LIMIT = 25;
 
             if (isInitial) {
                 // Start at a random point
@@ -99,7 +99,26 @@ export default function PublicResolutionsPage() {
             let snapshot = await getDocs(q);
             let docs = snapshot.docs;
 
-            // FINITE LIST LOGIC: If we got fewer than limit, we reached the end.
+            // WRAP-AROUND LOGIC (Fix for "Random Cliff")
+            // If we hit the end of the random sort (1.0) and didn't get enough items,
+            // fetch the remainder from the beginning (0.0).
+            if (docs.length < FETCH_LIMIT) {
+                const shortfall = FETCH_LIMIT - docs.length;
+                console.log(`[ResolutionFeed] Hit random cliff. Fetching ${shortfall} from start...`);
+
+                try {
+                    // Fetch shortfall from the start
+                    const wrapQ = query(resolutionsRef, orderBy("randomSortKey"), limit(shortfall));
+                    const wrapSnapshot = await getDocs(wrapQ);
+
+                    // Allow duplicates in raw docs; deduplication happens in processing loop
+                    docs = [...docs, ...wrapSnapshot.docs];
+                } catch (err) {
+                    console.error("Error in wrap-around fetch:", err);
+                }
+            }
+
+            // If total fetched is still < limit after wrapping, we truly have a small DB.
             if (docs.length < FETCH_LIMIT) {
                 setHasMore(false);
             }
