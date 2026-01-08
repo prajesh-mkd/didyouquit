@@ -10,16 +10,18 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   metadataBase: new URL('https://didyouquit.com'),
   title: {
-    default: "DidYouQuit? - Public New Year's Resolution Tracker",
+    default: "DidYouQuit? | Public Goal & Resolution Tracker (Anonymous)",
     template: "%s | DidYouQuit?"
   },
-  description: "Track your New Year resolutions simply. Anonymous public accountability to help you keep your goals in 2026.",
+  description:
+    "Track goals and resolutions through public accountability while staying anonymous. Get motivation and support from others to stay on track all year.",
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: "DidYouQuit? - Public New Year's Resolution Tracker",
-    description: "Track your New Year resolutions simply. Anonymous public accountability to help you keep your goals in 2026.",
+    title: "DidYouQuit? | Public Goals, Private Identity",
+    description:
+      "A public goal and resolution tracker where commitments are visible, identities stay private, and community support helps you stay consistent.",
     url: 'https://didyouquit.com',
     siteName: 'DidYouQuit?',
     locale: 'en_US',
@@ -27,8 +29,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: "DidYouQuit?",
-    description: "Track your resolutions simply. Anonymous public accountability.",
+    title: "DidYouQuit? | Public Goals, Private Identity",
+    description:
+      "Make goals and resolutions public while staying anonymous. Weekly check-ins and community support help you stay accountable.",
   },
 };
 

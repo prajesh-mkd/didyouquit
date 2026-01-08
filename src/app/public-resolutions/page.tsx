@@ -283,29 +283,33 @@ export default function PublicResolutionsPage() {
                                                 </Link>
                                             </td>
                                             <td className="p-4 pl-12">
-                                                <div className="flex items-center gap-2 font-medium text-slate-800">
-                                                    {res.title}
-                                                    {calculateStreak(res.weeklyLog || {}) > 0 && (
-                                                        <Popover>
-                                                            <PopoverTrigger asChild>
-                                                                <button
-                                                                    className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-pointer hover:bg-orange-100 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-200"
-                                                                >
-                                                                    <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
-                                                                    <span className="text-[10px] font-bold text-orange-600">{calculateStreak(res.weeklyLog || {})}</span>
-                                                                </button>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-auto p-2" side="top">
-                                                                <p className="text-xs font-medium text-orange-700">{calculateStreak(res.weeklyLog || {})} Week Streak!</p>
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                    )}
-                                                </div>
-                                                {res.description && (
-                                                    <div className="text-sm text-slate-500 italic mt-0.5">
-                                                        "{res.description}"
+                                                <Link href={`/${res.user?.username || res.uid}`} className="block hover:opacity-80 transition-opacity">
+                                                    <div className="flex items-center gap-2 font-medium text-slate-800">
+                                                        {res.title}
+                                                        {calculateStreak(res.weeklyLog || {}) > 0 && (
+                                                            <Popover>
+                                                                <PopoverTrigger asChild>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-50 rounded-full border border-orange-100 cursor-pointer hover:bg-orange-100 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-200"
+                                                                        onClick={(e) => e.preventDefault()}
+                                                                    >
+                                                                        <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
+                                                                        <span className="text-[10px] font-bold text-orange-600">{calculateStreak(res.weeklyLog || {})}</span>
+                                                                    </button>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-auto p-2" side="top">
+                                                                    <p className="text-xs font-medium text-orange-700">{calculateStreak(res.weeklyLog || {})} Week Streak!</p>
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                        )}
                                                     </div>
-                                                )}
+                                                    {res.description && (
+                                                        <div className="text-sm text-slate-500 italic mt-0.5">
+                                                            "{res.description}"
+                                                        </div>
+                                                    )}
+                                                </Link>
                                             </td>
                                             <td className="p-4 pr-10">
                                                 <TimelinePills resId={res.id} weeklyLog={res.weeklyLog} currentYear={currentYear} />
