@@ -157,6 +157,35 @@ export default function AdminPage() {
     // Scenario Injection
     const [scenarioJson, setScenarioJson] = useState("");
     const [injecting, setInjecting] = useState(false);
+    const [deletingContent, setDeletingContent] = useState(false);
+
+    const handleDeleteContent = async () => {
+        if (!confirm("⚠️ DELETE ALL SIMULATED CONTENT?\n\nThis will keep the internal user accounts but wipe:\n- All Resolutions\n- All Journals\n- All Forum Topics\n- All Comments\n\nAre you sure you want to proceed?")) return;
+
+        setDeletingContent(true);
+        try {
+            const token = await user?.getIdToken();
+            const res = await fetch('/api/admin/simulate-users', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ bulk: true, retainUsers: true })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success(data.message);
+                fetchUsers();
+            } else {
+                toast.error(data.error);
+            }
+        } catch (error) {
+            toast.error("Cleanup failed");
+        } finally {
+            setDeletingContent(false);
+        }
+    };
 
     const handleSpawnUsers = async () => {
         setSpawning(true);
@@ -1075,6 +1104,18 @@ export default function AdminPage() {
                                         {injecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Target className="mr-2 h-4 w-4" />}
                                         Run Scenario Injection
                                     </Button>
+
+                                    <div className="mt-4 pt-4 border-t border-slate-100">
+                                        <Button
+                                            variant="outline"
+                                            className="w-full border-amber-500 text-amber-600 hover:bg-amber-50 hover:text-amber-700 font-bold"
+                                            onClick={handleDeleteContent}
+                                            disabled={deletingContent}
+                                        >
+                                            {deletingContent ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                            Delete Content Only (Keep Users)
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
 

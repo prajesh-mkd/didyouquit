@@ -1,0 +1,1203 @@
+{
+    "users": [
+        {
+            "refId": "User074",
+            "username": "Beacon5095",
+            "country": "United States"
+        },
+        {
+            "refId": "User075",
+            "username": "Hydrogen4698",
+            "country": "United States"
+        },
+        {
+            "refId": "User076",
+            "username": "Ready1383",
+            "country": "United States"
+        },
+        {
+            "refId": "User077",
+            "username": "Cosmos8070",
+            "country": "United States"
+        },
+        {
+            "refId": "User078",
+            "username": "Metal7309",
+            "country": "United States"
+        },
+        {
+            "refId": "User079",
+            "username": "Life8848",
+            "country": "United States"
+        },
+        {
+            "refId": "User080",
+            "username": "Fluorine2424",
+            "country": "United States"
+        },
+        {
+            "refId": "User081",
+            "username": "Journey4669",
+            "country": "United States"
+        },
+        {
+            "refId": "User082",
+            "username": "Balance8016",
+            "country": "United States"
+        },
+        {
+            "refId": "User083",
+            "username": "Student4357",
+            "country": "United States"
+        },
+        {
+            "refId": "User084",
+            "username": "Direct1750",
+            "country": "United States"
+        },
+        {
+            "refId": "User085",
+            "username": "Raven4826",
+            "country": "United States"
+        },
+        {
+            "refId": "User086",
+            "username": "Spin2639",
+            "country": "United States"
+        },
+        {
+            "refId": "User087",
+            "username": "Hill5951",
+            "country": "United States"
+        },
+        {
+            "refId": "User088",
+            "username": "Owl7893",
+            "country": "United States"
+        },
+        {
+            "refId": "User089",
+            "username": "Slate9360",
+            "country": "United States"
+        },
+        {
+            "refId": "User090",
+            "username": "Fluorine6668",
+            "country": "United States"
+        },
+        {
+            "refId": "User091",
+            "username": "Nickel7660",
+            "country": "United States"
+        },
+        {
+            "refId": "User092",
+            "username": "Teacher2577",
+            "country": "United States"
+        },
+        {
+            "refId": "User093",
+            "username": "Quantum4398",
+            "country": "United States"
+        },
+        {
+            "refId": "User094",
+            "username": "Sage5506",
+            "country": "United States"
+        },
+        {
+            "refId": "User095",
+            "username": "Vast2470",
+            "country": "United States"
+        },
+        {
+            "refId": "User096",
+            "username": "Trainer8138",
+            "country": "United States"
+        },
+        {
+            "refId": "User097",
+            "username": "Beam8880",
+            "country": "United States"
+        },
+        {
+            "refId": "User098",
+            "username": "Maker2841",
+            "country": "United States"
+        },
+        {
+            "refId": "User099",
+            "username": "Bloom4055",
+            "country": "United States"
+        },
+        {
+            "refId": "User100",
+            "username": "Hill5023",
+            "country": "United States"
+        },
+        {
+            "refId": "User101",
+            "username": "Beat6406",
+            "country": "United States"
+        },
+        {
+            "refId": "User102",
+            "username": "Mind3002",
+            "country": "United States"
+        },
+        {
+            "refId": "User103",
+            "username": "Solstice3710",
+            "country": "United States"
+        },
+        {
+            "refId": "User104",
+            "username": "Sanctuary4200",
+            "country": "United States"
+        },
+        {
+            "refId": "User105",
+            "username": "Sun7402",
+            "country": "United States"
+        },
+        {
+            "refId": "User106",
+            "username": "Adventure4943",
+            "country": "United States"
+        },
+        {
+            "refId": "User107",
+            "username": "Copper6885",
+            "country": "United States"
+        },
+        {
+            "refId": "User108",
+            "username": "Cosmic1881",
+            "country": "United States"
+        }
+    ],
+    "resolutions": [
+        {
+            "refId": "Res119",
+            "userRefId": "User074",
+            "title": "Do 50 pushups a day",
+            "description": "Simple goal but Im starting from basically zero. Just want to build some basic upper body strength. Can break it into sets throughout the day.",
+            "category": "Fitness",
+            "createdAt": "2026-01-01T12:07:24"
+        },
+        {
+            "refId": "Res120",
+            "userRefId": "User074",
+            "title": "No more nail biting",
+            "description": "Gross habit Ive had since childhood. Finally want to stop. Going to try that bitter nail polish stuff and be more mindful.",
+            "category": "Habits",
+            "createdAt": "2026-01-01T12:57:36"
+        },
+        {
+            "refId": "Res121",
+            "userRefId": "User075",
+            "title": "Practice drawing daily",
+            "description": "Always wanted to be able to draw but never put in the time. Going to do at least one sketch a day even if its bad. Improvement comes from practice.",
+            "category": "Creativity",
+            "createdAt": "2025-12-30T16:12:16"
+        },
+        {
+            "refId": "Res122",
+            "userRefId": "User075",
+            "title": "No more hitting snooze",
+            "description": "Waste so much time in the morning hitting snooze 10 times. When the alarm goes off Im getting up. Period.",
+            "category": "Habits",
+            "createdAt": "2025-12-30T16:02:45"
+        },
+        {
+            "refId": "Res123",
+            "userRefId": "User076",
+            "title": "Drink less alcohol",
+            "description": "Not quitting but cutting way back. Max 2 drinks on weekends only. Been overdoing it socially and its affecting everything.",
+            "category": "Health",
+            "createdAt": "2026-01-02T20:27:00"
+        },
+        {
+            "refId": "Res124",
+            "userRefId": "User077",
+            "title": "Invest $200 monthly",
+            "description": "Finally opened a brokerage account. Going to put $200 in every month into index funds. Long term thinking. Future me will thank me.",
+            "category": "Money",
+            "createdAt": "2025-12-31T10:33:59"
+        },
+        {
+            "refId": "Res125",
+            "userRefId": "User077",
+            "title": "Meditate before bed",
+            "description": "Mind races at night and cant sleep. Going to try 10 mins of meditation before bed to calm down. Worth a shot.",
+            "category": "Mental Health",
+            "createdAt": "2025-12-31T10:51:34"
+        },
+        {
+            "refId": "Res126",
+            "userRefId": "User078",
+            "title": "Go to therapy",
+            "description": "Been telling myself I should go to therapy for like 3 years now. Always find a reason not to. Too expensive, too busy, not that bad, whatever. Its probably that bad. Just gonna make the appointment before I talk myself out of it again.",
+            "category": "Mental Health",
+            "createdAt": "2026-01-01T14:43:46"
+        },
+        {
+            "refId": "Res127",
+            "userRefId": "User079",
+            "title": "Spend time outside daily",
+            "description": "Work from home means I can go days without going outside. That cant be healthy. Even 15 mins a day in fresh air.",
+            "category": "Health",
+            "createdAt": "2025-12-29T11:47:47"
+        },
+        {
+            "refId": "Res128",
+            "userRefId": "User079",
+            "title": "Read nonfiction books",
+            "description": "Usually just read fiction for fun. Want to learn stuff too. One nonfiction book a month about history or science or whatever.",
+            "category": "Learning",
+            "createdAt": "2025-12-29T11:42:12"
+        },
+        {
+            "refId": "Res129",
+            "userRefId": "User080",
+            "title": "Clean apartment weekly",
+            "description": "Let things pile up and then do a massive clean every few weeks. Going to do a little bit every weekend instead. Easier to maintain.",
+            "category": "Habits",
+            "createdAt": "2026-01-03T11:23:27"
+        },
+        {
+            "refId": "Res130",
+            "userRefId": "User081",
+            "title": "Stop cracking knuckles",
+            "description": "My coworkers hate it and so do I. Its just a nervous habit. Going to try keeping my hands busy with a stress ball instead.",
+            "category": "Habits",
+            "createdAt": "2026-01-01T17:04:42"
+        },
+        {
+            "refId": "Res131",
+            "userRefId": "User081",
+            "title": "Do yoga twice a week",
+            "description": "Flexibility is terrible. Can barely touch my toes. Yoga seems like a gentle way to work on it. Following YouTube videos.",
+            "category": "Fitness",
+            "createdAt": "2026-01-01T17:58:21"
+        },
+        {
+            "refId": "Res132",
+            "userRefId": "User082",
+            "title": "Eat more protein",
+            "description": "Realizing my diet is mostly carbs. Going to aim for protein with every meal. Eggs chicken fish beans whatever.",
+            "category": "Health",
+            "createdAt": "2025-12-30T08:39:20"
+        },
+        {
+            "refId": "Res133",
+            "userRefId": "User082",
+            "title": "Take up running",
+            "description": "Never been a runner but want to try. Starting with walk/run intervals. No pressure to be fast just want to build the habit.",
+            "category": "Fitness",
+            "createdAt": "2025-12-30T08:42:54"
+        },
+        {
+            "refId": "Res134",
+            "userRefId": "User083",
+            "title": "Study for 2 hours daily",
+            "description": "Grad school is kicking my butt. Need to be more disciplined about studying instead of cramming. 2 focused hours every day.",
+            "category": "Learning",
+            "createdAt": "2026-01-02T19:07:46"
+        },
+        {
+            "refId": "Res135",
+            "userRefId": "User084",
+            "title": "Stop ordering delivery",
+            "description": "Uber Eats is draining my bank account. $30-40 every time for one meal. Going to cook or at least pick up food myself.",
+            "category": "Money",
+            "createdAt": "2026-01-01T20:57:19"
+        },
+        {
+            "refId": "Res136",
+            "userRefId": "User084",
+            "title": "Exercise in the morning",
+            "description": "After work me is useless. Full of excuses. Tired, hungry, one more episode, blah blah. Morning me is stupid and half asleep but at least I cant argue with myself as much? Idk if this will work but evening workouts clearly dont so.",
+            "category": "Fitness",
+            "createdAt": "2026-01-01T20:32:19"
+        },
+        {
+            "refId": "Res137",
+            "userRefId": "User085",
+            "title": "Write 500 words daily",
+            "description": "Have had this novel idea in my head for years. Years. Never write. Always too tired or distracted or whatever excuse. 500 words is nothing really. Most of it will be garbage but thats fine I think? Just need to stop being precious about it.",
+            "category": "Creativity",
+            "createdAt": "2025-12-31T21:42:26"
+        },
+        {
+            "refId": "Res138",
+            "userRefId": "User085",
+            "title": "No phone first hour",
+            "description": "Currently check my phone the second I wake up. Going to wait at least an hour before looking at it. Start the day intentionally.",
+            "category": "Habits",
+            "createdAt": "2025-12-31T21:20:25"
+        },
+        {
+            "refId": "Res139",
+            "userRefId": "User086",
+            "title": "Do planks daily",
+            "description": "Core strength is nonexistent. Starting with 30 second planks and building up. Simple exercise I can do anywhere.",
+            "category": "Fitness",
+            "createdAt": "2026-01-02T07:44:18"
+        },
+        {
+            "refId": "Res140",
+            "userRefId": "User087",
+            "title": "Learn chess",
+            "description": "Everyone seems to be into chess lately. Never learned properly as a kid. Going to study openings and tactics.",
+            "category": "Learning",
+            "createdAt": "2025-12-30T20:35:08"
+        },
+        {
+            "refId": "Res141",
+            "userRefId": "User087",
+            "title": "Cut out sugar",
+            "description": "Eating way too much candy and dessert. Not going completely zero but cutting way back. Fruits for sweet cravings instead.",
+            "category": "Health",
+            "createdAt": "2025-12-30T20:12:26"
+        },
+        {
+            "refId": "Res142",
+            "userRefId": "User088",
+            "title": "Wake up same time daily",
+            "description": "Sleep schedule is all over the place. Going to wake up at 7am every day even weekends. Supposed to help sleep quality.",
+            "category": "Habits",
+            "createdAt": "2026-01-01T07:42:24"
+        },
+        {
+            "refId": "Res143",
+            "userRefId": "User088",
+            "title": "Read before bed",
+            "description": "Replace scrolling with reading. Even just 20-30 minutes. Wind down properly instead of blue light til I pass out.",
+            "category": "Habits",
+            "createdAt": "2026-01-01T07:43:47"
+        },
+        {
+            "refId": "Res144",
+            "userRefId": "User089",
+            "title": "Join a club or group",
+            "description": "Need to meet people outside of work. Going to join something - book club, running group, whatever. Get out of my comfort zone.",
+            "category": "Relationships",
+            "createdAt": "2026-01-03T15:57:11"
+        },
+        {
+            "refId": "Res145",
+            "userRefId": "User090",
+            "title": "Practice guitar",
+            "description": "Have a guitar collecting dust. Committing to 20 mins a day. Want to be able to play some songs by end of year.",
+            "category": "Creativity",
+            "createdAt": "2025-12-29T18:39:36"
+        },
+        {
+            "refId": "Res146",
+            "userRefId": "User090",
+            "title": "Kitchen closes at 8pm",
+            "description": "Late night snacking is out of control. Kitchen closes at 8pm. If Im hungry Ill have water or tea. Thats it.",
+            "category": "Health",
+            "createdAt": "2025-12-29T18:19:25"
+        },
+        {
+            "refId": "Res147",
+            "userRefId": "User091",
+            "title": "Text less drive more",
+            "description": "Bad habit of looking at phone while driving. Dangerous and stupid. Phone goes in backseat or glove box when I drive.",
+            "category": "Habits",
+            "createdAt": "2026-01-02T16:35:53"
+        },
+        {
+            "refId": "Res148",
+            "userRefId": "User092",
+            "title": "Organize finances",
+            "description": "Have no idea where my money goes. Setting up a budget and tracking every expense. Time to adult properly.",
+            "category": "Money",
+            "createdAt": "2025-12-31T13:00:19"
+        },
+        {
+            "refId": "Res149",
+            "userRefId": "User092",
+            "title": "Walk 30 mins daily",
+            "description": "Simple and sustainable. Just a 30 minute walk every day. Can listen to podcasts. Easy way to stay active.",
+            "category": "Fitness",
+            "createdAt": "2025-12-31T13:18:13"
+        },
+        {
+            "refId": "Res150",
+            "userRefId": "User093",
+            "title": "Learn to cook 10 recipes",
+            "description": "Can barely make scrambled eggs. Want to learn 10 solid recipes I can rotate through. Watching YouTube cooking videos.",
+            "category": "Learning",
+            "createdAt": "2026-01-01T19:27:50"
+        },
+        {
+            "refId": "Res151",
+            "userRefId": "User093",
+            "title": "Cold shower every morning",
+            "description": "Heard its good for energy and discipline. Starting with cold at the end of normal shower, building up to full cold.",
+            "category": "Habits",
+            "createdAt": "2026-01-01T19:37:38"
+        },
+        {
+            "refId": "Res152",
+            "userRefId": "User094",
+            "title": "Limit Netflix to 1 hour",
+            "description": "Binge watching way too much. Whole evenings disappear. Setting a 1 hour limit then doing something else.",
+            "category": "Habits",
+            "createdAt": "2025-12-30T21:41:20"
+        },
+        {
+            "refId": "Res153",
+            "userRefId": "User095",
+            "title": "Do something creative weekly",
+            "description": "Life is just work and chores. Want to make something each week. Drawing, writing, music, crafts, anything creative.",
+            "category": "Creativity",
+            "createdAt": "2026-01-02T11:29:28"
+        },
+        {
+            "refId": "Res154",
+            "userRefId": "User095",
+            "title": "Stretch after sitting",
+            "description": "Sit at desk all day and everything hurts. Going to do 5 min stretch break every hour. Set reminders on phone.",
+            "category": "Health",
+            "createdAt": "2026-01-02T11:28:43"
+        },
+        {
+            "refId": "Res155",
+            "userRefId": "User096",
+            "title": "Hit 10k steps daily",
+            "description": "Average like 3k steps currently which is embarrassing. Working up to 10k. Will take time but setting the goal.",
+            "category": "Fitness",
+            "createdAt": "2025-12-31T08:13:32"
+        },
+        {
+            "refId": "Res156",
+            "userRefId": "User096",
+            "title": "Learn a new skill monthly",
+            "description": "Life got stagnant. Going to learn something new each month. Could be anything. Keep growing.",
+            "category": "Learning",
+            "createdAt": "2025-12-31T08:30:50"
+        },
+        {
+            "refId": "Res157",
+            "userRefId": "User097",
+            "title": "Complain less",
+            "description": "Realize I complain a lot and its negative energy. Going to catch myself and reframe things more positively.",
+            "category": "Mental Health",
+            "createdAt": "2026-01-01T15:57:50"
+        },
+        {
+            "refId": "Res158",
+            "userRefId": "User097",
+            "title": "Save $100 weekly",
+            "description": "Small but consistent. $100 every week into savings. Adds up to $5200 by end of year. Emergency fund building.",
+            "category": "Money",
+            "createdAt": "2026-01-01T15:47:10"
+        },
+        {
+            "refId": "Res159",
+            "userRefId": "User098",
+            "title": "DIY one project monthly",
+            "description": "Want to be more handy around the house. One DIY project each month. Starting small - fix that wobbly shelf.",
+            "category": "Learning",
+            "createdAt": "2025-12-30T14:42:05"
+        },
+        {
+            "refId": "Res160",
+            "userRefId": "User098",
+            "title": "Eat more vegetables",
+            "description": "Diet is like 90% beige foods. Need more greens. Adding a vegetable to every dinner at minimum.",
+            "category": "Health",
+            "createdAt": "2025-12-30T14:18:32"
+        },
+        {
+            "refId": "Res161",
+            "userRefId": "User099",
+            "title": "Start a garden",
+            "description": "Have a balcony that could fit some pots. Want to grow herbs and maybe tomatoes. Never gardened before but seems therapeutic.",
+            "category": "Creativity",
+            "createdAt": "2026-01-02T09:42:40"
+        },
+        {
+            "refId": "Res162",
+            "userRefId": "User100",
+            "title": "Run 3x a week",
+            "description": "Want to get back into running shape. Three times a week, doesnt matter how far or fast. Just get out there.",
+            "category": "Fitness",
+            "createdAt": "2025-12-31T17:39:21"
+        },
+        {
+            "refId": "Res163",
+            "userRefId": "User100",
+            "title": "Podcast less scroll less",
+            "description": "Always have something in my ears or scrolling. Want more quiet time with my own thoughts. Scary but probably healthy.",
+            "category": "Mental Health",
+            "createdAt": "2025-12-31T17:05:52"
+        },
+        {
+            "refId": "Res164",
+            "userRefId": "User101",
+            "title": "Make bed every morning",
+            "description": "Sounds dumb but I never make my bed. They say starting with one small win sets up your day. Trying it.",
+            "category": "Habits",
+            "createdAt": "2026-01-01T06:48:15"
+        },
+        {
+            "refId": "Res165",
+            "userRefId": "User102",
+            "title": "Journal 3x a week",
+            "description": "Thoughts are always swirling. Writing them down is supposed to help. Doesnt need to be daily, starting with 3x.",
+            "category": "Mental Health",
+            "createdAt": "2026-01-03T20:43:19"
+        },
+        {
+            "refId": "Res166",
+            "userRefId": "User102",
+            "title": "Gym twice a week",
+            "description": "Just need to go. Twice a week is manageable. Not trying to be a bodybuilder just want basic fitness.",
+            "category": "Fitness",
+            "createdAt": "2026-01-03T20:14:51"
+        },
+        {
+            "refId": "Res167",
+            "userRefId": "User103",
+            "title": "Learn sign language basics",
+            "description": "Have a deaf coworker and want to communicate better with her. Learning basic ASL through online courses.",
+            "category": "Learning",
+            "createdAt": "2025-12-30T10:12:09"
+        },
+        {
+            "refId": "Res168",
+            "userRefId": "User103",
+            "title": "Reduce caffeine intake",
+            "description": "Drinking too much coffee and feeling jittery. Cutting back to 2 cups max before noon. No afternoon caffeine.",
+            "category": "Health",
+            "createdAt": "2025-12-30T10:01:02"
+        },
+        {
+            "refId": "Res169",
+            "userRefId": "User104",
+            "title": "Be on time",
+            "description": "Always running 5-10 minutes late for everything. Its disrespectful of other peoples time. Setting alarms and leaving earlier.",
+            "category": "Habits",
+            "createdAt": "2026-01-01T18:15:30"
+        },
+        {
+            "refId": "Res170",
+            "userRefId": "User105",
+            "title": "Cut back on online shopping",
+            "description": "Amazon cart is always full. Buying stuff I dont need. New rule - wait 48 hours before buying anything nonessential.",
+            "category": "Money",
+            "createdAt": "2025-12-29T15:39:54"
+        },
+        {
+            "refId": "Res171",
+            "userRefId": "User105",
+            "title": "Exercise daily even if short",
+            "description": "Something is better than nothing. Even just 10 minutes counts. No zero days.",
+            "category": "Fitness",
+            "createdAt": "2025-12-29T15:49:04"
+        },
+        {
+            "refId": "Res172",
+            "userRefId": "User106",
+            "title": "Try one new thing monthly",
+            "description": "Life is too routine. Want to try something new each month. New restaurant, new hobby, new experience. Anything.",
+            "category": "Habits",
+            "createdAt": "2026-01-02T13:29:26"
+        },
+        {
+            "refId": "Res173",
+            "userRefId": "User106",
+            "title": "Improve posture",
+            "description": "Slouching constantly and back always hurts. Going to be more mindful of posture. Maybe get a standing desk.",
+            "category": "Health",
+            "createdAt": "2026-01-02T13:56:40"
+        },
+        {
+            "refId": "Res174",
+            "userRefId": "User107",
+            "title": "Meal plan Sundays",
+            "description": "Winging it leads to bad food choices. Going to plan the weeks meals every Sunday. Prep what I can.",
+            "category": "Habits",
+            "createdAt": "2025-12-31T12:36:12"
+        },
+        {
+            "refId": "Res175",
+            "userRefId": "User107",
+            "title": "Call a friend weekly",
+            "description": "Everyone texts but never actually talks. Going to call at least one friend per week for a real conversation.",
+            "category": "Relationships",
+            "createdAt": "2025-12-31T12:45:44"
+        },
+        {
+            "refId": "Res176",
+            "userRefId": "User108",
+            "title": "No screens before bed",
+            "description": "Blue light is messing with sleep. No phone tablet or TV for the last hour before bed. Read or do something else.",
+            "category": "Habits",
+            "createdAt": "2026-01-01T22:24:31"
+        },
+        {
+            "refId": "Res177",
+            "userRefId": "User108",
+            "title": "Practice gratitude daily",
+            "description": "Think about what Im grateful for every morning. Just mentally listing 3 things. Supposed to improve outlook on life.",
+            "category": "Mental Health",
+            "createdAt": "2026-01-01T22:25:15"
+        }
+    ],
+    "journals": [
+        {
+            "refId": "Journal119",
+            "resolutionRefId": "Res119",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T12:58:54",
+            "content": "Only did pushups 3 days this week. Started strong on Monday then just forgot about it. Didnt even think about it most days which is the problem. Need to set reminders or something."
+        },
+        {
+            "refId": "Journal120",
+            "resolutionRefId": "Res120",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T12:03:05",
+            "content": "Havent bitten my nails all week! The bitter polish helps a lot. Catch myself bringing hand to mouth then taste it and stop. Nails are actually growing for once."
+        },
+        {
+            "refId": "Journal121",
+            "resolutionRefId": "Res121",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T16:40:27",
+            "content": "Drew twice this week. Kept putting it off because I didnt feel inspired. Thats a dumb excuse I know - the whole point is to practice even when you dont feel like it. Gotta do better."
+        },
+        {
+            "refId": "Journal122",
+            "resolutionRefId": "Res122",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T16:53:17",
+            "content": "Hit snooze probably 4 out of 7 days. Ugh. The other 3 I got up immediately though which is progress. Need to put phone across room. Old habits."
+        },
+        {
+            "refId": "Journal123",
+            "resolutionRefId": "Res123",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-06T20:02:00",
+            "content": "Only drank on Saturday! Went to a party and had 2 beers. Thats it for the whole week. Honestly didnt miss it as much as I thought I would. Waking up without any hangover is nice."
+        },
+        {
+            "refId": "Journal124",
+            "resolutionRefId": "Res124",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T10:21:49",
+            "content": "Set up automatic $200 transfer on the first of each month into brokerage. First investment went into a total market index fund. Officially an investor now lol. Baby steps to wealth."
+        },
+        {
+            "refId": "Journal125",
+            "resolutionRefId": "Res125",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T10:08:40",
+            "content": "Meditated before bed 6 out of 7 nights. Using the Calm sleep stories. Mind still races but falling asleep faster. Also just feels like a nice wind down routine now."
+        },
+        {
+            "refId": "Journal127",
+            "resolutionRefId": "Res127",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T11:16:10",
+            "content": "Got outside every single day! Even if just for 15 mins walking around the block. Fresh air and sunshine (when there was any) really does help. Mood definitely better."
+        },
+        {
+            "refId": "Journal128",
+            "resolutionRefId": "Res128",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T11:47:28",
+            "content": "Started reading Sapiens! About 50 pages in. Its dense but fascinating. Learning about human history in ways school never taught. Going to take a while to finish but enjoying it."
+        },
+        {
+            "refId": "Journal129",
+            "resolutionRefId": "Res129",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-06T11:35:45",
+            "content": "Did a cleaning session on Sunday! Bathroom and kitchen done. Feels good to start fresh. Will do bedroom and living room next week. Small chunks way easier than marathon cleaning."
+        },
+        {
+            "refId": "Journal130",
+            "resolutionRefId": "Res130",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T17:27:35",
+            "content": "Caught myself cracking knuckles like 20 times this week. The stress ball helps when I remember to use it but half the time I crack before I even realize Im doing it. Ugh."
+        },
+        {
+            "refId": "Journal131",
+            "resolutionRefId": "Res131",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T17:00:07",
+            "content": "Did yoga twice this week! Found this channel called Breathe and Flow on youtube. The guy explains everything really well for beginners. Already can feel some improvement in how my back feels."
+        },
+        {
+            "refId": "Journal132",
+            "resolutionRefId": "Res132",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T08:04:56",
+            "content": "Protein goal was a mess this week. Most meals were whatever was easiest - cereal, sandwiches, takeout. Didnt plan ahead at all. Need to actually buy protein sources and meal prep."
+        },
+        {
+            "refId": "Journal133",
+            "resolutionRefId": "Res133",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T08:44:57",
+            "content": "Went out for 3 run/walks this week! Following a beginner program. More walking than running tbh but thats fine. Just building the habit. Lungs burn but in a good way."
+        },
+        {
+            "refId": "Journal134",
+            "resolutionRefId": "Res134",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-06T19:09:34",
+            "content": "Studied for 2 hours 6 out of 7 days! Library is basically my second home at this point lol. Using pomodoro technique. Actual retention is SO much better than cramming the night before an exam."
+        },
+        {
+            "refId": "Journal135",
+            "resolutionRefId": "Res135",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T20:02:53",
+            "content": "Zero delivery orders yall! Cooked every meal or picked up in person. Saved atleast $70 in delivery fees alone. Food actually tasted better too. Deleted that Uber Eats app real quick."
+        },
+        {
+            "refId": "Journal136",
+            "resolutionRefId": "Res136",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T20:23:37",
+            "content": "Only worked out in the morning twice. Other days kept hitting snooze or just felt too tired. Evening workouts happened instead which is fine but defeats the purpose. Need better sleep."
+        },
+        {
+            "refId": "Journal137",
+            "resolutionRefId": "Res137",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T21:35:09",
+            "content": "Wrote 500+ words 5 out of 7 days! Mostly garbage but thats ok. The point is practice. Working on a short story idea. Might actually finish something for once."
+        },
+        {
+            "refId": "Journal138",
+            "resolutionRefId": "Res138",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T21:27:08",
+            "content": "No phone for first hour 6 out of 7 days! Morning routine is now shower, breakfast, coffee, then phone. Feels less chaotic. Not immediately stressed by emails or news."
+        },
+        {
+            "refId": "Journal140",
+            "resolutionRefId": "Res140",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T20:02:19",
+            "content": "Played chess on chess.com every day! Rating is terrible like 400 but slowly learning. Watching some YouTube videos on basic openings. The Italian Game is my friend now."
+        },
+        {
+            "refId": "Journal141",
+            "resolutionRefId": "Res141",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T20:23:57",
+            "content": "Had candy twice this week. Not as bad as usual but not sugar free either. The cravings are real. Eating fruit instead helps sometimes. Its a process."
+        },
+        {
+            "refId": "Journal142",
+            "resolutionRefId": "Res142",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T07:59:50",
+            "content": "Woke up at 7am every single day including weekends! Saturday was rough but I did it. Sleep schedule feels more consistent. Actually tired at night now which is good."
+        },
+        {
+            "refId": "Journal143",
+            "resolutionRefId": "Res143",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T07:55:02",
+            "content": "Read before bed every night! Getting through a thriller right now. Way better than scrolling Instagram. Eyes dont feel as strained and I actually remember what I read."
+        },
+        {
+            "refId": "Journal144",
+            "resolutionRefId": "Res144",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-06T15:57:22",
+            "content": "Found a running club that meets on Saturdays! Went to my first run. Was nervous but everyone was super nice and welcoming. Different paces so no pressure. Excited to go back."
+        },
+        {
+            "refId": "Journal145",
+            "resolutionRefId": "Res145",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T18:13:43",
+            "content": "Touched the guitar twice. Picked it up both times then put it down after 5 mins because my fingers hurt. I know thats part of it but its discouraging. Maybe I need better tutorials or something."
+        },
+        {
+            "refId": "Journal146",
+            "resolutionRefId": "Res146",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T18:15:42",
+            "content": "No eating after 8pm all week! Had to white knuckle through some cravings but did it. Herbal tea helps. Sleeping better too actually. Who knew late night snacking affected sleep."
+        },
+        {
+            "refId": "Journal147",
+            "resolutionRefId": "Res147",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-06T16:06:22",
+            "content": "Phone goes in glovebox every time I drive now! Habit is forming. Realized I used to glance at it constantly. So dangerous. Nothing is that urgent it cant wait."
+        },
+        {
+            "refId": "Journal148",
+            "resolutionRefId": "Res148",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T13:49:35",
+            "content": "Set up Mint and tracked all spending. The numbers are... bruhhh. $400 on food delivery last month?? deadass?? Creating actual budget categories now. This is embarassing but whatever knowledge is power i guess."
+        },
+        {
+            "refId": "Journal149",
+            "resolutionRefId": "Res149",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T13:56:55",
+            "content": "Walked 30 mins every day! Just around the neighborhood listening to podcasts. Easy and enjoyable. Already noticing I have more energy. Simple but effective."
+        },
+        {
+            "refId": "Journal150",
+            "resolutionRefId": "Res150",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T19:26:39",
+            "content": "Learned to make stir fry and fried rice this week! Both turned out edible which is a win. YouTube cooking tutorials are actually helpful. 2 recipes down 8 to go."
+        },
+        {
+            "refId": "Journal151",
+            "resolutionRefId": "Res151",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T19:47:09",
+            "content": "Cold shower every morning! Just last 30 seconds cold. Its brutal but I do feel more awake after. Apparently gets easier. Day 7 wasnt as shocking as day 1."
+        },
+        {
+            "refId": "Journal152",
+            "resolutionRefId": "Res152",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T21:59:59",
+            "content": "Only stuck to 1 hour twice. Other nights binge watched stuff. Its so easy to just keep going. Need to set an actual timer that turns TV off or something."
+        },
+        {
+            "refId": "Journal153",
+            "resolutionRefId": "Res153",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-06T11:15:55",
+            "content": "Made a collage from old magazines! Its not great art but it was fun and relaxing. Nice to make something with my hands instead of just consuming content."
+        },
+        {
+            "refId": "Journal154",
+            "resolutionRefId": "Res154",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-06T11:10:51",
+            "content": "Set hourly reminders to stretch. Actually followed them most of the time. Just basic neck rolls and shoulder stretches. Back feels less tense by end of day now."
+        },
+        {
+            "refId": "Journal155",
+            "resolutionRefId": "Res155",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T08:51:11",
+            "content": "Averaged about 6k steps. Better than my usual 3k but not 10k yet. Going to add a lunch walk to help get there. Progress not perfection right?"
+        },
+        {
+            "refId": "Journal156",
+            "resolutionRefId": "Res156",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T08:56:26",
+            "content": "January skill is origami! Watched some tutorials and made a paper crane. Its actually pretty meditative. Going to learn more complex folds this month."
+        },
+        {
+            "refId": "Journal157",
+            "resolutionRefId": "Res157",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T15:01:11",
+            "content": "Caught myself complaining a few times and stopped. Reframed things more positively. Its hard to break negative patterns but awareness is the first step. Friends even noticed I seem more upbeat."
+        },
+        {
+            "refId": "Journal158",
+            "resolutionRefId": "Res158",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T15:47:59",
+            "content": "Saved $100 this week! Set up automatic transfer on Fridays. Barely notice its gone. Already $100 closer to my emergency fund goal. Compound consistency."
+        },
+        {
+            "refId": "Journal159",
+            "resolutionRefId": "Res159",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T14:21:50",
+            "content": "Fixed the wobbly shelf in the bathroom! Took 10 minutes and a screwdriver. Why did I let that annoy me for months? Feeling handy. Next up: that sticky door."
+        },
+        {
+            "refId": "Journal160",
+            "resolutionRefId": "Res160",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T14:59:26",
+            "content": "Had vegetables with dinner every night! Mostly broccoli and salads because easy. But hey it counts. Bought some frozen veggie mixes for variety. Body probably in shock lol."
+        },
+        {
+            "refId": "Journal161",
+            "resolutionRefId": "Res161",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-06T09:51:42",
+            "content": "Bought pots and soil and planted basil and mint! Theyre sitting on the balcony now. No idea if theyll survive but excited to try. YouTube has good beginner gardening tips."
+        },
+        {
+            "refId": "Journal162",
+            "resolutionRefId": "Res162",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T17:55:47",
+            "content": "Ran 3 times this week! Well, run/walked. But I got out there. Using a C25K app. Slow progress but progress. Just need to keep showing up."
+        },
+        {
+            "refId": "Journal163",
+            "resolutionRefId": "Res163",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T17:51:15",
+            "content": "Had a few hours of quiet time this week. No podcasts, no scrolling, just my thoughts. Uncomfortable at first but kind of nice? Realized how rarely Im not consuming something."
+        },
+        {
+            "refId": "Journal164",
+            "resolutionRefId": "Res164",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T06:17:10",
+            "content": "Made my bed like 3 times. Such a simple thing and I still couldnt do it consistently. Just walk right past it every morning rushing to start the day. This should be easy why is it hard."
+        },
+        {
+            "refId": "Journal165",
+            "resolutionRefId": "Res165",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-06T20:50:44",
+            "content": "Journaled 3 times this week! Just stream of consciousness stuff. Getting thoughts out of my head helps. Some entries are complaints, some are plans, some are random. All valid."
+        },
+        {
+            "refId": "Journal166",
+            "resolutionRefId": "Res166",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-06T20:06:24",
+            "content": "Hit the gym twice! Wednesday and Saturday. Just did some machines and light cardio. Place was packed but got my workouts in. Sore but good sore."
+        },
+        {
+            "refId": "Journal167",
+            "resolutionRefId": "Res167",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T10:55:02",
+            "content": "Learning ASL alphabet and basic greetings! Used Lifeprint.com which is free. My coworker was touched that Im learning. Signed hello to her on Friday. Long way to go but starting."
+        },
+        {
+            "refId": "Journal168",
+            "resolutionRefId": "Res168",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T10:54:30",
+            "content": "Had 3 cups most days instead of 2. One day had 4 because rough morning. Getting better but not there yet. The afternoon cup is the hardest to give up. Maybe switch to decaf?"
+        },
+        {
+            "refId": "Journal169",
+            "resolutionRefId": "Res169",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T18:14:12",
+            "content": "Was on time for everything this week! Left 10 mins earlier than I thought I needed. Buffer time is key. People actually commented that Im early now. Feels good to be reliable."
+        },
+        {
+            "refId": "Journal170",
+            "resolutionRefId": "Res170",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T15:52:58",
+            "content": "Only bought one thing on Amazon and I waited 48 hours first! Still wanted it after so I bought it. But passed on like 3 other things I wouldve impulse bought. System works."
+        },
+        {
+            "refId": "Journal171",
+            "resolutionRefId": "Res171",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Missed It",
+            "postedAt": "2026-01-05T15:29:22",
+            "content": "Had 4 zero days this week. The no zero days thing is harder than it sounds when youre tired and busy. Even a 10 min walk felt like too much some nights. Need a lower bar."
+        },
+        {
+            "refId": "Journal172",
+            "resolutionRefId": "Res172",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-06T13:19:52",
+            "content": "Tried a new restaurant! Ethiopian food for the first time. It was amazing, ate with my hands using injera bread. Already planning what new thing to try next month."
+        },
+        {
+            "refId": "Journal173",
+            "resolutionRefId": "Res173",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-06T13:50:55",
+            "content": "Set up hourly posture reminders on my phone. Catching myself slouching and correcting. Also raised my monitor to eye level. Back already feels slightly better."
+        },
+        {
+            "refId": "Journal174",
+            "resolutionRefId": "Res174",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T12:14:14",
+            "content": "Meal planned on Sunday! Made a grocery list and stuck to it. Prepped some stuff in advance. Whole week I knew what I was eating. Less stress less waste less spending."
+        },
+        {
+            "refId": "Journal175",
+            "resolutionRefId": "Res175",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T12:01:42",
+            "content": "Called my college friend on Tuesday! Talked for like an hour catching up. Way better than texting. Why dont we do this more often? Already planning to call another friend next week."
+        },
+        {
+            "refId": "Journal176",
+            "resolutionRefId": "Res176",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T22:12:25",
+            "content": "No screens last hour before bed all week! Read books instead. Sleep quality is noticeably better. Not tossing and turning as much. Who knew blue light was that bad."
+        },
+        {
+            "refId": "Journal177",
+            "resolutionRefId": "Res177",
+            "weekCovered": "2025-12-29 to 2026-01-04",
+            "status": "Kept It",
+            "postedAt": "2026-01-05T22:21:17",
+            "content": "Thought of 3 grateful things every morning! Coffee, my dog, having a warm bed. Simple stuff but it does shift my mindset. Starting the day positive instead of dreading things."
+        }
+    ],
+    "posts": [
+        {
+            "refId": "Post034",
+            "userRefId": "User075",
+            "postedAt": "2026-01-02T17:55:04",
+            "content": "Day 2 of trying to not hit snooze and I failed immediately. This is going to be harder than I thought. Anyone have tips for actually getting up when the alarm goes off?"
+        },
+        {
+            "refId": "Post036",
+            "userRefId": "User082",
+            "postedAt": "2026-01-03T08:49:17",
+            "content": "First run of 2026! More walking than running tbh but I did it. Lungs are burning and legs feel like jello but hey its a start. Anyone else just starting to run?"
+        },
+        {
+            "refId": "Post037",
+            "userRefId": "User085",
+            "postedAt": "2026-01-05T21:22:41",
+            "content": "Wrote 600 words today on my short story! Its probably terrible but the point is just getting words on paper. Perfectionism is the enemy of progress or whatever."
+        },
+        {
+            "refId": "Post038",
+            "userRefId": "User089",
+            "postedAt": "2026-01-04T16:32:25",
+            "content": "Joined a running club today! Was so nervous walking up but everyone was super friendly and welcoming. Different pace groups so no pressure. Highly recommend finding a group."
+        },
+        {
+            "refId": "Post039",
+            "userRefId": "User093",
+            "postedAt": "2026-01-03T20:43:53",
+            "content": "Cold showers are NO JOKE. Day 3 and I still dread it. But I do feel more awake after. Anyone else doing this? Tell me it gets easier."
+        },
+        {
+            "refId": "Post040",
+            "userRefId": "User096",
+            "postedAt": "2026-01-04T11:34:21",
+            "content": "Learning origami as my January new skill. Made a paper crane today after like 5 failed attempts. Such a peaceful activity. Good break from screens."
+        },
+        {
+            "refId": "Post041",
+            "userRefId": "User099",
+            "postedAt": "2026-01-06T10:01:07",
+            "content": "Planted my first herb garden today! Just basil and mint in pots on the balcony. Probably going to kill them but excited to try. Any gardening tips from plant people?"
+        },
+        {
+            "refId": "Post042",
+            "userRefId": "User103",
+            "postedAt": "2026-01-03T11:56:16",
+            "content": "Learning ASL so I can communicate better with my deaf coworker. Just started with the alphabet. She was so touched when I signed hello to her. Small effort huge impact."
+        },
+        {
+            "refId": "Post043",
+            "userRefId": "User106",
+            "postedAt": "2026-01-05T19:11:37",
+            "content": "Tried Ethiopian food for the first time today! Eating with my hands using injera bread was so fun. 2026 is the year of new experiences for me."
+        },
+        {
+            "refId": "Post044",
+            "userRefId": "User107",
+            "postedAt": "2026-01-04T20:16:02",
+            "content": "Called an old friend instead of just texting. Talked for an hour catching up. Why dont we do this more? Texting is fine but actual conversation hits different."
+        },
+        {
+            "refId": "Post045",
+            "userRefId": "User077",
+            "postedAt": "2026-01-02T22:06:38",
+            "content": "Set up my first investment account and put $200 into index funds. Officially an investor now lol. Small start but gotta start somewhere. Future me will thank present me."
+        },
+        {
+            "refId": "Post046",
+            "userRefId": "User092",
+            "postedAt": "2026-01-05T14:27:22",
+            "content": "Daily walks are such an underrated form of exercise. 30 minutes listening to podcasts and I feel so much better. Simple effective free. Why complicate it?"
+        },
+        {
+            "refId": "Post047",
+            "userRefId": "User101",
+            "postedAt": "2026-01-02T07:46:50",
+            "content": "Making my bed every morning sounds dumb but it actually helps. Starting the day with one small win. Room looks better too. The little things add up."
+        },
+        {
+            "refId": "Post048",
+            "userRefId": "User087",
+            "postedAt": "2026-01-06T22:20:27",
+            "content": "honestly feeling pretty discouraged rn. already messed up my sugar goal multiple times this week. feel like everyone else here is doing great and im just failing. idk maybe resolutions arent for me"
+        },
+        {
+            "refId": "Post049",
+            "userRefId": "User080",
+            "postedAt": "2026-01-05T20:38:32",
+            "content": "Work has been so insane this week I literally havent had time for ANY of my resolutions. Was supposed to clean every weekend but ended up working saturday AND sunday. Is it even worth trying anymore if work is just gonna keep taking over my life??"
+        }
+    ]
+}
