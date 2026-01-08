@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, MessageSquare, MessageCircle, Trash2, ChevronRight } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, where, getDocs, setDoc } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, where, getDocs, setDoc, limit } from "firebase/firestore";
 import { toast } from "sonner";
 import { formatDistanceToNow, formatDistance } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -98,6 +98,8 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
         if (user) fetchUserResolutions();
     }, [user]);
 
+    const [limitCount, setLimitCount] = useState(25);
+
     // Fetch topics and hidden users
     useEffect(() => {
         const hiddenUsersQuery = query(collection(db, "users"), where("isHidden", "==", true));
@@ -106,7 +108,11 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
             setHiddenUserIds(hiddenIds);
         });
 
-        const q = query(collection(db, "forum_topics"), orderBy("createdAt", "desc"));
+        const q = query(
+            collection(db, "forum_topics"),
+            orderBy("lastActivityAt", "desc"),
+            limit(limitCount)
+        );
         const unsubscribeTopics = onSnapshot(q, (snapshot) => {
             const data: ForumTopic[] = [];
             snapshot.forEach((doc) => {
@@ -119,7 +125,7 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
             unsubscribeHidden();
             unsubscribeTopics();
         };
-    }, []);
+    }, [limitCount]);
 
     // Fetch following list
     useEffect(() => {
@@ -263,6 +269,7 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
                 resolutionId: selectedResId,
                 resolutionTitle: resolutions.find(r => r.id === selectedResId)?.title || null,
                 createdAt: isSimulated ? simDate : serverTimestamp(),
+                lastActivityAt: serverTimestamp(), // Sync bump logic
                 likes: 0,
                 commentCount: 0
             });
@@ -502,6 +509,17 @@ export function DiscussionsTab({ onShowPaywall }: DiscussionsTabProps) {
                             </div>
                         );
                     })}
+                    {topics.length >= limitCount && (
+                        <div className="flex justify-center pt-4">
+                            <Button
+                                variant="outline"
+                                className="w-full max-w-xs"
+                                onClick={() => setLimitCount(prev => prev + 25)}
+                            >
+                                Load More
+                            </Button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

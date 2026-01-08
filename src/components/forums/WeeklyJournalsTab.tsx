@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, where, doc, setDoc, deleteDoc, serverTimestamp, getDocs } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, where, doc, setDoc, deleteDoc, serverTimestamp, getDocs, limit } from "firebase/firestore";
 import { toast } from "sonner";
 import { Loader2, Calendar, MessageSquare, ChevronRight, MessageCircle, CheckCircle2, XCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -68,6 +68,7 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
     const router = useRouter();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
+    const [limitCount, setLimitCount] = useState(25);
 
     // Simulation Hook
     const { date: simDate, isSimulated } = useSimulatedDate();
@@ -79,7 +80,11 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
         if (uid) {
             q = query(collection(db, "journal_entries"), where("uid", "==", uid), orderBy("createdAt", "desc"));
         } else {
-            q = query(collection(db, "journal_entries"), orderBy("createdAt", "desc"));
+            q = query(
+                collection(db, "journal_entries"),
+                orderBy("lastActivityAt", "desc"),
+                limit(limitCount)
+            );
         }
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -91,7 +96,7 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
             setLoading(false);
         });
         return () => unsubscribe();
-    }, [uid]);
+    }, [uid, limitCount]);
 
     // Fetch live resolution titles
     useEffect(() => {
@@ -356,6 +361,17 @@ export function WeeklyJournalsTab({ uid }: { uid?: string }) {
                     </div>
                 );
             })}
+            {!uid && entries.length >= limitCount && (
+                <div className="flex justify-center pt-4">
+                    <Button
+                        variant="outline"
+                        className="w-full max-w-xs"
+                        onClick={() => setLimitCount(prev => prev + 25)}
+                    >
+                        Load More
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }

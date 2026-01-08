@@ -327,7 +327,8 @@ export default function TopicPage() {
             });
 
             await updateDoc(doc(db, "forum_topics", topicId as string), {
-                commentCount: increment(1)
+                commentCount: increment(1),
+                lastActivityAt: timestamp // Bump to top
             });
 
             if (parentId) {

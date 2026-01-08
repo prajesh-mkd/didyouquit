@@ -303,6 +303,7 @@ export default function Dashboard() {
                         weekKey,
                         status: status, // Save the check-in status (Kept/Missed)
                         createdAt: serverTimestamp(),
+                        lastActivityAt: serverTimestamp(), // Sync bump logic
                         likes: 0
                     });
 

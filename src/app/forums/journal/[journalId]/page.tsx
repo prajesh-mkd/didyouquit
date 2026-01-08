@@ -415,7 +415,8 @@ export default function JournalPage() {
 
             // Increment comment count
             await updateDoc(doc(db, "journal_entries", journalId as string), {
-                commentCount: increment(1)
+                commentCount: increment(1),
+                lastActivityAt: timestamp // Bump to top
             });
 
             if (parentId) {

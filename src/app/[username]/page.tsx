@@ -263,27 +263,25 @@ export default function PublicProfile() {
 
                         {/* Follow Action */}
                         <div className="flex flex-col items-center gap-4 mt-4">
-                            {user && (
-                                <Button
-                                    onClick={isFollowing ? handleUnfollow : handleFollow}
-                                    disabled={followLoading}
-                                    size="sm"
-                                    variant={isFollowing ? "outline" : "default"}
-                                    className={isFollowing ? "border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800" : "bg-emerald-600 hover:bg-emerald-700 text-white min-w-[120px]"}
-                                >
-                                    {followLoading ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : isFollowing ? (
-                                        <>
-                                            <UserCheck className="h-4 w-4 mr-1.5" /> Following
-                                        </>
-                                    ) : (
-                                        <>
-                                            <UserPlus className="h-4 w-4 mr-1.5" /> Follow
-                                        </>
-                                    )}
-                                </Button>
-                            )}
+                            <Button
+                                onClick={isFollowing ? handleUnfollow : handleFollow}
+                                disabled={followLoading}
+                                size="sm"
+                                variant={isFollowing ? "outline" : "default"}
+                                className={isFollowing ? "border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800" : "bg-emerald-600 hover:bg-emerald-700 text-white min-w-[120px]"}
+                            >
+                                {followLoading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : isFollowing ? (
+                                    <>
+                                        <UserCheck className="h-4 w-4 mr-1.5" /> Following
+                                    </>
+                                ) : (
+                                    <>
+                                        <UserPlus className="h-4 w-4 mr-1.5" /> Follow
+                                    </>
+                                )}
+                            </Button>
                         </div>
 
 
