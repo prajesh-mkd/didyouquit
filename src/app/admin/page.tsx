@@ -1865,7 +1865,7 @@ export default function AdminPage() {
                                                     onChange={(e) => updateConfig({ test: { ...config?.test, sale: { ...config?.test?.sale, monthlyPriceId: e.target.value } } as any })}
                                                     onClick={(e) => e.stopPropagation()}
                                                 />
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.test?.sale?.monthlyPriceId, 'test')}>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => syncStripePrice('test', 'sale', 'monthly', config?.test?.sale?.monthlyPriceId || '')}>
                                                     <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
                                                 </Button>
                                             </div>
@@ -1887,7 +1887,7 @@ export default function AdminPage() {
                                                     onChange={(e) => updateConfig({ test: { ...config?.test, sale: { ...config?.test?.sale, yearlyPriceId: e.target.value } } as any })}
                                                     onClick={(e) => e.stopPropagation()}
                                                 />
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.test?.sale?.yearlyPriceId, 'test')}>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => syncStripePrice('test', 'sale', 'yearly', config?.test?.sale?.yearlyPriceId || '')}>
                                                     <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
                                                 </Button>
                                             </div>
@@ -1929,7 +1929,7 @@ export default function AdminPage() {
                                                     onChange={(e) => updateConfig({ test: { ...config?.test, regular: { ...config?.test?.regular, monthlyPriceId: e.target.value } } as any })}
                                                     onClick={(e) => e.stopPropagation()}
                                                 />
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.test?.regular?.monthlyPriceId, 'test')}>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => syncStripePrice('test', 'regular', 'monthly', config?.test?.regular?.monthlyPriceId || '')}>
                                                     <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
                                                 </Button>
                                             </div>
@@ -1951,7 +1951,7 @@ export default function AdminPage() {
                                                     onChange={(e) => updateConfig({ test: { ...config?.test, regular: { ...config?.test?.regular, yearlyPriceId: e.target.value } } as any })}
                                                     onClick={(e) => e.stopPropagation()}
                                                 />
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.test?.regular?.yearlyPriceId, 'test')}>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => syncStripePrice('test', 'regular', 'yearly', config?.test?.regular?.yearlyPriceId || '')}>
                                                     <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
                                                 </Button>
                                             </div>
@@ -2096,7 +2096,7 @@ export default function AdminPage() {
                                                     onChange={(e) => updateConfig({ live: { ...config?.live, sale: { ...config?.live?.sale, monthlyPriceId: e.target.value } } as any })}
                                                     onClick={(e) => e.stopPropagation()}
                                                 />
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.live?.sale?.monthlyPriceId, 'live')}>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => syncStripePrice('live', 'sale', 'monthly', config?.live?.sale?.monthlyPriceId || '')}>
                                                     <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
                                                 </Button>
                                             </div>
@@ -2118,7 +2118,7 @@ export default function AdminPage() {
                                                     onChange={(e) => updateConfig({ live: { ...config?.live, sale: { ...config?.live?.sale, yearlyPriceId: e.target.value } } as any })}
                                                     onClick={(e) => e.stopPropagation()}
                                                 />
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.live?.sale?.yearlyPriceId, 'live')}>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => syncStripePrice('live', 'sale', 'yearly', config?.live?.sale?.yearlyPriceId || '')}>
                                                     <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
                                                 </Button>
                                             </div>
@@ -2161,7 +2161,7 @@ export default function AdminPage() {
                                                     onChange={(e) => updateConfig({ live: { ...config?.live, regular: { ...config?.live?.regular, monthlyPriceId: e.target.value } } as any })}
                                                     onClick={(e) => e.stopPropagation()}
                                                 />
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.live?.regular?.monthlyPriceId, 'live')}>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => syncStripePrice('live', 'regular', 'monthly', config?.live?.regular?.monthlyPriceId || '')}>
                                                     <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
                                                 </Button>
                                             </div>
@@ -2183,7 +2183,7 @@ export default function AdminPage() {
                                                     onChange={(e) => updateConfig({ live: { ...config?.live, regular: { ...config?.live?.regular, yearlyPriceId: e.target.value } } as any })}
                                                     onClick={(e) => e.stopPropagation()}
                                                 />
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fetchPriceDetails(config?.live?.regular?.yearlyPriceId, 'live')}>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => syncStripePrice('live', 'regular', 'yearly', config?.live?.regular?.yearlyPriceId || '')}>
                                                     <RefreshCw className={cn("h-3 w-3", loadingPrice ? "animate-spin" : "")} />
                                                 </Button>
                                             </div>
