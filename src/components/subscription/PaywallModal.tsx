@@ -76,15 +76,17 @@ export function PaywallModal({ open, onOpenChange, pricing, user, isGuest }: Pay
     const renderPrice = (price: string) => {
         if (!price) return null;
         const parts = price.split('.');
+
         if (parts.length === 2) {
             return (
-                <div className="flex items-baseline text-slate-900 font-bold">
+                <div className="flex items-baseline text-slate-900 font-bold leading-none">
                     <span className="text-3xl">{parts[0]}</span>
                     <span className="text-lg font-semibold text-slate-800">.{parts[1]}</span>
                 </div>
             );
         }
-        return <span className="text-3xl font-bold text-slate-900">{price}</span>;
+
+        return <span className="text-3xl font-bold text-slate-900 leading-none">{price}</span>;
     };
 
     const isPaymentFailed = userData?.subscriptionStatus === 'unpaid' || userData?.subscriptionStatus === 'past_due';
@@ -146,27 +148,33 @@ export function PaywallModal({ open, onOpenChange, pricing, user, isGuest }: Pay
                                 <div className="border border-slate-200 rounded-xl bg-slate-50/50 p-4 grid grid-cols-2 divide-x divide-slate-200">
                                     <div className="flex flex-col items-center justify-center px-4">
                                         <span className="text-sm font-medium text-slate-500 mb-1">Monthly</span>
-                                        <div className="flex items-center gap-2">
-                                            {pricing.crossoutMonthly && (
-                                                <span className="text-sm text-slate-400 line-through">{pricing.crossoutMonthly}</span>
-                                            )}
-                                            {pricing.promoMonthly && (
-                                                <span className="text-sm font-bold text-emerald-700">{pricing.promoMonthly}</span>
-                                            )}
-                                            {renderPrice(pricing.displayMonthly)}
+                                        <div className="flex flex-col items-center">
+                                            <div className="flex items-center gap-2">
+                                                {pricing.crossoutMonthly && (
+                                                    <span className="text-sm text-slate-400 line-through">{pricing.crossoutMonthly}</span>
+                                                )}
+                                                {pricing.promoMonthly && (
+                                                    <span className="text-sm font-bold text-emerald-700">{pricing.promoMonthly}</span>
+                                                )}
+                                                {renderPrice(pricing.displayMonthly)}
+                                            </div>
+                                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-1">USD</span>
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-center justify-center px-4 relative">
                                         <div className="absolute -top-3 right-4 bg-emerald-500 text-white text-[10px] px-2 py-0.5 font-bold rounded-full">BEST VALUE</div>
                                         <span className="text-sm font-medium text-slate-500 mb-1 mt-2">Yearly</span>
-                                        <div className="flex items-center gap-2">
-                                            {pricing.crossoutYearly && (
-                                                <span className="text-sm text-slate-400 line-through font-semibold opacity-70">{pricing.crossoutYearly}</span>
-                                            )}
-                                            {pricing.promoYearly && (
-                                                <span className="text-sm font-bold text-emerald-700">{pricing.promoYearly}</span>
-                                            )}
-                                            {renderPrice(pricing.displayYearly)}
+                                        <div className="flex flex-col items-center">
+                                            <div className="flex items-center gap-2">
+                                                {pricing.crossoutYearly && (
+                                                    <span className="text-sm text-slate-400 line-through font-semibold opacity-70">{pricing.crossoutYearly}</span>
+                                                )}
+                                                {pricing.promoYearly && (
+                                                    <span className="text-sm font-bold text-emerald-700">{pricing.promoYearly}</span>
+                                                )}
+                                                {renderPrice(pricing.displayYearly)}
+                                            </div>
+                                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-1">USD</span>
                                         </div>
                                     </div>
                                 </div>
@@ -178,14 +186,17 @@ export function PaywallModal({ open, onOpenChange, pricing, user, isGuest }: Pay
                                         className="relative flex flex-col items-center justify-center p-4 border border-slate-300 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/50 transition-all cursor-pointer"
                                     >
                                         <span className="text-sm font-medium text-slate-500">Monthly</span>
-                                        <div className="flex items-center gap-2">
-                                            {pricing.crossoutMonthly && (
-                                                <span className="text-sm text-slate-400 line-through">{pricing.crossoutMonthly}</span>
-                                            )}
-                                            {pricing.promoMonthly && (
-                                                <span className="text-sm font-bold text-emerald-700">{pricing.promoMonthly}</span>
-                                            )}
-                                            {renderPrice(pricing.displayMonthly)}
+                                        <div className="flex flex-col items-center mt-1">
+                                            <div className="flex items-center gap-2">
+                                                {pricing.crossoutMonthly && (
+                                                    <span className="text-sm text-slate-400 line-through">{pricing.crossoutMonthly}</span>
+                                                )}
+                                                {pricing.promoMonthly && (
+                                                    <span className="text-sm font-bold text-emerald-700">{pricing.promoMonthly}</span>
+                                                )}
+                                                {renderPrice(pricing.displayMonthly)}
+                                            </div>
+                                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-1">USD</span>
                                         </div>
                                         {loadingCheckout === 'month' && (
                                             <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl">
@@ -201,14 +212,17 @@ export function PaywallModal({ open, onOpenChange, pricing, user, isGuest }: Pay
                                     >
                                         <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] px-2 py-0.5 font-bold rounded-bl-lg">BEST VALUE</div>
                                         <span className="text-sm font-medium text-slate-500 mt-2">Yearly</span>
-                                        <div className="flex items-center gap-2">
-                                            {pricing.crossoutYearly && (
-                                                <span className="text-sm text-slate-400 line-through font-semibold opacity-70">{pricing.crossoutYearly}</span>
-                                            )}
-                                            {pricing.promoYearly && (
-                                                <span className="text-sm font-bold text-emerald-700">{pricing.promoYearly}</span>
-                                            )}
-                                            {renderPrice(pricing.displayYearly)}
+                                        <div className="flex flex-col items-center mt-1">
+                                            <div className="flex items-center gap-2">
+                                                {pricing.crossoutYearly && (
+                                                    <span className="text-sm text-slate-400 line-through font-semibold opacity-70">{pricing.crossoutYearly}</span>
+                                                )}
+                                                {pricing.promoYearly && (
+                                                    <span className="text-sm font-bold text-emerald-700">{pricing.promoYearly}</span>
+                                                )}
+                                                {renderPrice(pricing.displayYearly)}
+                                            </div>
+                                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-1">USD</span>
                                         </div>
                                         {loadingCheckout === 'year' && (
                                             <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl z-10">
