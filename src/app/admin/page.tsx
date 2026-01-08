@@ -104,6 +104,7 @@ export default function AdminPage() {
 
     // Price Loading State
     const [loadingPrice, setLoadingPrice] = useState(false);
+    const [loadingPortalConfig, setLoadingPortalConfig] = useState<'test' | 'live' | null>(null);
 
     // Simulation Hook
     const simulation = useSimulatedDate();
@@ -481,6 +482,44 @@ export default function AdminPage() {
             toast.success(`Synced: ${data.displayString}`, { id: toastId });
         } catch (error: any) {
             toast.error(`Sync failed: ${error.message}`, { id: toastId });
+        }
+    };
+
+    const handleConfigurePortal = async (env: 'test' | 'live') => {
+        if (!confirm(`Generate/Reset the Stripe Billing Portal Configuration for ${env.toUpperCase()} mode?\n\nThis will create a new configuration in Stripe using your ${env} keys and update the database.`)) return;
+
+        setLoadingPortalConfig(env);
+        const toastId = toast.loading("Configuring Portal...");
+        try {
+            const token = await user?.getIdToken();
+            const res = await fetch('/api/admin/configure_stripe_portal', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ mode: env })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                // Update local config state
+                const currentEnvObj = config?.[env] || {};
+                const updatedConfig = {
+                    [env]: {
+                        ...currentEnvObj,
+                        portalConfigId: data.configId
+                    }
+                };
+                await updateConfig(updatedConfig as any);
+                toast.success("Portal Configured!", { id: toastId });
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error: any) {
+            toast.error(`Failed: ${error.message}`, { id: toastId });
+        } finally {
+            setLoadingPortalConfig(null);
         }
     };
 
@@ -2017,6 +2056,40 @@ export default function AdminPage() {
                                                 onChange={(e) => updateConfig({ test: { ...config?.test, sale: { ...config?.test?.sale, crossoutYearly: e.target.value } } as any })}
                                                 onClick={(e) => e.stopPropagation()}
                                             />
+
+                                            <div className="pt-2 mt-2 border-t border-emerald-200/50">
+                                                <label className="text-[10px] font-bold text-emerald-600/80 uppercase block mb-1">Stripe Portal ID (Optional)</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="bpc_..."
+                                                        className="flex-1 text-xs p-1.5 border rounded bg-white font-mono text-slate-600"
+                                                        value={config?.test?.portalConfigId || ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            updateConfig({ test: { ...config?.test, portalConfigId: val } } as any);
+                                                        }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-7 w-7 text-emerald-600 hover:bg-emerald-100"
+                                                        title="Generate / Reset Portal Config"
+                                                        onClick={(e) => { e.stopPropagation(); handleConfigurePortal('test'); }}
+                                                        disabled={loadingPortalConfig === 'test'}
+                                                    >
+                                                        {loadingPortalConfig === 'test' ? (
+                                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                                        ) : (
+                                                            <RefreshCw className="h-3 w-3" />
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                                <p className="text-[9px] text-emerald-600/60 mt-0.5 leading-tight">
+                                                    Overrides default portal. Create in Stripe Dashboard → Settings → Customer Portal.
+                                                </p>
+                                            </div>
                                         </div>
 
                                         <div className={cn("bg-white rounded-lg p-3 space-y-2 border", config?.strategy === 'regular' ? "border-blue-500 shadow-sm ring-1 ring-blue-500/20" : "border-slate-200")}>
@@ -2248,6 +2321,40 @@ export default function AdminPage() {
                                                 onChange={(e) => updateConfig({ live: { ...config?.live, sale: { ...config?.live?.sale, crossoutYearly: e.target.value } } as any })}
                                                 onClick={(e) => e.stopPropagation()}
                                             />
+
+                                            <div className="pt-2 mt-2 border-t border-emerald-200/50">
+                                                <label className="text-[10px] font-bold text-emerald-600/80 uppercase block mb-1">Stripe Portal ID (Optional)</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="bpc_..."
+                                                        className="flex-1 text-xs p-1.5 border rounded bg-white font-mono text-slate-600"
+                                                        value={config?.live?.portalConfigId || ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            updateConfig({ live: { ...config?.live, portalConfigId: val } } as any);
+                                                        }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-7 w-7 text-emerald-600 hover:bg-emerald-100"
+                                                        title="Generate / Reset Portal Config"
+                                                        onClick={(e) => { e.stopPropagation(); handleConfigurePortal('live'); }}
+                                                        disabled={loadingPortalConfig === 'live'}
+                                                    >
+                                                        {loadingPortalConfig === 'live' ? (
+                                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                                        ) : (
+                                                            <RefreshCw className="h-3 w-3" />
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                                <p className="text-[9px] text-emerald-600/60 mt-0.5 leading-tight">
+                                                    Overrides default portal. Create in Stripe Dashboard → Settings → Customer Portal.
+                                                </p>
+                                            </div>
                                         </div>
 
                                         {/* Regular Pricing Section */}

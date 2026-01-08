@@ -18,7 +18,14 @@ export async function POST(req: NextRequest) {
 
         // Environment-Scoped Monetization
         const appEnv = (process.env.NEXT_PUBLIC_APP_ENV || 'production') as 'development' | 'production';
-        const mode = config.modes?.[appEnv] || config.mode || 'test';
+
+        const body = await req.json();
+        const requestedMode = body.mode; // Optional: 'test' | 'live'
+
+        let mode = config.modes?.[appEnv] || config.mode || 'test';
+        if (requestedMode && (requestedMode === 'test' || requestedMode === 'live')) {
+            mode = requestedMode;
+        }
 
         const apiKey = mode === 'live' ? process.env.STRIPE_SECRET_KEY_LIVE : process.env.STRIPE_SECRET_KEY_TEST;
         if (!apiKey) return NextResponse.json({ error: "No API Key" }, { status: 500 });

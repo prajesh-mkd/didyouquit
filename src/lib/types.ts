@@ -43,6 +43,7 @@ export interface AppConfig {
 export interface EnvironmentConfig {
     sale: PricingTier;
     regular: PricingTier;
+    portalConfigId?: string;
 }
 
 export interface PricingTier {
